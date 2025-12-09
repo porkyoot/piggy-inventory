@@ -3,7 +3,6 @@ package is.pig.minecraft.inventory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import is.pig.minecraft.inventory.config.PiggyConfig;
 import is.pig.minecraft.inventory.config.ConfigPersistence;
 import is.pig.minecraft.inventory.mvc.controller.InputController;
 import net.fabricmc.api.ClientModInitializer;
@@ -25,13 +24,13 @@ public class PiggyInventoryClient implements ClientModInitializer {
 
         // 3. Register Config Sync Receiver
         net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking.registerGlobalReceiver(
-                is.pig.minecraft.inventory.network.SyncConfigPayload.TYPE,
+                is.pig.minecraft.lib.network.SyncConfigPayload.TYPE,
                 (payload, context) -> {
-                    context.client().execute(() -> {
-                        PiggyConfig.getInstance().serverAllowCheats = payload.allowCheats();
-                        PiggyInventoryClient.LOGGER
-                                .info("Received server config: allowCheats=" + payload.allowCheats());
-                    });
+                    is.pig.minecraft.inventory.config.PiggyServerConfig config = is.pig.minecraft.inventory.config.PiggyServerConfig
+                            .getInstance();
+                    config.allowCheats = payload.allowCheats();
+                    config.features = payload.features();
+                    PiggyInventoryClient.LOGGER.info("Received server config: allowCheats=" + payload.allowCheats());
                 });
     }
 }
