@@ -1,0 +1,12 @@
+{
+	"required": true,
+	"package": "is.pig.minecraft.inventory.mixin.client",
+	"compatibilityLevel": "JAVA_21",
+	"client": [
+		"MinecraftAccessorMixin",
+		"MinecraftClientMixin"
+	],
+	"injectors": {
+		"defaultRequire": 1
+	}
+}

@@ -1,0 +1,48 @@
+{
+	"schemaVersion": 1,
+	"id": "piggy-inventory",
+	"version": "${version}",
+	"name": "Piggy Inventory",
+	"description": "A simple mod to help with inventory management.",
+	"authors": [
+		"Étoile @porkyoot"
+	],
+	"contact": {
+		"homepage": "https://pig.is/",
+		"sources": "https://github.com/porkyoot/piggy-inventory"
+	},
+	"license": "CC0-1.0",
+	"icon": "assets/piggy-inventory/icon.png",
+	"environment": "*",
+	"entrypoints": {
+		"main": [
+			"is.pig.minecraft.inventory.PiggyInventory"
+		],
+		"client": [
+			"is.pig.minecraft.inventory.PiggyInventoryClient"
+		],
+		"fabric-datagen": [
+			"is.pig.minecraft.inventory.PiggyInventoryDataGenerator"
+		],
+		"modmenu": [
+			"is.pig.minecraft.inventory.integration.ModMenuIntegration"
+		]
+	},
+	"mixins": [
+		"piggy-inventory.mixins.json",
+		{
+			"config": "piggy-inventory.client.mixins.json",
+			"environment": "client"
+		}
+	],
+	"depends": {
+		"fabricloader": ">=0.18.1",
+		"minecraft": "~1.21.1",
+		"java": ">=21",
+		"fabric-api": "*",
+		"yet_another_config_lib_v3": ">=3.6.1+1.21-fabric"
+	},
+	"suggests": {
+		"modmenu": ">=11.0.3"
+	}
+}
