@@ -16,6 +16,8 @@ public class PiggyInventoryClient implements ClientModInitializer {
 
     @Override
     public void onInitializeClient() {
+
+        LOGGER.info("Ehlo from Piggy Inventory!");
         // 1. Load configuration
         ConfigPersistence.load();
 
