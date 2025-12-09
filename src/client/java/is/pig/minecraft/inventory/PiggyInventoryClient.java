@@ -18,6 +18,15 @@ public class PiggyInventoryClient implements ClientModInitializer {
     public void onInitializeClient() {
 
         LOGGER.info("Ehlo from Piggy Inventory!");
+
+        // 0. Register features
+        is.pig.minecraft.lib.features.CheatFeatureRegistry.register(
+                new is.pig.minecraft.lib.features.CheatFeature(
+                        "tool_swap",
+                        "Tool Swap",
+                        "Automatically swap to the best tool for the targeted block",
+                        true));
+
         // 1. Load configuration
         ConfigPersistence.load();
 
@@ -28,11 +37,12 @@ public class PiggyInventoryClient implements ClientModInitializer {
         net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking.registerGlobalReceiver(
                 is.pig.minecraft.lib.network.SyncConfigPayload.TYPE,
                 (payload, context) -> {
-                    is.pig.minecraft.inventory.config.PiggyServerConfig config = is.pig.minecraft.inventory.config.PiggyServerConfig
+                    is.pig.minecraft.inventory.config.PiggyConfig config = is.pig.minecraft.inventory.config.PiggyConfig
                             .getInstance();
-                    config.allowCheats = payload.allowCheats();
-                    config.features = payload.features();
-                    PiggyInventoryClient.LOGGER.info("Received server config: allowCheats=" + payload.allowCheats());
+                    config.serverAllowCheats = payload.allowCheats();
+                    config.serverFeatures = payload.features();
+                    PiggyInventoryClient.LOGGER.info("Received server config: allowCheats=" + payload.allowCheats()
+                            + ", features=" + payload.features());
                 });
     }
 }

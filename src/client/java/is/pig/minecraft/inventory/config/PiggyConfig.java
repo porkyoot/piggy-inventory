@@ -18,6 +18,8 @@ public class PiggyConfig {
     // Safety settings
     private boolean noCheatingMode = true;
     public transient boolean serverAllowCheats = true; // Runtime override from server
+    public transient java.util.Map<String, Boolean> serverFeatures = new java.util.HashMap<>(); // Runtime feature
+                                                                                                // overrides
 
     // Tool swap settings
     private boolean toolSwapEnabled = true;
@@ -76,6 +78,19 @@ public class PiggyConfig {
 
     public void setToolSwapEnabled(boolean toolSwapEnabled) {
         this.toolSwapEnabled = toolSwapEnabled;
+    }
+
+    /**
+     * Checks if tool swap feature is actually enabled, considering server
+     * overrides.
+     */
+    public boolean isFeatureToolSwapEnabled() {
+        return is.pig.minecraft.lib.features.CheatFeatureRegistry.isFeatureEnabled(
+                "tool_swap",
+                serverAllowCheats,
+                serverFeatures,
+                noCheatingMode,
+                toolSwapEnabled);
     }
 
     public List<Integer> getSwapHotbarSlots() {

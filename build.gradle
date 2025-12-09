@@ -16,6 +16,7 @@ repositories {
 	// Loom adds the essential maven repositories to download Minecraft and libraries from automatically.
 	// See https://docs.gradle.org/current/userguide/declaring_repositories.html
 	// for more information about repositories.
+	mavenLocal()
 	maven {
         name 'Xander Maven'
         url 'https://maven.isxander.dev/releases'
@@ -54,7 +55,9 @@ dependencies {
 	modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
 	modImplementation "dev.isxander:yet-another-config-lib:${project.yacl_version}"
 	modImplementation("com.terraformersmc:modmenu:${project.modmenu_version}")
-    modImplementation "is.pig.minecraft:piggy-lib:1.0.0"
+	
+	// Use project dependency for local mod
+	modImplementation project(path: ':piggy-lib', configuration: 'namedElements')
 }
 
 processResources {
@@ -98,9 +101,7 @@ publishing {
 
 	// See https://docs.gradle.org/current/userguide/publishing_maven.html for information on how to set up publishing.
 	repositories {
-		// Add repositories to publish to here.
-		// Notice: This block does NOT have the same function as the block in the top level.
-		// The repositories here will be used for publishing your artifact, not for
-		// retrieving dependencies.
+		// Publish to mavenLocal so other projects can find this mod
+		mavenLocal()
 	}
 }
