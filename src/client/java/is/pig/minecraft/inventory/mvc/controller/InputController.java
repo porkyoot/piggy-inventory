@@ -39,32 +39,21 @@ public class InputController {
                 is.pig.minecraft.inventory.config.PiggyConfig.getInstance().setToolSwapEnabled(newState);
                 is.pig.minecraft.inventory.config.ConfigPersistence.save();
 
-                if (newState) {
-                    boolean restricted = false;
-                    // Check anti-cheat conditions
-                    if (is.pig.minecraft.inventory.config.PiggyConfig.getInstance().isNoCheatingMode()
-                            && !is.pig.minecraft.inventory.config.PiggyConfig.getInstance().serverAllowCheats) {
-                        if (!client.player.isCreative() && !client.player.isSpectator()) {
-                            restricted = true;
-                        }
-                    }
+                // If enabling while blocked, trigger feedback
+                if (newState
+                        && !is.pig.minecraft.inventory.config.PiggyConfig.getInstance().isFeatureToolSwapEnabled()) {
+                    boolean serverForces = !is.pig.minecraft.inventory.config.PiggyConfig
+                            .getInstance().serverAllowCheats ||
+                            (is.pig.minecraft.inventory.config.PiggyConfig.getInstance().serverFeatures
+                                    .containsKey("tool_swap") &&
+                                    !is.pig.minecraft.inventory.config.PiggyConfig.getInstance().serverFeatures
+                                            .get("tool_swap"));
 
-                    if (restricted) {
-                        client.player.displayClientMessage(
-                                net.minecraft.network.chat.Component.literal("Tool Swap: ON (Restricted by Anti-Cheat)")
-                                        .withStyle(net.minecraft.ChatFormatting.RED),
-                                true);
-                    } else {
-                        client.player.displayClientMessage(
-                                net.minecraft.network.chat.Component.literal("Tool Swap: ON")
-                                        .withStyle(net.minecraft.ChatFormatting.YELLOW),
-                                true);
-                    }
-                } else {
-                    client.player.displayClientMessage(
-                            net.minecraft.network.chat.Component.literal("Tool Swap: OFF")
-                                    .withStyle(net.minecraft.ChatFormatting.YELLOW),
-                            true);
+                    is.pig.minecraft.lib.ui.BlockReason reason = serverForces
+                            ? is.pig.minecraft.lib.ui.BlockReason.SERVER_ENFORCEMENT
+                            : is.pig.minecraft.lib.ui.BlockReason.LOCAL_CONFIG;
+                    is.pig.minecraft.lib.ui.AntiCheatFeedbackManager.getInstance()
+                            .onFeatureBlocked("tool_swap", reason);
                 }
             }
 
