@@ -21,6 +21,7 @@ public class PiggyInventoryConfig extends is.pig.minecraft.lib.config.PiggyClien
     private OrePreference orePreference = OrePreference.FORTUNE;
 
     public enum OrePreference {
+        NONE,
         FORTUNE,
         SILK_TOUCH
     }
@@ -48,6 +49,7 @@ public class PiggyInventoryConfig extends is.pig.minecraft.lib.config.PiggyClien
     }
 
     public void setToolSwapEnabled(boolean toolSwapEnabled) {
+        // If attempting to enable, check server enforcement first
         if (toolSwapEnabled) {
             boolean serverForces = !this.serverAllowCheats
                     || (this.serverFeatures != null && this.serverFeatures.containsKey("tool_swap")
@@ -62,21 +64,12 @@ public class PiggyInventoryConfig extends is.pig.minecraft.lib.config.PiggyClien
         this.toolSwapEnabled = toolSwapEnabled;
     }
 
-    // --- HELPERS FOR GUI AVAILABILITY ---
-
-    public boolean isGlobalCheatsEditable() {
-        // Gray out if Server forces cheats off
-        return this.serverAllowCheats;
-    }
-
     public boolean isToolSwapEditable() {
         if (isNoCheatingMode()) return false;
         if (!this.serverAllowCheats) return false;
         if (this.serverFeatures != null && this.serverFeatures.containsKey("tool_swap") && !this.serverFeatures.get("tool_swap")) return false;
         return true;
     }
-
-    // --- LOGIC CHECKS ---
 
     public boolean isFeatureToolSwapEnabled() {
         return is.pig.minecraft.lib.features.CheatFeatureRegistry.isFeatureEnabled(

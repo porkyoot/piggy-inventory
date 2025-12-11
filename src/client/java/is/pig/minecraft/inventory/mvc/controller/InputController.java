@@ -13,9 +13,11 @@ public class InputController {
 
     // Static keys accessible by handlers/views
     public static KeyMapping toggleToolSwapKey;
+    public static KeyMapping preferenceKey;
 
-    // Handlers (Logic separation)
+    // Handlers
     private static final ToolSwapHandler toolSwapHandler = new ToolSwapHandler();
+    private static final ToolPreferenceHandler preferenceHandler = new ToolPreferenceHandler();
 
     public void initialize() {
         registerKeys();
@@ -28,10 +30,15 @@ public class InputController {
                 InputConstants.Type.KEYSYM,
                 GLFW.GLFW_KEY_H,
                 "Piggy Inventory"));
+
+        preferenceKey = KeyBindingHelper.registerKeyBinding(new KeyMapping(
+                "Tool Preference Menu",
+                InputConstants.Type.KEYSYM,
+                GLFW.GLFW_KEY_Z,
+                "Piggy Inventory"));
     }
 
     private void registerEvents() {
-        // Client Tick -> Delegated to handlers
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
             if (client.player == null)
                 return;
@@ -39,25 +46,22 @@ public class InputController {
             // Handle Toggles
             while (toggleToolSwapKey.consumeClick()) {
                 PiggyInventoryConfig config = (PiggyInventoryConfig) PiggyInventoryConfig.getInstance();
-                
-                // Check if feature can be edited (i.e. not blocked by anti-cheat)
                 if (!config.isToolSwapEditable()) {
-                    // Determine specific reason for feedback
                     BlockReason reason = (config.serverAllowCheats && 
                         (config.serverFeatures == null || !config.serverFeatures.containsKey("tool_swap") || config.serverFeatures.get("tool_swap")))
-                        ? BlockReason.LOCAL_CONFIG  // Blocked by local "No Cheating Mode"
-                        : BlockReason.SERVER_ENFORCEMENT; // Blocked by server
-                        
+                        ? BlockReason.LOCAL_CONFIG
+                        : BlockReason.SERVER_ENFORCEMENT;
                     AntiCheatFeedbackManager.getInstance().onFeatureBlocked("tool_swap", reason);
                 } else {
-                    // Allowed to toggle
                     boolean newState = !config.isToolSwapEnabled();
                     config.setToolSwapEnabled(newState);
                     is.pig.minecraft.inventory.config.ConfigPersistence.save();
                 }
             }
 
+            // Delegate to handlers
             toolSwapHandler.onTick(client);
+            preferenceHandler.onTick(client);
         });
     }
 

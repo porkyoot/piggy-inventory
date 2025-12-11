@@ -23,8 +23,6 @@ public class ToolSwapHandler {
     public void onTick(Minecraft client) {
         // Check if feature is enabled (considers server overrides)
         if (!((PiggyInventoryConfig) PiggyInventoryConfig.getInstance()).isFeatureToolSwapEnabled()) {
-            // If disabled, silently return. Feedback is provided when the user
-            // attempts to enable the feature via the toggle or config UI.
             return;
         }
 
@@ -54,8 +52,6 @@ public class ToolSwapHandler {
             boolean bestDamageable = currentStack.isDamageableItem();
 
             // Iterate main inventory (0-35)
-            // 0-8: Hotbar
-            // 9-35: Storage
             for (int i = 0; i < 36; i++) {
                 if (i == currentSlot)
                     continue;
@@ -82,16 +78,15 @@ public class ToolSwapHandler {
 
             if (bestSlot != currentSlot) {
                 if (bestSlot < 9) {
-                    // Hotbar swap - just select it
+                    // Hotbar swap
                     client.player.getInventory().selected = bestSlot;
                     if (client.getConnection() != null) {
                         client.getConnection().send(new ServerboundSetCarriedItemPacket(bestSlot));
                     }
                 } else {
-                    // Find a valid target slot in the hotbar based on config
+                    // Inventory swap
                     List<Integer> allowedSlots = ((PiggyInventoryConfig) PiggyInventoryConfig.getInstance()).getSwapHotbarSlots();
 
-                    // If no slots allowed, we can't bring it in
                     if (allowedSlots == null || allowedSlots.isEmpty()) {
                         return;
                     }
@@ -100,17 +95,11 @@ public class ToolSwapHandler {
                     if (allowedSlots.contains(currentSlot)) {
                         targetSlot = currentSlot;
                     } else {
-                        // Fallback to first allowed slot
                         targetSlot = allowedSlots.get(0);
-                        // Sanity check to ensure it's a hotbar slot
                         if (targetSlot < 0 || targetSlot > 8)
                             targetSlot = 0;
                     }
 
-                    // Main inventory - Swap into target hotbar slot
-                    // Slot Mapping for InventoryMenu (ID 0):
-                    // 9-35 (Main Logic Inv) maps exactly to 9-35 (Menu Slots)
-                    // We use SWAP click with button = targetSlot
                     client.gameMode.handleInventoryMouseClick(
                             client.player.inventoryMenu.containerId,
                             bestSlot,
@@ -118,7 +107,6 @@ public class ToolSwapHandler {
                             ClickType.SWAP,
                             client.player);
 
-                    // If we swapped to a different slot than current, we must switch to it
                     if (client.player.getInventory().selected != targetSlot) {
                         client.player.getInventory().selected = targetSlot;
                         if (client.getConnection() != null) {
@@ -137,7 +125,6 @@ public class ToolSwapHandler {
         float speed = stack.getDestroySpeed(state);
 
         // Efficiency Bonus
-        // Only applies if the tool is effective (speed > 1.0)
         if (speed > 1.0f) {
             int efficiencyLevel = getEnchantmentLevel(client, stack, Enchantments.EFFICIENCY);
             if (efficiencyLevel > 0) {
@@ -156,7 +143,7 @@ public class ToolSwapHandler {
         if (needsShears && stack.is(Items.SHEARS)) {
             speed += 10000.0f; // Massive bonus for Shears
         } else if (needsSilk && hasSilk) {
-            speed += 10000.0f; // Massive bonus for mandatory Silk Touch (Glass, etc.)
+            speed += 10000.0f; // Massive bonus for mandatory Silk Touch
         } else if (isOre) {
             // Apply preference for Ores
             PiggyInventoryConfig.OrePreference perf = ((PiggyInventoryConfig) PiggyInventoryConfig.getInstance()).getOrePreference();
@@ -166,13 +153,14 @@ public class ToolSwapHandler {
                     speed += 5000.0f; // Big bonus for preferred Silk
                 else if (fortuneLevel > 0)
                     speed -= 100.0f; // Penalty for unwanted Fortune
-            } else {
+            } else if (perf == PiggyInventoryConfig.OrePreference.FORTUNE) {
                 // Prefer Fortune
                 if (fortuneLevel > 0)
                     speed += (1000.0f * fortuneLevel); // Bonus per Fortune level
                 else if (hasSilk)
                     speed -= 100.0f; // Penalty for unwanted Silk
             }
+            // If NONE, no special bonuses applied, just raw speed/efficiency
         } else if (!needsSilk && hasSilk) {
             speed -= 0.1f; // Slight penalty to preserve Silk Touch durability if not needed
         }
@@ -183,7 +171,6 @@ public class ToolSwapHandler {
     private int getEnchantmentLevel(Minecraft client, ItemStack stack, ResourceKey<Enchantment> key) {
         if (client.level == null)
             return 0;
-        // In 1.21, we need to look up the enchantment in the registry
         try {
             var registry = client.level.registryAccess().lookupOrThrow(Registries.ENCHANTMENT);
             var enchant = registry.getOrThrow(key);
@@ -212,17 +199,15 @@ public class ToolSwapHandler {
         ResourceKey<Block> key = state.getBlockHolder().unwrapKey().orElse(null);
         if (key == null)
             return false;
-        String id = key.location().toString(); // e.g., "minecraft:glass"
-        String path = key.location().getPath(); // e.g., "glass"
+        String id = key.location().toString();
+        String path = key.location().getPath();
 
         for (String pattern : configList) {
             pattern = pattern.trim();
             if (pattern.isEmpty())
                 continue;
 
-            // Handle wildcard *
             if (pattern.contains("*")) {
-                // simple contains check if * is at padding
                 String clean = pattern.replace("*", "");
                 if (pattern.startsWith("*") && pattern.endsWith("*")) {
                     if (id.contains(clean) || path.contains(clean))
@@ -234,12 +219,10 @@ public class ToolSwapHandler {
                     if (id.startsWith(clean) || path.startsWith(clean))
                         return true;
                 } else {
-                    // complex wildcard not fully supported, fallback to contains
                     if (id.contains(clean))
                         return true;
                 }
             } else {
-                // Exact match (check against full ID or just path)
                 if (id.equals(pattern) || path.equals(pattern))
                     return true;
             }
