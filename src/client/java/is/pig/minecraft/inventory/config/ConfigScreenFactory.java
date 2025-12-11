@@ -68,10 +68,7 @@ public class ConfigScreenFactory {
                                                                                 Component.literal(
                                                                                                 "Which hotbar slots can be overwritten/used when swapping?"),
                                                                                 Component.literal(
-                                                                                                "Format: '0-3, 5, 7-8'"),
-                                                                                Component.literal(""),
-                                                                                Component.literal(
-                                                                                                "Slots are 0-indexed (0 is the first slot).")))
+                                                                                                "Format: '0-3, 5, 7-8'")))
                                                                 .binding(
                                                                                 formatSlotList(config
                                                                                                 .getSwapHotbarSlots()),
@@ -99,9 +96,7 @@ public class ConfigScreenFactory {
                                                                 .name(Component.literal("Silk Touch Blocks"))
                                                                 .description(OptionDescription.of(
                                                                                 Component.literal(
-                                                                                                "Blocks that ALWAYS require Silk Touch."),
-                                                                                Component.literal(
-                                                                                                "Supports IDs (minecraft:glass) or Wildcards (*glass*).")))
+                                                                                                "Blocks that require Silk Touch to drop.")))
                                                                 .binding(
                                                                                 config.getSilkTouchBlocks(),
                                                                                 config::getSilkTouchBlocks,
@@ -114,9 +109,7 @@ public class ConfigScreenFactory {
                                                                 .name(Component.literal("Fortune/Ore Blocks"))
                                                                 .description(OptionDescription.of(
                                                                                 Component.literal(
-                                                                                                "Blocks affected by Ore Preference (Fortune vs Silk)."),
-                                                                                Component.literal(
-                                                                                                "Supports IDs (minecraft:coal_ore) or Wildcards (*_ore).")))
+                                                                                                "Blocks affected by Fortune preference.")))
                                                                 .binding(
                                                                                 config.getFortuneBlocks(),
                                                                                 config::getFortuneBlocks,
@@ -126,12 +119,22 @@ public class ConfigScreenFactory {
                                                                 .build())
 
                                                 .option(ListOption.<String>createBuilder()
-                                                                .name(Component.literal("Shears Blocks"))
+                                                                .name(Component.literal("Protected Blocks"))
                                                                 .description(OptionDescription.of(
                                                                                 Component.literal(
-                                                                                                "Blocks that require Shears to drop."),
+                                                                                                "Blocks that must NOT be broken when in Silk Touch mode."),
                                                                                 Component.literal(
-                                                                                                "e.g. Vines, Leaves, Grass.")))
+                                                                                                "Use this to prevent accidental breaking of fragile blocks.")))
+                                                                .binding(
+                                                                                config.getProtectedBlocks(),
+                                                                                config::getProtectedBlocks,
+                                                                                config::setProtectedBlocks)
+                                                                .controller(StringControllerBuilder::create)
+                                                                .initial("")
+                                                                .build())
+
+                                                .option(ListOption.<String>createBuilder()
+                                                                .name(Component.literal("Shears Blocks"))
                                                                 .binding(
                                                                                 config.getShearsBlocks(),
                                                                                 config::getShearsBlocks,
@@ -199,14 +202,11 @@ public class ConfigScreenFactory {
                                         if (range.length == 2) {
                                                 int start = Integer.parseInt(range[0].trim());
                                                 int end = Integer.parseInt(range[1].trim());
-
-                                                // Handle reverse range 5-2 -> 2-5
                                                 if (start > end) {
                                                         int t = start;
                                                         start = end;
                                                         end = t;
                                                 }
-
                                                 for (int i = start; i <= end; i++) {
                                                         if (i >= 0 && i <= 8)
                                                                 uniqueSlots.add(i);
@@ -218,7 +218,6 @@ public class ConfigScreenFactory {
                                                 uniqueSlots.add(val);
                                 }
                         } catch (NumberFormatException ignored) {
-                                // Ignore bad inputs
                         }
                 }
 

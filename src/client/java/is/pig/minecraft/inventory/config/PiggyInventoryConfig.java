@@ -45,23 +45,24 @@ public class PiggyInventoryConfig extends is.pig.minecraft.lib.config.PiggyClien
             "minecraft:fern", "minecraft:large_fern", "*leaves*", "minecraft:cobweb",
             "minecraft:seagrass", "minecraft:hanging_roots", "minecraft:glow_lichen"));
 
+    // Blocks that should NOT be broken when in Silk Touch (Safe) mode.
+    // These are blocks that usually drop nothing or lose their value when broken.
+    // Removed 'amethyst_cluster' because it DOES drop with Silk Touch.
+    // Added 'small/medium/large_amethyst_bud' because they DO NOT drop themselves.
+    private List<String> protectedBlocks = new ArrayList<>(Arrays.asList(
+            "minecraft:budding_amethyst",
+            "minecraft:farmland", 
+            "minecraft:suspicious_sand", "minecraft:suspicious_gravel", 
+            "minecraft:spawner", "minecraft:trial_spawner"));
+
     // --- SINGLETON ACCESS ---
 
-    /**
-     * @return true if Tool Swap is effectively enabled (preference is not NONE)
-     */
     public boolean isToolSwapEnabled() {
         return orePreference != OrePreference.NONE;
     }
 
-    /**
-     * Toggles the feature on/off.
-     * On: Restores last active preference (Fortune/Silk).
-     * Off: Sets preference to NONE.
-     */
     public void setToolSwapEnabled(boolean enabled) {
         if (enabled) {
-            // Check restrictions before enabling
             boolean serverForces = !this.serverAllowCheats
                     || (this.serverFeatures != null && this.serverFeatures.containsKey("tool_swap")
                             && !this.serverFeatures.get("tool_swap"));
@@ -72,7 +73,6 @@ public class PiggyInventoryConfig extends is.pig.minecraft.lib.config.PiggyClien
                 return;
             }
             
-            // Restore last state (or default to FORTUNE if somehow NONE)
             if (lastActivePreference == OrePreference.NONE) {
                 lastActivePreference = OrePreference.FORTUNE;
             }
@@ -90,8 +90,6 @@ public class PiggyInventoryConfig extends is.pig.minecraft.lib.config.PiggyClien
     }
 
     public boolean isFeatureToolSwapEnabled() {
-        // Logic is now inherent in orePreference state + AntiCheat checks
-        // But for completeness with Registry checks:
         boolean enabledInConfig = (orePreference != OrePreference.NONE);
         
         return is.pig.minecraft.lib.features.CheatFeatureRegistry.isFeatureEnabled(
@@ -107,20 +105,15 @@ public class PiggyInventoryConfig extends is.pig.minecraft.lib.config.PiggyClien
     }
 
     public void setOrePreference(OrePreference pref) {
-        // If setting to a specific mode, check restrictions
         if (pref != OrePreference.NONE) {
              boolean serverForces = !this.serverAllowCheats
                     || (this.serverFeatures != null && this.serverFeatures.containsKey("tool_swap")
                             && !this.serverFeatures.get("tool_swap"));
              
              if (serverForces) {
-                 // Block attempt
                  AntiCheatFeedbackManager.getInstance().onFeatureBlocked("tool_swap", BlockReason.SERVER_ENFORCEMENT);
-                 // Do not update
                  return;
              }
-             
-             // Update memory
              this.lastActivePreference = pref;
         }
         this.orePreference = pref;
@@ -140,4 +133,6 @@ public class PiggyInventoryConfig extends is.pig.minecraft.lib.config.PiggyClien
     public void setFortuneBlocks(List<String> list) { this.fortuneBlocks = list; }
     public List<String> getShearsBlocks() { return shearsBlocks; }
     public void setShearsBlocks(List<String> list) { this.shearsBlocks = list; }
+    public List<String> getProtectedBlocks() { return protectedBlocks; }
+    public void setProtectedBlocks(List<String> list) { this.protectedBlocks = list; }
 }

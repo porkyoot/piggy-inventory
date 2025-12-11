@@ -20,49 +20,56 @@ import net.minecraft.world.phys.HitResult;
 
 public class ToolSwapHandler {
 
-    public void onTick(Minecraft client) {
-        // Check if feature is enabled (considers server overrides)
-        if (!((PiggyInventoryConfig) PiggyInventoryConfig.getInstance()).isFeatureToolSwapEnabled()) {
-            return;
+    /**
+     * @return true if the attack should be CANCELLED (protected block).
+     */
+    public boolean onTick(Minecraft client) {
+        PiggyInventoryConfig config = (PiggyInventoryConfig) PiggyInventoryConfig.getInstance();
+        
+        if (!config.isFeatureToolSwapEnabled()) {
+            return false;
         }
 
         if (client.player == null || client.level == null) {
-            return;
+            return false;
         }
 
-        // Don't swap if a screen is open
         if (client.screen != null) {
-            return;
+            return false;
         }
 
-        // Only trying to swap if the player is actively attacking/mining
         if (!client.options.keyAttack.isDown()) {
-            return;
+            return false;
         }
 
         if (client.hitResult instanceof BlockHitResult blockHit && blockHit.getType() == HitResult.Type.BLOCK) {
             BlockState state = client.level.getBlockState(blockHit.getBlockPos());
+            
+            PiggyInventoryConfig.OrePreference mode = config.getOrePreference();
 
+            // 2. Safety Check (Silk Touch Mode)
+            if (mode == PiggyInventoryConfig.OrePreference.SILK_TOUCH) {
+                if (matchesConfigList(config.getProtectedBlocks(), state)) {
+                    return true; // Cancel attack
+                }
+            }
+
+            // 3. Tool Selection Logic
             int currentSlot = client.player.getInventory().selected;
             ItemStack currentStack = client.player.getMainHandItem();
 
-            // Best candidate initialization
             int bestSlot = currentSlot;
-            float bestScore = getToolScore(client, currentStack, state);
+            float bestScore = getToolScore(client, currentStack, state, mode, config);
             boolean bestDamageable = currentStack.isDamageableItem();
 
-            // Iterate main inventory (0-35)
             for (int i = 0; i < 36; i++) {
                 if (i == currentSlot)
                     continue;
 
                 ItemStack stack = client.player.getInventory().getItem(i);
-                float score = getToolScore(client, stack, state);
+                float score = getToolScore(client, stack, state, mode, config);
                 boolean damageable = stack.isDamageableItem();
 
-                // Logic:
-                // 1. Strictly higher score -> Always switch
-                // 2. Same score -> Prefer non-damageable (save durability)
                 if (score > bestScore) {
                     bestScore = score;
                     bestSlot = i;
@@ -77,54 +84,56 @@ public class ToolSwapHandler {
             }
 
             if (bestSlot != currentSlot) {
-                if (bestSlot < 9) {
-                    // Hotbar swap
-                    client.player.getInventory().selected = bestSlot;
-                    if (client.getConnection() != null) {
-                        client.getConnection().send(new ServerboundSetCarriedItemPacket(bestSlot));
-                    }
-                } else {
-                    // Inventory swap
-                    List<Integer> allowedSlots = ((PiggyInventoryConfig) PiggyInventoryConfig.getInstance()).getSwapHotbarSlots();
+                swapToSlot(client, currentSlot, bestSlot, config.getSwapHotbarSlots());
+            }
+        }
+        
+        return false; // Allow attack
+    }
 
-                    if (allowedSlots == null || allowedSlots.isEmpty()) {
-                        return;
-                    }
+    private void swapToSlot(Minecraft client, int currentSlot, int bestSlot, List<Integer> allowedSlots) {
+        if (bestSlot < 9) {
+            client.player.getInventory().selected = bestSlot;
+            if (client.getConnection() != null) {
+                client.getConnection().send(new ServerboundSetCarriedItemPacket(bestSlot));
+            }
+        } else {
+            if (allowedSlots == null || allowedSlots.isEmpty()) {
+                return;
+            }
 
-                    int targetSlot;
-                    if (allowedSlots.contains(currentSlot)) {
-                        targetSlot = currentSlot;
-                    } else {
-                        targetSlot = allowedSlots.get(0);
-                        if (targetSlot < 0 || targetSlot > 8)
-                            targetSlot = 0;
-                    }
+            int targetSlot;
+            if (allowedSlots.contains(currentSlot)) {
+                targetSlot = currentSlot;
+            } else {
+                targetSlot = allowedSlots.get(0);
+                if (targetSlot < 0 || targetSlot > 8)
+                    targetSlot = 0;
+            }
 
-                    client.gameMode.handleInventoryMouseClick(
-                            client.player.inventoryMenu.containerId,
-                            bestSlot,
-                            targetSlot,
-                            ClickType.SWAP,
-                            client.player);
+            client.gameMode.handleInventoryMouseClick(
+                    client.player.inventoryMenu.containerId,
+                    bestSlot,
+                    targetSlot,
+                    ClickType.SWAP,
+                    client.player);
 
-                    if (client.player.getInventory().selected != targetSlot) {
-                        client.player.getInventory().selected = targetSlot;
-                        if (client.getConnection() != null) {
-                            client.getConnection().send(new ServerboundSetCarriedItemPacket(targetSlot));
-                        }
-                    }
+            if (client.player.getInventory().selected != targetSlot) {
+                client.player.getInventory().selected = targetSlot;
+                if (client.getConnection() != null) {
+                    client.getConnection().send(new ServerboundSetCarriedItemPacket(targetSlot));
                 }
             }
         }
     }
 
-    private float getToolScore(Minecraft client, ItemStack stack, BlockState state) {
+    private float getToolScore(Minecraft client, ItemStack stack, BlockState state, 
+                               PiggyInventoryConfig.OrePreference mode, PiggyInventoryConfig config) {
         if (stack.isEmpty())
             return 0f;
 
         float speed = stack.getDestroySpeed(state);
 
-        // Efficiency Bonus
         if (speed > 1.0f) {
             int efficiencyLevel = getEnchantmentLevel(client, stack, Enchantments.EFFICIENCY);
             if (efficiencyLevel > 0) {
@@ -132,37 +141,44 @@ public class ToolSwapHandler {
             }
         }
 
-        // Silk Touch Logic
         boolean hasSilk = getEnchantmentLevel(client, stack, Enchantments.SILK_TOUCH) > 0;
         int fortuneLevel = getEnchantmentLevel(client, stack, Enchantments.FORTUNE);
 
-        boolean needsSilk = requiresSilkTouch(state);
-        boolean isOre = isOreOrValuable(state);
-        boolean needsShears = requiresShears(state);
+        boolean needsShears = requiresShears(state, config);
+        
+        // In FORTUNE mode, we IGNORE the need for shears (destruction mode).
+        // In SILK_TOUCH mode, we respect it.
+        if (mode == PiggyInventoryConfig.OrePreference.FORTUNE) {
+            needsShears = false;
+        }
+        
+        boolean needsSilk = (mode == PiggyInventoryConfig.OrePreference.SILK_TOUCH) 
+                            && matchesConfigList(config.getSilkTouchBlocks(), state);
+                            
+        boolean isOre = isOreOrValuable(state, config);
 
         if (needsShears && stack.is(Items.SHEARS)) {
-            speed += 10000.0f; // Massive bonus for Shears
-        } else if (needsSilk && hasSilk) {
-            speed += 10000.0f; // Massive bonus for mandatory Silk Touch
-        } else if (isOre) {
-            // Apply preference for Ores
-            PiggyInventoryConfig.OrePreference perf = ((PiggyInventoryConfig) PiggyInventoryConfig.getInstance()).getOrePreference();
-
-            if (perf == PiggyInventoryConfig.OrePreference.SILK_TOUCH) {
+            speed += 10000.0f; // Bonus only applied if we *want* shears behavior
+        } 
+        else if (needsSilk && hasSilk) {
+            speed += 10000.0f; 
+        } 
+        else if (isOre) {
+            if (mode == PiggyInventoryConfig.OrePreference.SILK_TOUCH) {
                 if (hasSilk)
-                    speed += 5000.0f; // Big bonus for preferred Silk
+                    speed += 5000.0f;
                 else if (fortuneLevel > 0)
-                    speed -= 100.0f; // Penalty for unwanted Fortune
-            } else if (perf == PiggyInventoryConfig.OrePreference.FORTUNE) {
-                // Prefer Fortune
+                    speed -= 100.0f;
+            } else if (mode == PiggyInventoryConfig.OrePreference.FORTUNE) {
                 if (fortuneLevel > 0)
-                    speed += (1000.0f * fortuneLevel); // Bonus per Fortune level
+                    speed += (1000.0f * fortuneLevel);
                 else if (hasSilk)
-                    speed -= 100.0f; // Penalty for unwanted Silk
+                    speed -= 100.0f;
             }
-            // If NONE, no special bonuses applied, just raw speed/efficiency
-        } else if (!needsSilk && hasSilk) {
-            speed -= 0.1f; // Slight penalty to preserve Silk Touch durability if not needed
+        } 
+        else if (!needsSilk && hasSilk) {
+             // Slight penalty to save Silk Touch durability on things that don't need it
+            speed -= 0.1f; 
         }
 
         return speed;
@@ -180,16 +196,12 @@ public class ToolSwapHandler {
         }
     }
 
-    private boolean requiresSilkTouch(BlockState state) {
-        return matchesConfigList(((PiggyInventoryConfig) PiggyInventoryConfig.getInstance()).getSilkTouchBlocks(), state);
+    private boolean requiresShears(BlockState state, PiggyInventoryConfig config) {
+        return matchesConfigList(config.getShearsBlocks(), state);
     }
 
-    private boolean isOreOrValuable(BlockState state) {
-        return matchesConfigList(((PiggyInventoryConfig) PiggyInventoryConfig.getInstance()).getFortuneBlocks(), state);
-    }
-
-    private boolean requiresShears(BlockState state) {
-        return matchesConfigList(((PiggyInventoryConfig) PiggyInventoryConfig.getInstance()).getShearsBlocks(), state);
+    private boolean isOreOrValuable(BlockState state, PiggyInventoryConfig config) {
+        return matchesConfigList(config.getFortuneBlocks(), state);
     }
 
     private boolean matchesConfigList(List<String> configList, BlockState state) {
