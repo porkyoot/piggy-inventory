@@ -48,16 +48,10 @@ public class PiggyInventoryConfig extends is.pig.minecraft.lib.config.PiggyClien
     }
 
     public void setToolSwapEnabled(boolean toolSwapEnabled) {
-        // If attempting to enable, check server enforcement first
         if (toolSwapEnabled) {
             boolean serverForces = !this.serverAllowCheats
                     || (this.serverFeatures != null && this.serverFeatures.containsKey("tool_swap")
                             && !this.serverFeatures.get("tool_swap"));
-            
-            // Note: We do NOT strictly block the setter for Client-side "No Cheating Mode" here.
-            // This prevents YACL mismatch errors (where UI tries to set True but config stays False).
-            // The actual feature usage is guarded by isFeatureToolSwapEnabled().
-            // However, the GUI option will be grayed out (via isToolSwapEditable), preventing user interaction there.
             
             if (serverForces) {
                 AntiCheatFeedbackManager.getInstance().onFeatureBlocked("tool_swap", BlockReason.SERVER_ENFORCEMENT);
@@ -68,10 +62,13 @@ public class PiggyInventoryConfig extends is.pig.minecraft.lib.config.PiggyClien
         this.toolSwapEnabled = toolSwapEnabled;
     }
 
-    /**
-     * Determines if the Tool Swap option should be editable in the GUI.
-     * Returns false if No Cheating Mode is active or if the Server disallows it.
-     */
+    // --- HELPERS FOR GUI AVAILABILITY ---
+
+    public boolean isGlobalCheatsEditable() {
+        // Gray out if Server forces cheats off
+        return this.serverAllowCheats;
+    }
+
     public boolean isToolSwapEditable() {
         if (isNoCheatingMode()) return false;
         if (!this.serverAllowCheats) return false;
@@ -79,10 +76,8 @@ public class PiggyInventoryConfig extends is.pig.minecraft.lib.config.PiggyClien
         return true;
     }
 
-    /**
-     * Checks if tool swap feature is actually enabled, considering server
-     * overrides and client safety settings.
-     */
+    // --- LOGIC CHECKS ---
+
     public boolean isFeatureToolSwapEnabled() {
         return is.pig.minecraft.lib.features.CheatFeatureRegistry.isFeatureEnabled(
                 "tool_swap",

@@ -5,6 +5,8 @@ import dev.isxander.yacl3.api.controller.TickBoxControllerBuilder;
 import dev.isxander.yacl3.api.controller.StringControllerBuilder;
 import dev.isxander.yacl3.api.controller.EnumControllerBuilder;
 import dev.isxander.yacl3.api.ListOption;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.screens.ConfirmScreen;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 
@@ -26,11 +28,20 @@ public class ConfigScreenFactory {
                                 .category(ConfigCategory.createBuilder()
                                                 .name(Component.literal("Safety"))
                                                 .tooltip(is.pig.minecraft.lib.I18n.safetyTooltip())
-                                                .option(is.pig.minecraft.lib.ui.NoCheatingModeOption.create(
-                                                                parent,
+                                                .option(Option.<Boolean>createBuilder()
+                                                        .name(Component.literal("No Cheating Mode"))
+                                                        .description(OptionDescription.of(
+                                                                Component.literal("Prevents usage of cheat features in Survival/Adventure mode."),
+                                                                Component.literal(""),
+                                                                Component.literal("When enabled, utility features are disabled unless you are in Creative mode."),
+                                                                Component.literal("This option is locked if the server enforces anti-cheat.")))
+                                                        .binding(
+                                                                true,
                                                                 config::isNoCheatingMode,
-                                                                config::setNoCheatingMode,
-                                                                ConfigPersistence::save))
+                                                                config::setNoCheatingMode)
+                                                        .controller(TickBoxControllerBuilder::create)
+                                                        .available(config.isGlobalCheatsEditable()) // Gray out if server enforces rules
+                                                        .build())
                                                 .build())
 
                                 // TOOL SWAP CATEGORY
