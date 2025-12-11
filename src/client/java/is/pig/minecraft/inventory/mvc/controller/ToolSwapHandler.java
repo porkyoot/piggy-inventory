@@ -23,18 +23,8 @@ public class ToolSwapHandler {
     public void onTick(Minecraft client) {
         // Check if feature is enabled (considers server overrides)
         if (!PiggyConfig.getInstance().isFeatureToolSwapEnabled()) {
-            // Trigger feedback when trying to use disabled feature
-            if (client.options.keyAttack.isDown() && client.hitResult instanceof BlockHitResult) {
-                boolean serverForces = !PiggyConfig.getInstance().serverAllowCheats ||
-                        (PiggyConfig.getInstance().serverFeatures.containsKey("tool_swap") &&
-                                !PiggyConfig.getInstance().serverFeatures.get("tool_swap"));
-
-                is.pig.minecraft.lib.ui.BlockReason reason = serverForces
-                        ? is.pig.minecraft.lib.ui.BlockReason.SERVER_ENFORCEMENT
-                        : is.pig.minecraft.lib.ui.BlockReason.LOCAL_CONFIG;
-                is.pig.minecraft.lib.ui.AntiCheatFeedbackManager.getInstance()
-                        .onFeatureBlocked("tool_swap", reason);
-            }
+            // If disabled, silently return. Feedback is provided when the user
+            // attempts to enable the feature via the toggle or config UI.
             return;
         }
 

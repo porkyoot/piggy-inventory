@@ -47,10 +47,19 @@ public class PiggyInventoryClient implements ClientModInitializer {
 
                                 // Register listener to copy server overrides into this module's config
                                 PiggyClientConfig.getInstance().registerConfigSyncListener((allowCheats, features) -> {
-                                        is.pig.minecraft.inventory.config.PiggyConfig inv = is.pig.minecraft.inventory.config.PiggyConfig.getInstance();
-                                        inv.serverAllowCheats = allowCheats;
-                                        inv.serverFeatures = features;
-                                        PiggyInventoryClient.LOGGER.info("[ANTI-CHEAT DEBUG] PiggyInventoryConfig updated from server sync: allowCheats={}, features={}", allowCheats, features);
+                                                        is.pig.minecraft.inventory.config.PiggyConfig inv = is.pig.minecraft.inventory.config.PiggyConfig.getInstance();
+                                                        inv.serverAllowCheats = allowCheats;
+                                                        inv.serverFeatures = features;
+
+                                                        // Proactively disable targeted features when server disallows
+                                                        if (!allowCheats) {
+                                                                inv.setToolSwapEnabled(false);
+                                                        }
+                                                        if (features != null && features.containsKey("tool_swap") && !features.get("tool_swap")) {
+                                                                inv.setToolSwapEnabled(false);
+                                                        }
+
+                                                        PiggyInventoryClient.LOGGER.info("[ANTI-CHEAT DEBUG] PiggyInventoryConfig updated from server sync: allowCheats={}, features={}", allowCheats, features);
                                 });
         }
 }

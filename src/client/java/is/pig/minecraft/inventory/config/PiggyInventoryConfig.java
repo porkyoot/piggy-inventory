@@ -46,6 +46,17 @@ public class PiggyInventoryConfig extends is.pig.minecraft.lib.config.PiggyClien
     }
 
     public void setToolSwapEnabled(boolean toolSwapEnabled) {
+        // If attempting to enable, block if server disallows
+        if (toolSwapEnabled) {
+            boolean serverForces = !this.serverAllowCheats
+                    || (this.serverFeatures != null && this.serverFeatures.containsKey("tool_swap")
+                            && !this.serverFeatures.get("tool_swap"));
+            if (serverForces) {
+                is.pig.minecraft.lib.ui.AntiCheatFeedbackManager.getInstance()
+                        .onFeatureBlocked("tool_swap", is.pig.minecraft.lib.ui.BlockReason.SERVER_ENFORCEMENT);
+                return;
+            }
+        }
         this.toolSwapEnabled = toolSwapEnabled;
     }
 

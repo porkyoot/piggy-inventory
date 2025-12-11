@@ -34,28 +34,11 @@ public class InputController {
                 return;
 
             // Handle Toggles
-            while (toggleToolSwapKey.consumeClick()) {
+                while (toggleToolSwapKey.consumeClick()) {
                 boolean newState = !is.pig.minecraft.inventory.config.PiggyConfig.getInstance().isToolSwapEnabled();
                 is.pig.minecraft.inventory.config.PiggyConfig.getInstance().setToolSwapEnabled(newState);
                 is.pig.minecraft.inventory.config.ConfigPersistence.save();
-
-                // If enabling while blocked, trigger feedback
-                if (newState
-                        && !is.pig.minecraft.inventory.config.PiggyConfig.getInstance().isFeatureToolSwapEnabled()) {
-                    boolean serverForces = !is.pig.minecraft.inventory.config.PiggyConfig
-                            .getInstance().serverAllowCheats ||
-                            (is.pig.minecraft.inventory.config.PiggyConfig.getInstance().serverFeatures
-                                    .containsKey("tool_swap") &&
-                                    !is.pig.minecraft.inventory.config.PiggyConfig.getInstance().serverFeatures
-                                            .get("tool_swap"));
-
-                    is.pig.minecraft.lib.ui.BlockReason reason = serverForces
-                            ? is.pig.minecraft.lib.ui.BlockReason.SERVER_ENFORCEMENT
-                            : is.pig.minecraft.lib.ui.BlockReason.LOCAL_CONFIG;
-                    is.pig.minecraft.lib.ui.AntiCheatFeedbackManager.getInstance()
-                            .onFeatureBlocked("tool_swap", reason);
                 }
-            }
 
             toolSwapHandler.onTick(client);
         });
