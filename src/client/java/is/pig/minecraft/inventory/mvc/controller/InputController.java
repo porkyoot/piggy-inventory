@@ -11,11 +11,9 @@ import org.lwjgl.glfw.GLFW;
 
 public class InputController {
 
-    // Static keys accessible by handlers/views
     public static KeyMapping toggleToolSwapKey;
     public static KeyMapping preferenceKey;
 
-    // Handlers
     private static final ToolSwapHandler toolSwapHandler = new ToolSwapHandler();
     private static final ToolPreferenceHandler preferenceHandler = new ToolPreferenceHandler();
 
@@ -46,20 +44,25 @@ public class InputController {
             // Handle Toggles
             while (toggleToolSwapKey.consumeClick()) {
                 PiggyInventoryConfig config = (PiggyInventoryConfig) PiggyInventoryConfig.getInstance();
-                if (!config.isToolSwapEditable()) {
-                    BlockReason reason = (config.serverAllowCheats && 
-                        (config.serverFeatures == null || !config.serverFeatures.containsKey("tool_swap") || config.serverFeatures.get("tool_swap")))
-                        ? BlockReason.LOCAL_CONFIG
-                        : BlockReason.SERVER_ENFORCEMENT;
-                    AntiCheatFeedbackManager.getInstance().onFeatureBlocked("tool_swap", reason);
+                
+                boolean isCurrentlyEnabled = config.isToolSwapEnabled();
+                
+                if (isCurrentlyEnabled) {
+                    config.setToolSwapEnabled(false);
                 } else {
-                    boolean newState = !config.isToolSwapEnabled();
-                    config.setToolSwapEnabled(newState);
-                    is.pig.minecraft.inventory.config.ConfigPersistence.save();
+                    if (!config.isToolSwapEditable()) {
+                        BlockReason reason = (config.serverAllowCheats && 
+                            (config.serverFeatures == null || !config.serverFeatures.containsKey("tool_swap") || config.serverFeatures.get("tool_swap")))
+                            ? BlockReason.LOCAL_CONFIG
+                            : BlockReason.SERVER_ENFORCEMENT;
+                        AntiCheatFeedbackManager.getInstance().onFeatureBlocked("tool_swap", reason);
+                    } else {
+                        config.setToolSwapEnabled(true);
+                    }
                 }
+                is.pig.minecraft.inventory.config.ConfigPersistence.save();
             }
 
-            // Delegate to handlers
             toolSwapHandler.onTick(client);
             preferenceHandler.onTick(client);
         });

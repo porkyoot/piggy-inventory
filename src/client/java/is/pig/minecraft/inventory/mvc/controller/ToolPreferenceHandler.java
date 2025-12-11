@@ -3,6 +3,8 @@ package is.pig.minecraft.inventory.mvc.controller;
 import is.pig.minecraft.inventory.config.ConfigPersistence;
 import is.pig.minecraft.inventory.config.PiggyInventoryConfig;
 import is.pig.minecraft.inventory.mvc.model.ToolPreference;
+import is.pig.minecraft.lib.ui.AntiCheatFeedbackManager;
+import is.pig.minecraft.lib.ui.BlockReason;
 import is.pig.minecraft.lib.ui.GenericRadialMenuScreen;
 import net.fabricmc.fabric.api.client.keybinding.v1.KeyBindingHelper;
 import net.minecraft.client.Minecraft;
@@ -28,29 +30,34 @@ public class ToolPreferenceHandler {
     private void openMenu(Minecraft client) {
         PiggyInventoryConfig config = (PiggyInventoryConfig) PiggyInventoryConfig.getInstance();
         
-        // Current selected preference
         ToolPreference current = ToolPreference.fromConfig(config.getOrePreference());
         
-        // Center item is always NONE (Disabling)
         ToolPreference center = ToolPreference.NONE;
-        
-        // Radial items are the active options
         List<ToolPreference> radials = Arrays.asList(ToolPreference.FORTUNE, ToolPreference.SILK_TOUCH);
 
         client.setScreen(new GenericRadialMenuScreen<>(
             Component.literal("Tool Preference"),
             center,
             radials,
-            current, // Initially selected item (could be center or one of the radials)
+            current, 
             KeyBindingHelper.getBoundKeyOf(InputController.preferenceKey),
             (newSelection) -> {
-                // Update config on selection change
                 config.setOrePreference(newSelection.getConfigValue());
                 ConfigPersistence.save();
             },
-            () -> {}, // Close callback
-            (item) -> null, // No extra info text
-            null // No scroll handling needed
+            () -> {}, 
+            (item) -> null, 
+            null,
+            
+            (item) -> item == ToolPreference.NONE || config.isToolSwapEditable(),
+            
+            (item) -> {
+                BlockReason reason = (config.serverAllowCheats && 
+                    (config.serverFeatures == null || !config.serverFeatures.containsKey("tool_swap") || config.serverFeatures.get("tool_swap")))
+                    ? BlockReason.LOCAL_CONFIG
+                    : BlockReason.SERVER_ENFORCEMENT;
+                AntiCheatFeedbackManager.getInstance().onFeatureBlocked("tool_swap", reason);
+            }
         ));
     }
 }

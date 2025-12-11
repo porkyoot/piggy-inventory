@@ -15,10 +15,13 @@ public class PiggyInventoryConfig extends is.pig.minecraft.lib.config.PiggyClien
 
     // --- CONFIG FIELDS ---
 
-    // Tool swap settings
-    private boolean toolSwapEnabled = true;
     private List<Integer> swapHotbarSlots = new ArrayList<>(Arrays.asList(0, 1, 2, 3, 4, 5, 6, 7, 8));
+    
+    // Current state (NONE means disabled)
     private OrePreference orePreference = OrePreference.FORTUNE;
+    
+    // Remember last choice for toggling (default Fortune)
+    private OrePreference lastActivePreference = OrePreference.FORTUNE;
 
     public enum OrePreference {
         NONE,
@@ -44,24 +47,39 @@ public class PiggyInventoryConfig extends is.pig.minecraft.lib.config.PiggyClien
 
     // --- SINGLETON ACCESS ---
 
+    /**
+     * @return true if Tool Swap is effectively enabled (preference is not NONE)
+     */
     public boolean isToolSwapEnabled() {
-        return toolSwapEnabled;
+        return orePreference != OrePreference.NONE;
     }
 
-    public void setToolSwapEnabled(boolean toolSwapEnabled) {
-        // If attempting to enable, check server enforcement first
-        if (toolSwapEnabled) {
+    /**
+     * Toggles the feature on/off.
+     * On: Restores last active preference (Fortune/Silk).
+     * Off: Sets preference to NONE.
+     */
+    public void setToolSwapEnabled(boolean enabled) {
+        if (enabled) {
+            // Check restrictions before enabling
             boolean serverForces = !this.serverAllowCheats
                     || (this.serverFeatures != null && this.serverFeatures.containsKey("tool_swap")
                             && !this.serverFeatures.get("tool_swap"));
             
             if (serverForces) {
                 AntiCheatFeedbackManager.getInstance().onFeatureBlocked("tool_swap", BlockReason.SERVER_ENFORCEMENT);
-                this.toolSwapEnabled = false;
+                this.orePreference = OrePreference.NONE;
                 return;
             }
+            
+            // Restore last state (or default to FORTUNE if somehow NONE)
+            if (lastActivePreference == OrePreference.NONE) {
+                lastActivePreference = OrePreference.FORTUNE;
+            }
+            this.orePreference = lastActivePreference;
+        } else {
+            this.orePreference = OrePreference.NONE;
         }
-        this.toolSwapEnabled = toolSwapEnabled;
     }
 
     public boolean isToolSwapEditable() {
@@ -72,12 +90,40 @@ public class PiggyInventoryConfig extends is.pig.minecraft.lib.config.PiggyClien
     }
 
     public boolean isFeatureToolSwapEnabled() {
+        // Logic is now inherent in orePreference state + AntiCheat checks
+        // But for completeness with Registry checks:
+        boolean enabledInConfig = (orePreference != OrePreference.NONE);
+        
         return is.pig.minecraft.lib.features.CheatFeatureRegistry.isFeatureEnabled(
                 "tool_swap",
                 serverAllowCheats,
                 serverFeatures,
                 isNoCheatingMode(),
-                toolSwapEnabled);
+                enabledInConfig);
+    }
+
+    public OrePreference getOrePreference() {
+        return orePreference;
+    }
+
+    public void setOrePreference(OrePreference pref) {
+        // If setting to a specific mode, check restrictions
+        if (pref != OrePreference.NONE) {
+             boolean serverForces = !this.serverAllowCheats
+                    || (this.serverFeatures != null && this.serverFeatures.containsKey("tool_swap")
+                            && !this.serverFeatures.get("tool_swap"));
+             
+             if (serverForces) {
+                 // Block attempt
+                 AntiCheatFeedbackManager.getInstance().onFeatureBlocked("tool_swap", BlockReason.SERVER_ENFORCEMENT);
+                 // Do not update
+                 return;
+             }
+             
+             // Update memory
+             this.lastActivePreference = pref;
+        }
+        this.orePreference = pref;
     }
 
     public List<Integer> getSwapHotbarSlots() {
@@ -87,36 +133,11 @@ public class PiggyInventoryConfig extends is.pig.minecraft.lib.config.PiggyClien
     public void setSwapHotbarSlots(List<Integer> swapHotbarSlots) {
         this.swapHotbarSlots = swapHotbarSlots;
     }
-
-    public OrePreference getOrePreference() {
-        return orePreference;
-    }
-
-    public void setOrePreference(OrePreference orePreference) {
-        this.orePreference = orePreference;
-    }
-
-    public List<String> getSilkTouchBlocks() {
-        return silkTouchBlocks;
-    }
-
-    public void setSilkTouchBlocks(List<String> silkTouchBlocks) {
-        this.silkTouchBlocks = silkTouchBlocks;
-    }
-
-    public List<String> getFortuneBlocks() {
-        return fortuneBlocks;
-    }
-
-    public void setFortuneBlocks(List<String> fortuneBlocks) {
-        this.fortuneBlocks = fortuneBlocks;
-    }
-
-    public List<String> getShearsBlocks() {
-        return shearsBlocks;
-    }
-
-    public void setShearsBlocks(List<String> shearsBlocks) {
-        this.shearsBlocks = shearsBlocks;
-    }
+    
+    public List<String> getSilkTouchBlocks() { return silkTouchBlocks; }
+    public void setSilkTouchBlocks(List<String> list) { this.silkTouchBlocks = list; }
+    public List<String> getFortuneBlocks() { return fortuneBlocks; }
+    public void setFortuneBlocks(List<String> list) { this.fortuneBlocks = list; }
+    public List<String> getShearsBlocks() { return shearsBlocks; }
+    public void setShearsBlocks(List<String> list) { this.shearsBlocks = list; }
 }
