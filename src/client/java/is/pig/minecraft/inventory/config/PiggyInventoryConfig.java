@@ -1,9 +1,11 @@
-
 package is.pig.minecraft.inventory.config;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+
+import is.pig.minecraft.lib.ui.AntiCheatFeedbackManager;
+import is.pig.minecraft.lib.ui.BlockReason;
 
 /**
  * Configuration data model for Piggy Inventory.
@@ -46,14 +48,20 @@ public class PiggyInventoryConfig extends is.pig.minecraft.lib.config.PiggyClien
     }
 
     public void setToolSwapEnabled(boolean toolSwapEnabled) {
-        // If attempting to enable, block if server disallows
+        // If attempting to enable, check server enforcement first
         if (toolSwapEnabled) {
             boolean serverForces = !this.serverAllowCheats
                     || (this.serverFeatures != null && this.serverFeatures.containsKey("tool_swap")
                             && !this.serverFeatures.get("tool_swap"));
+            
+            // Note: We do NOT strictly block the setter for Client-side "No Cheating Mode" here.
+            // This prevents YACL mismatch errors (where UI tries to set True but config stays False).
+            // The actual feature usage is guarded by isFeatureToolSwapEnabled().
+            // However, the GUI option will be grayed out (via isToolSwapEditable), preventing user interaction there.
+            
             if (serverForces) {
-                is.pig.minecraft.lib.ui.AntiCheatFeedbackManager.getInstance()
-                        .onFeatureBlocked("tool_swap", is.pig.minecraft.lib.ui.BlockReason.SERVER_ENFORCEMENT);
+                AntiCheatFeedbackManager.getInstance().onFeatureBlocked("tool_swap", BlockReason.SERVER_ENFORCEMENT);
+                this.toolSwapEnabled = false;
                 return;
             }
         }
@@ -61,8 +69,19 @@ public class PiggyInventoryConfig extends is.pig.minecraft.lib.config.PiggyClien
     }
 
     /**
+     * Determines if the Tool Swap option should be editable in the GUI.
+     * Returns false if No Cheating Mode is active or if the Server disallows it.
+     */
+    public boolean isToolSwapEditable() {
+        if (isNoCheatingMode()) return false;
+        if (!this.serverAllowCheats) return false;
+        if (this.serverFeatures != null && this.serverFeatures.containsKey("tool_swap") && !this.serverFeatures.get("tool_swap")) return false;
+        return true;
+    }
+
+    /**
      * Checks if tool swap feature is actually enabled, considering server
-     * overrides.
+     * overrides and client safety settings.
      */
     public boolean isFeatureToolSwapEnabled() {
         return is.pig.minecraft.lib.features.CheatFeatureRegistry.isFeatureEnabled(

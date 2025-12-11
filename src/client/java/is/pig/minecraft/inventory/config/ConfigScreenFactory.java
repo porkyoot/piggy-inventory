@@ -5,8 +5,6 @@ import dev.isxander.yacl3.api.controller.TickBoxControllerBuilder;
 import dev.isxander.yacl3.api.controller.StringControllerBuilder;
 import dev.isxander.yacl3.api.controller.EnumControllerBuilder;
 import dev.isxander.yacl3.api.ListOption;
-import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.screens.ConfirmScreen;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 
@@ -44,7 +42,10 @@ public class ConfigScreenFactory {
                                                                 .name(Component.literal("Enable Tool Swap"))
                                                                 .description(OptionDescription.of(
                                                                                 Component.literal(
-                                                                                                "Automatically swaps to the faster tool in your inventory when attacking a block.")))
+                                                                                                "Automatically swaps to the faster tool in your inventory when attacking a block."),
+                                                                                Component.literal(
+                                                                                                "If Anti-Cheat is active, this cannot be enabled.")))
+                                                                .available(config.isToolSwapEditable()) // Gray out if enforced
                                                                 .binding(
                                                                                 true,
                                                                                 config::isToolSwapEnabled,
