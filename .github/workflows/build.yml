@@ -1,8 +1,3 @@
-# Automatically build the project and run any configured tests for every push
-# and submitted pull request. This can help catch issues that only occur on
-# certain platforms or Java versions, and provides a first line of defence
-# against bad commits.
-
 name: build
 on: [pull_request, push]
 
@@ -10,21 +5,55 @@ jobs:
   build:
     runs-on: ubuntu-24.04
     steps:
-      - name: checkout repository
+      - name: Checkout Master Project
         uses: actions/checkout@v4
-      - name: validate gradle wrapper
+        with:
+          repository: porkyoot/piggy-mods
+          submodules: true
+          path: .
+
+      - name: Checkout Submodule (Current)
+        uses: actions/checkout@v4
+        with:
+          path: piggy-inventory
+
+      - name: Validate Gradle Wrapper
         uses: gradle/actions/wrapper-validation@v4
-      - name: setup jdk
+
+      - name: Setup JDK
         uses: actions/setup-java@v4
         with:
           java-version: '21'
           distribution: 'microsoft'
-      - name: make gradle wrapper executable
+
+      - name: Make Gradle Wrapper Executable
         run: chmod +x ./gradlew
-      - name: build
-        run: ./gradlew build
-      - name: capture build artifacts
+
+      # FIX: Rewrite settings.gradle to strictly include ONLY what we need.
+      - name: Isolate Project Dependencies
+        run: |
+          cat <<EOF > settings.gradle
+          pluginManagement {
+              repositories {
+                  maven {
+                      name = 'Fabric'
+                      url = 'https://maven.fabricmc.net/'
+                  }
+                  gradlePluginPortal()
+              }
+          }
+          rootProject.name = 'piggy-mods'
+          
+          // Only include the shared library and THIS mod
+          include 'piggy-lib'
+          include 'piggy-inventory'
+          EOF
+
+      - name: Build
+        run: ./gradlew :piggy-inventory:build
+
+      - name: Capture Build Artifacts
         uses: actions/upload-artifact@v4
         with:
           name: Artifacts
-          path: build/libs/
+          path: piggy-inventory/build/libs/
