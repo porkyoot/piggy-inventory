@@ -4,6 +4,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import is.pig.minecraft.inventory.config.ConfigPersistence;
+import is.pig.minecraft.inventory.config.PiggyInventoryConfig;
 import is.pig.minecraft.lib.config.PiggyClientConfig;
 import is.pig.minecraft.inventory.mvc.controller.InputController;
 import net.fabricmc.api.ClientModInitializer;
@@ -47,7 +48,7 @@ public class PiggyInventoryClient implements ClientModInitializer {
 
                                 // Register listener to copy server overrides into this module's config
                                 PiggyClientConfig.getInstance().registerConfigSyncListener((allowCheats, features) -> {
-                                                        is.pig.minecraft.inventory.config.PiggyConfig inv = is.pig.minecraft.inventory.config.PiggyConfig.getInstance();
+                                                        is.pig.minecraft.inventory.config.PiggyInventoryConfig inv = (PiggyInventoryConfig) is.pig.minecraft.inventory.config.PiggyInventoryConfig.getInstance();
                                                         inv.serverAllowCheats = allowCheats;
                                                         inv.serverFeatures = features;
 

@@ -1,7 +1,7 @@
 package is.pig.minecraft.inventory.mvc.controller;
 
 import java.util.List;
-import is.pig.minecraft.inventory.config.PiggyConfig;
+import is.pig.minecraft.inventory.config.PiggyInventoryConfig;
 import net.minecraft.client.Minecraft;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.network.protocol.game.ServerboundSetCarriedItemPacket;
@@ -22,7 +22,7 @@ public class ToolSwapHandler {
 
     public void onTick(Minecraft client) {
         // Check if feature is enabled (considers server overrides)
-        if (!PiggyConfig.getInstance().isFeatureToolSwapEnabled()) {
+        if (!((PiggyInventoryConfig) PiggyInventoryConfig.getInstance()).isFeatureToolSwapEnabled()) {
             // If disabled, silently return. Feedback is provided when the user
             // attempts to enable the feature via the toggle or config UI.
             return;
@@ -89,7 +89,7 @@ public class ToolSwapHandler {
                     }
                 } else {
                     // Find a valid target slot in the hotbar based on config
-                    List<Integer> allowedSlots = PiggyConfig.getInstance().getSwapHotbarSlots();
+                    List<Integer> allowedSlots = ((PiggyInventoryConfig) PiggyInventoryConfig.getInstance()).getSwapHotbarSlots();
 
                     // If no slots allowed, we can't bring it in
                     if (allowedSlots == null || allowedSlots.isEmpty()) {
@@ -159,9 +159,9 @@ public class ToolSwapHandler {
             speed += 10000.0f; // Massive bonus for mandatory Silk Touch (Glass, etc.)
         } else if (isOre) {
             // Apply preference for Ores
-            PiggyConfig.OrePreference perf = PiggyConfig.getInstance().getOrePreference();
+            PiggyInventoryConfig.OrePreference perf = ((PiggyInventoryConfig) PiggyInventoryConfig.getInstance()).getOrePreference();
 
-            if (perf == PiggyConfig.OrePreference.SILK_TOUCH) {
+            if (perf == PiggyInventoryConfig.OrePreference.SILK_TOUCH) {
                 if (hasSilk)
                     speed += 5000.0f; // Big bonus for preferred Silk
                 else if (fortuneLevel > 0)
@@ -194,15 +194,15 @@ public class ToolSwapHandler {
     }
 
     private boolean requiresSilkTouch(BlockState state) {
-        return matchesConfigList(PiggyConfig.getInstance().getSilkTouchBlocks(), state);
+        return matchesConfigList(((PiggyInventoryConfig) PiggyInventoryConfig.getInstance()).getSilkTouchBlocks(), state);
     }
 
     private boolean isOreOrValuable(BlockState state) {
-        return matchesConfigList(PiggyConfig.getInstance().getFortuneBlocks(), state);
+        return matchesConfigList(((PiggyInventoryConfig) PiggyInventoryConfig.getInstance()).getFortuneBlocks(), state);
     }
 
     private boolean requiresShears(BlockState state) {
-        return matchesConfigList(PiggyConfig.getInstance().getShearsBlocks(), state);
+        return matchesConfigList(((PiggyInventoryConfig) PiggyInventoryConfig.getInstance()).getShearsBlocks(), state);
     }
 
     private boolean matchesConfigList(List<String> configList, BlockState state) {

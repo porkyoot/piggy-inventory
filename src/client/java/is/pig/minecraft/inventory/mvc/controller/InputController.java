@@ -1,7 +1,7 @@
 package is.pig.minecraft.inventory.mvc.controller;
 
 import com.mojang.blaze3d.platform.InputConstants;
-import is.pig.minecraft.inventory.config.PiggyConfig;
+import is.pig.minecraft.inventory.config.PiggyInventoryConfig;
 import is.pig.minecraft.lib.ui.AntiCheatFeedbackManager;
 import is.pig.minecraft.lib.ui.BlockReason;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
@@ -38,7 +38,7 @@ public class InputController {
 
             // Handle Toggles
             while (toggleToolSwapKey.consumeClick()) {
-                PiggyConfig config = PiggyConfig.getInstance();
+                PiggyInventoryConfig config = (PiggyInventoryConfig) PiggyInventoryConfig.getInstance();
                 
                 // Check if feature can be edited (i.e. not blocked by anti-cheat)
                 if (!config.isToolSwapEditable()) {

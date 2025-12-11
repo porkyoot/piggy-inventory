@@ -32,14 +32,14 @@ public class ConfigPersistence {
 
     /**
      * Loads the configuration from disk.
-     * Use {@link PiggyConfig#getInstance()} to access the current config.
+     * Use {@link PiggyInventoryConfig#getInstance()} to access the current config.
      */
     public static void load() {
         if (CONFIG_FILE.exists()) {
             try (FileReader reader = new FileReader(CONFIG_FILE)) {
-                PiggyConfig loaded = GSON.fromJson(reader, PiggyConfig.class);
+                PiggyInventoryConfig loaded = GSON.fromJson(reader, PiggyInventoryConfig.class);
                 if (loaded != null) {
-                    PiggyConfig.setInstance(loaded);
+                    PiggyInventoryConfig.setInstance(loaded);
                     LOGGER.info("Configuration loaded successfully.");
                 }
             } catch (com.google.gson.JsonSyntaxException | com.google.gson.JsonIOException e) {
@@ -61,7 +61,7 @@ public class ConfigPersistence {
      */
     public static void save() {
         try (FileWriter writer = new FileWriter(CONFIG_FILE)) {
-            GSON.toJson(PiggyConfig.getInstance(), writer);
+            GSON.toJson(PiggyInventoryConfig.getInstance(), writer);
             LOGGER.debug("Configuration saved successfully.");
         } catch (IOException e) {
             LOGGER.error("Failed to save configuration", e);

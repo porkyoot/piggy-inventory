@@ -19,7 +19,7 @@ import java.util.Set;
 public class ConfigScreenFactory {
 
         public static Screen create(Screen parent) {
-                PiggyConfig config = PiggyConfig.getInstance();
+                PiggyInventoryConfig config = (PiggyInventoryConfig) PiggyInventoryConfig.getInstance();
 
                 return YetAnotherConfigLib.createBuilder()
                                 .title(Component.literal("Piggy Inventory Configuration"))
@@ -84,17 +84,17 @@ public class ConfigScreenFactory {
                                                                 .controller(StringControllerBuilder::create)
                                                                 .build())
 
-                                                .option(Option.<PiggyConfig.OrePreference>createBuilder()
+                                                .option(Option.<PiggyInventoryConfig.OrePreference>createBuilder()
                                                                 .name(Component.literal("Ore Preference"))
                                                                 .description(OptionDescription.of(
                                                                                 Component.literal(
                                                                                                 "Prefer Silk Touch or Fortune for ores?")))
                                                                 .binding(
-                                                                                PiggyConfig.OrePreference.FORTUNE,
+                                                                                PiggyInventoryConfig.OrePreference.FORTUNE,
                                                                                 config::getOrePreference,
                                                                                 config::setOrePreference)
                                                                 .controller(opt -> EnumControllerBuilder.create(opt)
-                                                                                .enumClass(PiggyConfig.OrePreference.class))
+                                                                                .enumClass(PiggyInventoryConfig.OrePreference.class))
                                                                 .build())
 
                                                 .option(ListOption.<String>createBuilder()
