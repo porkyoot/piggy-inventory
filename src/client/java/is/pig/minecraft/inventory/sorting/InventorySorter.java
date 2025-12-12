@@ -79,10 +79,26 @@ public class InventorySorter {
         sorter.sort(extractableItems);
 
         // 4. Layout
-        List<ItemStack> layoutItems = LayoutEngine.applyLayout(extractableItems, validSlotIndices.size(), 9);
+        PiggyInventoryConfig config = (PiggyInventoryConfig) PiggyInventoryConfig.getInstance();
+        List<ItemStack> layoutItems = LayoutEngine.applyLayout(extractableItems, validSlotIndices.size(), 9,
+                config.getDefaultLayout());
 
         // 5. Diff & Execution
+        // Creative Sort (Packet) is fast but only works if indices match the Packet's
+        // expectation (Player Inventory).
+        // It BREAKS if used on external containers (Chest) or transposed slots.
+        // Safe Condition: Only use Packet if explicitly in Creative Screen or standard
+        // Inventory Screen.
+        boolean safeForCreativePacket = false;
         if (client.player.isCreative()) {
+            if (screen instanceof net.minecraft.client.gui.screens.inventory.CreativeModeInventoryScreen) {
+                safeForCreativePacket = true;
+            } else if (client.player.containerMenu == client.player.inventoryMenu) {
+                safeForCreativePacket = true;
+            }
+        }
+
+        if (safeForCreativePacket) {
             executeCreativeSort(client, validSlotIndices, layoutItems);
         } else {
             try {
@@ -177,23 +193,15 @@ public class InventorySorter {
 
         switch (algo) {
             case CREATIVE:
-                // This case might imply a creative-specific sorter or just a placeholder
-                // For now, fall through to default or handle as needed.
-                // If CREATIVE means "no sorting, just fill", then it's a different logic.
-                // Assuming it's a sorting algorithm type.
-                break;
+                return new is.pig.minecraft.inventory.sorting.CreativeSorter();
             case ALPHABETICAL:
-                // TODO: Implement AlphabeticalSorter
-                return new is.pig.minecraft.inventory.sorting.SmartCategorySorter(); // Placeholder
+                return new is.pig.minecraft.inventory.sorting.AlphabeticalSorter();
             case COLOR:
-                // TODO: Implement ColorSorter
-                return new is.pig.minecraft.inventory.sorting.SmartCategorySorter(); // Placeholder
+                return new is.pig.minecraft.inventory.sorting.ColorSorter();
             case SMART:
             default:
                 // existing logic
                 return new is.pig.minecraft.inventory.sorting.SmartCategorySorter();
         }
-        // Fallback in case a break is hit without a return
-        return new is.pig.minecraft.inventory.sorting.SmartCategorySorter();
     }
 }
