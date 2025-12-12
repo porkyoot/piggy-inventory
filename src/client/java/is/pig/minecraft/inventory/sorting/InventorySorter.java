@@ -82,9 +82,6 @@ public class InventorySorter {
         List<ItemStack> layoutItems = LayoutEngine.applyLayout(extractableItems, validSlotIndices.size(), 9);
 
         // 5. Diff & Execution
-        is.pig.minecraft.inventory.PiggyInventoryClient.LOGGER.info(
-                "Executing Sort... Creative: " + client.player.isCreative() + ", Slots: " + validSlotIndices.size());
-
         if (client.player.isCreative()) {
             executeCreativeSort(client, validSlotIndices, layoutItems);
         } else {
@@ -127,7 +124,7 @@ public class InventorySorter {
         // Assuming simple reorder for now.
 
         for (int i = 0; i < slotIndices.size(); i++) {
-            ItemStack desired = sortedItems.get(i);
+            ItemStack desired = (i < sortedItems.size()) ? sortedItems.get(i) : ItemStack.EMPTY;
             ItemStack currentAtI = currentItems.get(i);
 
             // If matches, skips

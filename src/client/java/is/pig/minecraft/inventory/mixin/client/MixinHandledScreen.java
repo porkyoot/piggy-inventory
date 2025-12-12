@@ -28,63 +28,77 @@ public abstract class MixinHandledScreen implements is.pig.minecraft.inventory.d
     @Shadow
     protected int topPos;
 
-    @Inject(method = "render", at = @At("TAIL"))
-    private void renderLocks(GuiGraphics context, int mouseX, int mouseY, float delta, CallbackInfo ci) {
-        AbstractContainerScreen<?> screen = (AbstractContainerScreen<?>) (Object) this;
-
+    @Inject(method = "renderSlot", at = @At("TAIL"))
+    private void renderSlotLock(GuiGraphics context, Slot slot, CallbackInfo ci) {
         long window = Minecraft.getInstance().getWindow().getWindow();
         boolean altHeld = InputConstants.isKeyDown(window,
                 KeyBindingHelper.getBoundKeyOf(PiggyInventoryClient.lockKey).getValue());
 
-        // Debugging altHeld state every frame might be too spammy, but useful if
-        // limited.
-        // Let's rely on click log for now to confirm input.
-        // Or if I really want to check render state:
-        if (altHeld)
-            PiggyInventoryClient.LOGGER.info("Rendering locks... Alt detected.");
-
         if (!altHeld)
             return;
 
-        for (Slot slot : screen.getMenu().slots) {
-            // Check for blacklist
-            if (((PiggyInventoryConfig) PiggyInventoryConfig.getInstance()).getBlacklistedItems()
-                    .contains(slot.getItem().getItem().getDescriptionId())) {
-                continue; // Don't draw lock for blacklisted items
-            }
+        // Skip Blacklisted Items
+        if (((PiggyInventoryConfig) PiggyInventoryConfig.getInstance()).getBlacklistedItems()
+                .contains(slot.getItem().getItem().getDescriptionId())) {
+            return;
+        }
 
-            // Only allow locking for player inventory slots (Storage + Hotbar)
-            // Typically these are the last 36 slots in any container.
-            // Or use slot.container == client.player.getInventory() check?
-            if (slot.container != Minecraft.getInstance().player.getInventory()) {
-                continue;
-            }
+        // Only allow locking for player inventory slots (Storage + Hotbar)
+        if (slot.container != Minecraft.getInstance().player.getInventory()) {
+            return;
+        }
 
-            // Exclude Armor (36-39) and Offhand (40)
-            // PlayerInventory size is 41 total? 36 Main + 4 Armor + 1 Offhand.
-            // Indices 0-35 are Main (Hotbar 0-8, Storage 9-35 or vice versa depending on
-            // mapping, but all < 36)
-            if (slot.getContainerSlot() >= 36) {
-                continue;
-            }
+        // Exclude Armor (36-39) and Offhand (40)
+        if (slot.getContainerSlot() >= 36) {
+            return;
+        }
 
-            if (SlotLockingManager.getInstance().isLocked(slot)) {
-                int x = slot.x + this.leftPos;
-                int y = slot.y + this.topPos;
+        if (SlotLockingManager.getInstance().isLocked(slot)) {
+            // Render relative to slot position. renderSlot renders at (slot.x, slot.y).
+            // But wait, renderSlot uses context.
+            // The context might already be translated?
+            // AbstractContainerScreen.renderSlot does: guiGraphics.renderItem(item, slot.x,
+            // slot.y);
+            // So we should draw at slot.x, slot.y.
 
-                context.pose().pushPose();
-                context.pose().translate(0, 0, 200); // High Z to render on top of items
+            // Note: In renderSlot, coordinates are relative to the GuiGraphics current
+            // pose...?
+            // Usually renderSlot is called inside renderBg or a loop where pose is at 0,0
+            // usually (screen root).
+            // Slot.x and Slot.y are relative to guiLeft/guiTop usually? No, relative to
+            // Screen 0,0?
+            // AbstractContainerScreen.renderSlot impl:
+            // int i = slot.x; int j = slot.y;
+            // guiGraphics.renderItem(itemStack, i, j);
 
-                // Draw a dark overlay (darken background)
-                context.fill(x, y, x + 16, y + 16, 0x80000000); // 50% Opacity Black
+            // Slot.x/y are relative to the Container's 0,0 (inside the GUI texture).
+            // But renderSlot often happens inside loop with translations.
+            // Let's use the same coordinates as the slot object, but add
+            // this.leftPos/topPos?
+            // The original renderLocks used `slot.x + this.leftPos` and `slot.y +
+            // this.topPos`.
+            // AbstractContainerScreen.renderSlot implementation typically uses absolute
+            // coordinates if it just does `this.leftPos + slot.x`.
+            // Let's look at `AbstractContainerScreen.renderSlot`:
+            // It runs: `guiGraphics.renderItem(itemStack, slot.x, slot.y);`
+            // Wait, does it add leftPos/topPos?
+            // Actually `render` sets up translation?
+            // No, standard loop calculates x/y: `int slotX = slot.x; int slotY = slot.y;`
+            // But wait, `render` usually translates by leftPos, topPos?
+            // Actually, usually `render` calls `renderBg` (background) then iterates slots.
+            // Slots usually are drawn relative to the screen, so `slot.x` is relative to
+            // container, need `leftPos`.
 
-                // Draw Lock Texture at Top Right
-                net.minecraft.resources.ResourceLocation lockTexture = net.minecraft.resources.ResourceLocation
-                        .fromNamespaceAndPath("piggy-inventory", "textures/gui/lock.png");
-                context.blit(lockTexture, x + 8, y, 0, 0, 8, 8, 8, 8);
+            int x = slot.x;
+            int y = slot.y;
 
-                context.pose().popPose();
-            }
+            // Draw a dark overlay (darken background)
+            context.fill(x, y, x + 16, y + 16, 0x80000000); // 50% Opacity Black
+
+            // Draw Lock Texture at Top Right
+            net.minecraft.resources.ResourceLocation lockTexture = net.minecraft.resources.ResourceLocation
+                    .fromNamespaceAndPath("piggy-inventory", "textures/gui/lock.png");
+            context.blit(lockTexture, x + 8, y, 0, 0, 8, 8, 8, 8);
         }
     }
 
@@ -97,7 +111,6 @@ public abstract class MixinHandledScreen implements is.pig.minecraft.inventory.d
                 KeyBindingHelper.getBoundKeyOf(PiggyInventoryClient.lockKey).getValue());
 
         if (altHeld) {
-            PiggyInventoryClient.LOGGER.info("Click with Lock Key Mod! Toggling lock."); // DEBUG
             Slot slot = this.piggy_getSlotUnderMouse(mouseX, mouseY);
             if (slot != null) {
                 // Only allow locking for player inventory slots (Logic now centralised in
@@ -116,13 +129,8 @@ public abstract class MixinHandledScreen implements is.pig.minecraft.inventory.d
     @Inject(method = "keyPressed", at = @At("HEAD"), cancellable = true)
     private void onKeyPressed(int keyCode, int scanCode, int modifiers, CallbackInfoReturnable<Boolean> cir) {
         if (PiggyInventoryClient.sortKey.matches(keyCode, scanCode)) {
-            PiggyInventoryClient.LOGGER.info("Sort Key Pressed in GUI! Executing sort."); // DEBUG
             PiggyInventoryClient.handleSort(Minecraft.getInstance());
             cir.setReturnValue(true);
-        } else {
-            // Debug log to spy on what keys are being pressed
-            // PiggyInventoryClient.LOGGER.info("Key Pressed: " + keyCode + " Scan: " +
-            // scanCode);
         }
     }
 
