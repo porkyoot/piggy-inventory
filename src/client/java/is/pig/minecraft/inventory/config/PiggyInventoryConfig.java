@@ -15,6 +15,49 @@ public class PiggyInventoryConfig extends is.pig.minecraft.lib.config.PiggyClien
 
     // --- CONFIG FIELDS ---
 
+    // --- SORTING CONFIG ---
+    private boolean lockHotbar = true;
+    private SortingAlgorithm defaultAlgorithm = SortingAlgorithm.SMART;
+    private SortingLayout defaultLayout = SortingLayout.COMPACT;
+    private int tickDelay = 1;
+    private List<String> blacklistedInventories = new ArrayList<>();
+    private List<String> blacklistedItems = new ArrayList<>();
+
+    public enum SortingAlgorithm {
+        ALPHABETICAL("Alphabetical"),
+        CREATIVE("Creative"),
+        SMART("Smart Category"),
+        COLOR("Color");
+
+        public final String name;
+
+        SortingAlgorithm(String name) {
+            this.name = name;
+        }
+
+        @Override
+        public String toString() {
+            return name;
+        }
+    }
+
+    public enum SortingLayout {
+        COMPACT("Compact"),
+        COLUMNS("Columns"),
+        ROWS("Rows");
+
+        public final String name;
+
+        SortingLayout(String name) {
+            this.name = name;
+        }
+
+        @Override
+        public String toString() {
+            return name;
+        }
+    }
+
     private List<Integer> swapHotbarSlots = new ArrayList<>(Arrays.asList(0, 1, 2, 3, 4, 5, 6, 7, 8));
 
     // Current state (NONE means disabled)
@@ -328,5 +371,54 @@ public class PiggyInventoryConfig extends is.pig.minecraft.lib.config.PiggyClien
 
     public void setProtectedBlocks(List<String> list) {
         this.protectedBlocks = list;
+    }
+
+    // --- SORTING GETTERS/SETTERS ---
+    public boolean isLockHotbar() {
+        return lockHotbar;
+    }
+
+    public void setLockHotbar(boolean val) {
+        this.lockHotbar = val;
+    }
+
+    public SortingAlgorithm getDefaultAlgorithm() {
+        return defaultAlgorithm;
+    }
+
+    public void setDefaultAlgorithm(SortingAlgorithm val) {
+        this.defaultAlgorithm = val;
+    }
+
+    public SortingLayout getDefaultLayout() {
+        return defaultLayout;
+    }
+
+    public void setDefaultLayout(SortingLayout val) {
+        this.defaultLayout = val;
+    }
+
+    public int getTickDelay() {
+        return tickDelay;
+    }
+
+    public void setTickDelay(int val) {
+        this.tickDelay = val;
+    }
+
+    public List<String> getBlacklistedInventories() {
+        return blacklistedInventories;
+    }
+
+    public void setBlacklistedInventories(List<String> val) {
+        this.blacklistedInventories = val;
+    }
+
+    public List<String> getBlacklistedItems() {
+        return blacklistedItems;
+    }
+
+    public void setBlacklistedItems(List<String> val) {
+        this.blacklistedItems = val;
     }
 }

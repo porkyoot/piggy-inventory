@@ -11,23 +11,6 @@ public class PiggyInventory implements ModInitializer {
 
 	@Override
 	public void onInitialize() {
-		// Register the tool_swap feature (server-side)
-		// This ensures the feature appears in the registry when the mod is on the
-		// server
-		is.pig.minecraft.lib.features.CheatFeatureRegistry.register(
-				new is.pig.minecraft.lib.features.CheatFeature(
-						"tool_swap",
-						"Tool Swap",
-						"Automatically swap to the best tool for the targeted block",
-						true));
-
-		is.pig.minecraft.lib.features.CheatFeatureRegistry.register(
-				new is.pig.minecraft.lib.features.CheatFeature(
-						"weapon_switch",
-						"Weapon Switch",
-						"Automatically swap to the best weapon for the targeted entity",
-						true));
-
 		LOGGER.info("Piggy Inventory initialized (server-side)");
 	}
 }
