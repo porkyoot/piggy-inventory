@@ -27,19 +27,25 @@ public class ConfigScreenFactory {
                                                 .name(Component.literal("Safety"))
                                                 .tooltip(is.pig.minecraft.lib.I18n.safetyTooltip())
                                                 .option(Option.<Boolean>createBuilder()
-                                                        .name(Component.literal("No Cheating Mode"))
-                                                        .description(OptionDescription.of(
-                                                                Component.literal("Prevents usage of cheat features in Survival/Adventure mode."),
-                                                                Component.literal(""),
-                                                                Component.literal("When enabled, utility features are disabled unless you are in Creative mode."),
-                                                                Component.literal("This option is locked if the server enforces anti-cheat.")))
-                                                        .binding(
-                                                                true,
-                                                                config::isNoCheatingMode,
-                                                                config::setNoCheatingMode)
-                                                        .controller(TickBoxControllerBuilder::create)
-                                                        .available(config.isGlobalCheatsEditable()) // Gray out if server enforces rules
-                                                        .build())
+                                                                .name(Component.literal("No Cheating Mode"))
+                                                                .description(OptionDescription.of(
+                                                                                Component.literal(
+                                                                                                "Prevents usage of cheat features in Survival/Adventure mode."),
+                                                                                Component.literal(""),
+                                                                                Component.literal(
+                                                                                                "When enabled, utility features are disabled unless you are in Creative mode."),
+                                                                                Component.literal(
+                                                                                                "This option is locked if the server enforces anti-cheat.")))
+                                                                .binding(
+                                                                                true,
+                                                                                config::isNoCheatingMode,
+                                                                                config::setNoCheatingMode)
+                                                                .controller(TickBoxControllerBuilder::create)
+                                                                .available(config.isGlobalCheatsEditable()) // Gray out
+                                                                                                            // if server
+                                                                                                            // enforces
+                                                                                                            // rules
+                                                                .build())
                                                 .build())
 
                                 // TOOL SWAP CATEGORY
@@ -54,7 +60,8 @@ public class ConfigScreenFactory {
                                                                                                 "Automatically swaps to the faster tool in your inventory when attacking a block."),
                                                                                 Component.literal(
                                                                                                 "If Anti-Cheat is active, this cannot be enabled.")))
-                                                                .available(config.isToolSwapEditable()) // Gray out if enforced
+                                                                .available(config.isToolSwapEditable()) // Gray out if
+                                                                                                        // enforced
                                                                 .binding(
                                                                                 true,
                                                                                 config::isToolSwapEnabled,
@@ -142,6 +149,79 @@ public class ConfigScreenFactory {
                                                                 .controller(StringControllerBuilder::create)
                                                                 .initial("")
                                                                 .build())
+                                                .build())
+
+                                // WEAPON SWITCH CATEGORY
+                                .category(ConfigCategory.createBuilder()
+                                                .name(Component.literal("Weapon Switch"))
+                                                .tooltip(Component.literal("Configure automatic weapon switching."))
+
+                                                .option(Option.<Boolean>createBuilder()
+                                                                .name(Component.literal("Enable Weapon Switch"))
+                                                                .description(OptionDescription.of(
+                                                                                Component.literal(
+                                                                                                "Automatically swaps to the best weapon when attacking an entity."),
+                                                                                Component.literal(
+                                                                                                "If Anti-Cheat is active, this cannot be enabled.")))
+                                                                .available(config.isWeaponSwitchEditable())
+                                                                .binding(
+                                                                                true,
+                                                                                config::isWeaponSwitchBoolean,
+                                                                                config::setWeaponSwitchBoolean)
+                                                                .controller(TickBoxControllerBuilder::create)
+                                                                .build())
+
+                                                .option(Option.<PiggyInventoryConfig.WeaponPreference>createBuilder()
+                                                                .name(Component.literal("Weapon Preference"))
+                                                                .description(OptionDescription.of(
+                                                                                Component.literal(
+                                                                                                "Which type of weapon do you prefer?"),
+                                                                                Component.literal(
+                                                                                                "Speed (Sword), Damage (Axe), or Range.")))
+                                                                .binding(
+                                                                                PiggyInventoryConfig.WeaponPreference.DAMAGE,
+                                                                                config::getGuiWeaponPreference,
+                                                                                config::setGuiWeaponPreference)
+                                                                .controller(opt -> EnumControllerBuilder.create(opt)
+                                                                                .enumClass(PiggyInventoryConfig.WeaponPreference.class))
+                                                                .build())
+
+                                                .option(ListOption.<String>createBuilder()
+                                                                .name(Component.literal("Speed Weapons Priority"))
+                                                                .description(OptionDescription.of(Component.literal(
+                                                                                "Priority list for 'Speed' preference (Top = Highest).")))
+                                                                .binding(
+                                                                                config.getFastWeapons(),
+                                                                                config::getFastWeapons,
+                                                                                config::setFastWeapons)
+                                                                .controller(StringControllerBuilder::create)
+                                                                .initial("")
+                                                                .build())
+
+                                                .option(ListOption.<String>createBuilder()
+                                                                .name(Component.literal("Damage Weapons Priority"))
+                                                                .description(OptionDescription.of(Component.literal(
+                                                                                "Priority list for 'Damage' preference (Top = Highest).")))
+                                                                .binding(
+                                                                                config.getHeavyWeapons(),
+                                                                                config::getHeavyWeapons,
+                                                                                config::setHeavyWeapons)
+                                                                .controller(StringControllerBuilder::create)
+                                                                .initial("")
+                                                                .build())
+
+                                                .option(ListOption.<String>createBuilder()
+                                                                .name(Component.literal("Range Weapons Priority"))
+                                                                .description(OptionDescription.of(Component.literal(
+                                                                                "Priority list for 'Range' preference (Top = Highest).")))
+                                                                .binding(
+                                                                                config.getRangeWeapons(),
+                                                                                config::getRangeWeapons,
+                                                                                config::setRangeWeapons)
+                                                                .controller(StringControllerBuilder::create)
+                                                                .initial("")
+                                                                .build())
+
                                                 .build())
 
                                 .save(ConfigPersistence::save)

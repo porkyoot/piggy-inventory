@@ -16,10 +16,10 @@ public class PiggyInventoryConfig extends is.pig.minecraft.lib.config.PiggyClien
     // --- CONFIG FIELDS ---
 
     private List<Integer> swapHotbarSlots = new ArrayList<>(Arrays.asList(0, 1, 2, 3, 4, 5, 6, 7, 8));
-    
+
     // Current state (NONE means disabled)
     private OrePreference orePreference = OrePreference.FORTUNE;
-    
+
     // Remember last choice for toggling (default Fortune)
     private OrePreference lastActivePreference = OrePreference.FORTUNE;
 
@@ -49,11 +49,148 @@ public class PiggyInventoryConfig extends is.pig.minecraft.lib.config.PiggyClien
     // These are blocks that usually drop nothing or lose their value when broken.
     // Removed 'amethyst_cluster' because it DOES drop with Silk Touch.
     // Added 'small/medium/large_amethyst_bud' because they DO NOT drop themselves.
+    // Blocks that should NOT be broken when in Silk Touch (Safe) mode.
+    // These are blocks that usually drop nothing or lose their value when broken.
+    // Removed 'amethyst_cluster' because it DOES drop with Silk Touch.
+    // Added 'small/medium/large_amethyst_bud' because they DO NOT drop themselves.
     private List<String> protectedBlocks = new ArrayList<>(Arrays.asList(
             "minecraft:budding_amethyst",
-            "minecraft:farmland", 
-            "minecraft:suspicious_sand", "minecraft:suspicious_gravel", 
+            "minecraft:farmland",
+            "minecraft:suspicious_sand", "minecraft:suspicious_gravel",
             "minecraft:spawner", "minecraft:trial_spawner"));
+
+    // --- WEAPON SWITCH CONFIG ---
+    // If true, the feature is active and will use weaponPreference.
+    // However, original logic tied "active" to "preference != NONE".
+    // We should keep that for simplicity or split it?
+    // User asked "Add a setting ... for both enabling/disabling and weapon
+    // preference".
+    // This implies boolean toggle AND preference.
+    // Currently isFeatureWeaponSwitchEnabled checks preference != NONE.
+    // Let's refactor:
+    // 1. Boolean field `weaponSwitchEnabled`.
+    // 2. WeaponPreference field (defaulting to DAMAGE or SPEED, not NONE).
+    // But original code (and ToolSwap) uses Enum NONE as disabled.
+    // If we want separate list config, maybe we should keep simple toggle logic.
+    // Let's stick to current logic: NONE = Disabled.
+    // But user wants "enabling/disabling AND weapon preference".
+    // If I select "Speed", it is enabled. If I select "None", it is disabled.
+    // The previous prompt said: "Add a key to enable/disable the feature
+    // [toggleWeaponSwitch]".
+    // This flips between NONE and lastActivePreference.
+    // To satisfy user desire for "Setting ... for enabling/disabling", we can
+    // expose a Boolean Option in GUI that toggles between NONE and LastActive.
+
+    private WeaponPreference weaponPreference = WeaponPreference.NONE;
+    private WeaponPreference lastActiveWeaponPreference = WeaponPreference.DAMAGE;
+
+    // Prioritized Lists
+    private List<String> fastWeapons = new ArrayList<>(Arrays.asList(
+            "minecraft:netherite_sword", "minecraft:diamond_sword",
+            "minecraft:iron_sword", "minecraft:golden_sword",
+            "minecraft:stone_sword", "minecraft:wooden_sword",
+            "minecraft:trident"));
+
+    private List<String> heavyWeapons = new ArrayList<>(Arrays.asList(
+            "minecraft:mace",
+            "minecraft:netherite_axe", "minecraft:diamond_axe",
+            "minecraft:iron_axe", "minecraft:golden_axe",
+            "minecraft:stone_axe", "minecraft:wooden_axe"));
+
+    private List<String> rangeWeapons = new ArrayList<>(Arrays.asList(
+            "minecraft:trident",
+            "minecraft:bow",
+            "minecraft:crossbow"));
+
+    public enum WeaponPreference {
+        NONE,
+        SPEED, // Sword
+        DAMAGE, // Axe
+        RANGE // Trident, Bow, Crossbow
+    }
+
+    // GUI Helper for boolean binding
+    public boolean isWeaponSwitchBoolean() {
+        return weaponPreference != WeaponPreference.NONE;
+    }
+
+    public void setWeaponSwitchBoolean(boolean enabled) {
+        if (enabled) {
+            if (lastActiveWeaponPreference == WeaponPreference.NONE) {
+                lastActiveWeaponPreference = WeaponPreference.DAMAGE;
+            }
+            setWeaponPreference(lastActiveWeaponPreference);
+        } else {
+            setWeaponPreference(WeaponPreference.NONE);
+        }
+    }
+
+    public void setGuiWeaponPreference(WeaponPreference pref) {
+        // This setter is for the selector. If user selects NONE, it disables.
+        // If user selects SPEED, it enables and sets preference.
+        // But if currently disabled (NONE), and user changes preference to SPEED in
+        // GUI, it should enable.
+        // If currently enabled (SPEED), and user changes to DAMAGE, it updates.
+        // If user selects NONE, it disables.
+        setWeaponPreference(pref);
+    }
+
+    public WeaponPreference getGuiWeaponPreference() {
+        if (weaponPreference == WeaponPreference.NONE) {
+            return lastActiveWeaponPreference;
+        }
+        return weaponPreference;
+    }
+
+    public boolean isFeatureWeaponSwitchEnabled() {
+        boolean enabledInConfig = (weaponPreference != WeaponPreference.NONE);
+
+        return is.pig.minecraft.lib.features.CheatFeatureRegistry.isFeatureEnabled(
+                "weapon_switch",
+                serverAllowCheats,
+                serverFeatures,
+                isNoCheatingMode(),
+                enabledInConfig);
+    }
+
+    public WeaponPreference getWeaponPreference() {
+        return weaponPreference;
+    }
+
+    public void setWeaponPreference(WeaponPreference pref) {
+        if (pref != WeaponPreference.NONE) {
+            boolean serverForces = !this.serverAllowCheats
+                    || (this.serverFeatures != null && this.serverFeatures.containsKey("weapon_switch")
+                            && !this.serverFeatures.get("weapon_switch"));
+
+            if (serverForces) {
+                AntiCheatFeedbackManager.getInstance().onFeatureBlocked("weapon_switch",
+                        BlockReason.SERVER_ENFORCEMENT);
+                return;
+            }
+            this.lastActiveWeaponPreference = pref;
+        }
+        this.weaponPreference = pref;
+    }
+
+    public void toggleWeaponSwitch() {
+        if (weaponPreference == WeaponPreference.NONE) {
+            setWeaponPreference(lastActiveWeaponPreference);
+        } else {
+            setWeaponPreference(WeaponPreference.NONE);
+        }
+    }
+
+    public boolean isWeaponSwitchEditable() {
+        if (isNoCheatingMode())
+            return false;
+        if (!this.serverAllowCheats)
+            return false;
+        if (this.serverFeatures != null && this.serverFeatures.containsKey("weapon_switch")
+                && !this.serverFeatures.get("weapon_switch"))
+            return false;
+        return true;
+    }
 
     // --- SINGLETON ACCESS ---
 
@@ -66,13 +203,13 @@ public class PiggyInventoryConfig extends is.pig.minecraft.lib.config.PiggyClien
             boolean serverForces = !this.serverAllowCheats
                     || (this.serverFeatures != null && this.serverFeatures.containsKey("tool_swap")
                             && !this.serverFeatures.get("tool_swap"));
-            
+
             if (serverForces) {
                 AntiCheatFeedbackManager.getInstance().onFeatureBlocked("tool_swap", BlockReason.SERVER_ENFORCEMENT);
                 this.orePreference = OrePreference.NONE;
                 return;
             }
-            
+
             if (lastActivePreference == OrePreference.NONE) {
                 lastActivePreference = OrePreference.FORTUNE;
             }
@@ -83,15 +220,19 @@ public class PiggyInventoryConfig extends is.pig.minecraft.lib.config.PiggyClien
     }
 
     public boolean isToolSwapEditable() {
-        if (isNoCheatingMode()) return false;
-        if (!this.serverAllowCheats) return false;
-        if (this.serverFeatures != null && this.serverFeatures.containsKey("tool_swap") && !this.serverFeatures.get("tool_swap")) return false;
+        if (isNoCheatingMode())
+            return false;
+        if (!this.serverAllowCheats)
+            return false;
+        if (this.serverFeatures != null && this.serverFeatures.containsKey("tool_swap")
+                && !this.serverFeatures.get("tool_swap"))
+            return false;
         return true;
     }
 
     public boolean isFeatureToolSwapEnabled() {
         boolean enabledInConfig = (orePreference != OrePreference.NONE);
-        
+
         return is.pig.minecraft.lib.features.CheatFeatureRegistry.isFeatureEnabled(
                 "tool_swap",
                 serverAllowCheats,
@@ -106,15 +247,15 @@ public class PiggyInventoryConfig extends is.pig.minecraft.lib.config.PiggyClien
 
     public void setOrePreference(OrePreference pref) {
         if (pref != OrePreference.NONE) {
-             boolean serverForces = !this.serverAllowCheats
+            boolean serverForces = !this.serverAllowCheats
                     || (this.serverFeatures != null && this.serverFeatures.containsKey("tool_swap")
                             && !this.serverFeatures.get("tool_swap"));
-             
-             if (serverForces) {
-                 AntiCheatFeedbackManager.getInstance().onFeatureBlocked("tool_swap", BlockReason.SERVER_ENFORCEMENT);
-                 return;
-             }
-             this.lastActivePreference = pref;
+
+            if (serverForces) {
+                AntiCheatFeedbackManager.getInstance().onFeatureBlocked("tool_swap", BlockReason.SERVER_ENFORCEMENT);
+                return;
+            }
+            this.lastActivePreference = pref;
         }
         this.orePreference = pref;
     }
@@ -126,13 +267,60 @@ public class PiggyInventoryConfig extends is.pig.minecraft.lib.config.PiggyClien
     public void setSwapHotbarSlots(List<Integer> swapHotbarSlots) {
         this.swapHotbarSlots = swapHotbarSlots;
     }
-    
-    public List<String> getSilkTouchBlocks() { return silkTouchBlocks; }
-    public void setSilkTouchBlocks(List<String> list) { this.silkTouchBlocks = list; }
-    public List<String> getFortuneBlocks() { return fortuneBlocks; }
-    public void setFortuneBlocks(List<String> list) { this.fortuneBlocks = list; }
-    public List<String> getShearsBlocks() { return shearsBlocks; }
-    public void setShearsBlocks(List<String> list) { this.shearsBlocks = list; }
-    public List<String> getProtectedBlocks() { return protectedBlocks; }
-    public void setProtectedBlocks(List<String> list) { this.protectedBlocks = list; }
+
+    public List<String> getSilkTouchBlocks() {
+        return silkTouchBlocks;
+    }
+
+    public void setSilkTouchBlocks(List<String> list) {
+        this.silkTouchBlocks = list;
+    }
+
+    public List<String> getFortuneBlocks() {
+        return fortuneBlocks;
+    }
+
+    public void setFortuneBlocks(List<String> list) {
+        this.fortuneBlocks = list;
+    }
+
+    public List<String> getShearsBlocks() {
+        return shearsBlocks;
+    }
+
+    public void setShearsBlocks(List<String> list) {
+        this.shearsBlocks = list;
+    }
+
+    public List<String> getFastWeapons() {
+        return fastWeapons;
+    }
+
+    public void setFastWeapons(List<String> list) {
+        this.fastWeapons = list;
+    }
+
+    public List<String> getHeavyWeapons() {
+        return heavyWeapons;
+    }
+
+    public void setHeavyWeapons(List<String> list) {
+        this.heavyWeapons = list;
+    }
+
+    public List<String> getRangeWeapons() {
+        return rangeWeapons;
+    }
+
+    public void setRangeWeapons(List<String> list) {
+        this.rangeWeapons = list;
+    }
+
+    public List<String> getProtectedBlocks() {
+        return protectedBlocks;
+    }
+
+    public void setProtectedBlocks(List<String> list) {
+        this.protectedBlocks = list;
+    }
 }

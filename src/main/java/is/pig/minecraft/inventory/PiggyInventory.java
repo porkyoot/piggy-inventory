@@ -21,6 +21,13 @@ public class PiggyInventory implements ModInitializer {
 						"Automatically swap to the best tool for the targeted block",
 						true));
 
+		is.pig.minecraft.lib.features.CheatFeatureRegistry.register(
+				new is.pig.minecraft.lib.features.CheatFeature(
+						"weapon_switch",
+						"Weapon Switch",
+						"Automatically swap to the best weapon for the targeted entity",
+						true));
+
 		LOGGER.info("Piggy Inventory initialized (server-side)");
 	}
 }

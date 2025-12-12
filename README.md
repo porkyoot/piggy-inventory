@@ -1,3 +1,5 @@
+[![build](https://github.com/porkyoot/piggy-inventory/actions/workflows/build.yml/badge.svg)](https://github.com/porkyoot/piggy-inventory/actions/workflows/build.yml)
+
 # Piggy Inventory
 
 A simple yet powerful mod designed to enhance your inventory management experience in Minecraft. Piggy Inventory aims to streamline your interactions with items, tools, and containers.

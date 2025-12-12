@@ -12,10 +12,16 @@ import org.lwjgl.glfw.GLFW;
 public class InputController {
 
     public static KeyMapping toggleToolSwapKey;
-    public static KeyMapping preferenceKey;
+    public static KeyMapping preferenceKey; // Mining preference
+
+    public static KeyMapping toggleWeaponSwapKey;
+    public static KeyMapping weaponPreferenceKey;
 
     private static final ToolSwapHandler toolSwapHandler = new ToolSwapHandler();
     private static final ToolPreferenceHandler preferenceHandler = new ToolPreferenceHandler();
+
+    private static final WeaponSwapHandler weaponSwapHandler = new WeaponSwapHandler();
+    private static final WeaponPreferenceHandler weaponPreferenceHandler = new WeaponPreferenceHandler();
 
     public void initialize() {
         registerKeys();
@@ -34,6 +40,18 @@ public class InputController {
                 InputConstants.Type.KEYSYM,
                 GLFW.GLFW_KEY_Z,
                 "Piggy Inventory"));
+
+        toggleWeaponSwapKey = KeyBindingHelper.registerKeyBinding(new KeyMapping(
+                "Toggle Weapon Swap",
+                InputConstants.Type.KEYSYM,
+                GLFW.GLFW_KEY_Y, // Choose a default key
+                "Piggy Inventory"));
+
+        weaponPreferenceKey = KeyBindingHelper.registerKeyBinding(new KeyMapping(
+                "Weapon Preference Menu",
+                InputConstants.Type.KEYSYM,
+                GLFW.GLFW_KEY_X, // Choose a default key
+                "Piggy Inventory"));
     }
 
     private void registerEvents() {
@@ -44,17 +62,18 @@ public class InputController {
             // Handle Toggles
             while (toggleToolSwapKey.consumeClick()) {
                 PiggyInventoryConfig config = (PiggyInventoryConfig) PiggyInventoryConfig.getInstance();
-                
+
                 boolean isCurrentlyEnabled = config.isToolSwapEnabled();
-                
+
                 if (isCurrentlyEnabled) {
                     config.setToolSwapEnabled(false);
                 } else {
                     if (!config.isToolSwapEditable()) {
-                        BlockReason reason = (config.serverAllowCheats && 
-                            (config.serverFeatures == null || !config.serverFeatures.containsKey("tool_swap") || config.serverFeatures.get("tool_swap")))
-                            ? BlockReason.LOCAL_CONFIG
-                            : BlockReason.SERVER_ENFORCEMENT;
+                        BlockReason reason = (config.serverAllowCheats &&
+                                (config.serverFeatures == null || !config.serverFeatures.containsKey("tool_swap")
+                                        || config.serverFeatures.get("tool_swap")))
+                                                ? BlockReason.LOCAL_CONFIG
+                                                : BlockReason.SERVER_ENFORCEMENT;
                         AntiCheatFeedbackManager.getInstance().onFeatureBlocked("tool_swap", reason);
                     } else {
                         config.setToolSwapEnabled(true);
@@ -63,12 +82,33 @@ public class InputController {
                 is.pig.minecraft.inventory.config.ConfigPersistence.save();
             }
 
+            while (toggleWeaponSwapKey.consumeClick()) {
+                PiggyInventoryConfig config = (PiggyInventoryConfig) PiggyInventoryConfig.getInstance();
+
+                config.toggleWeaponSwitch();
+                // Feedback for toggle? Maybe chat message but config change is usually enough
+                // feedback if GUI exists.
+                // We should check block reason if it failed to enable?
+                if (config.getWeaponPreference() == PiggyInventoryConfig.WeaponPreference.NONE
+                        && config.isFeatureWeaponSwitchEnabled()) {
+                    // It was enabled but just disabled config-wise? Or blocked?
+                    // toggleWeaponSwitch handles re-enabling last preference.
+                    // If it remains NONE after toggle, maybe it was blocked.
+                }
+                is.pig.minecraft.inventory.config.ConfigPersistence.save();
+            }
+
             toolSwapHandler.onTick(client);
             preferenceHandler.onTick(client);
+            weaponPreferenceHandler.onTick(client);
         });
     }
 
     public static ToolSwapHandler getToolSwapHandler() {
         return toolSwapHandler;
+    }
+
+    public static WeaponSwapHandler getWeaponSwapHandler() {
+        return weaponSwapHandler;
     }
 }

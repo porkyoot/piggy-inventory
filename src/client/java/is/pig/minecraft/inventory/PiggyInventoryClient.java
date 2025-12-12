@@ -21,7 +21,8 @@ public class PiggyInventoryClient implements ClientModInitializer {
 
                 LOGGER.info("Ehlo from Piggy Inventory!");
 
-                // 0. Register features (only if not already registered by the common/server initializer)
+                // 0. Register features (only if not already registered by the common/server
+                // initializer)
                 if (!is.pig.minecraft.lib.features.CheatFeatureRegistry.hasFeature("tool_swap")) {
                         is.pig.minecraft.lib.features.CheatFeatureRegistry.register(
                                         new is.pig.minecraft.lib.features.CheatFeature(
@@ -29,8 +30,15 @@ public class PiggyInventoryClient implements ClientModInitializer {
                                                         "Tool Swap",
                                                         "Automatically swap to the best tool for the targeted block",
                                                         true));
-                } else {
-                        LOGGER.debug("Cheat feature 'tool_swap' already registered; skipping client registration");
+                }
+
+                if (!is.pig.minecraft.lib.features.CheatFeatureRegistry.hasFeature("weapon_switch")) {
+                        is.pig.minecraft.lib.features.CheatFeatureRegistry.register(
+                                        new is.pig.minecraft.lib.features.CheatFeature(
+                                                        "weapon_switch",
+                                                        "Weapon Switch",
+                                                        "Automatically swap to the best weapon for the targeted entity",
+                                                        true));
                 }
 
                 // 1. Load configuration
@@ -42,25 +50,34 @@ public class PiggyInventoryClient implements ClientModInitializer {
                 // 3. Register Anti-Cheat HUD Overlay
                 is.pig.minecraft.lib.ui.AntiCheatHudOverlay.register();
 
-                                // 4. Register Config Sync Receiver (centralized in piggy-lib)
-                                is.pig.minecraft.lib.network.SyncConfigPayload.registerPacket();
-                                PiggyInventoryClient.LOGGER.info("Registered SyncConfigPayload receiver via piggy-lib");
+                // 4. Register Config Sync Receiver (centralized in piggy-lib)
+                is.pig.minecraft.lib.network.SyncConfigPayload.registerPacket();
+                PiggyInventoryClient.LOGGER.info("Registered SyncConfigPayload receiver via piggy-lib");
 
-                                // Register listener to copy server overrides into this module's config
-                                PiggyClientConfig.getInstance().registerConfigSyncListener((allowCheats, features) -> {
-                                                        is.pig.minecraft.inventory.config.PiggyInventoryConfig inv = (PiggyInventoryConfig) is.pig.minecraft.inventory.config.PiggyInventoryConfig.getInstance();
-                                                        inv.serverAllowCheats = allowCheats;
-                                                        inv.serverFeatures = features;
+                // Register listener to copy server overrides into this module's config
+                PiggyClientConfig.getInstance().registerConfigSyncListener((allowCheats, features) -> {
+                        is.pig.minecraft.inventory.config.PiggyInventoryConfig inv = (PiggyInventoryConfig) is.pig.minecraft.inventory.config.PiggyInventoryConfig
+                                        .getInstance();
+                        inv.serverAllowCheats = allowCheats;
+                        inv.serverFeatures = features;
 
-                                                        // Proactively disable targeted features when server disallows
-                                                        if (!allowCheats) {
-                                                                inv.setToolSwapEnabled(false);
-                                                        }
-                                                        if (features != null && features.containsKey("tool_swap") && !features.get("tool_swap")) {
-                                                                inv.setToolSwapEnabled(false);
-                                                        }
+                        // Proactively disable targeted features when server disallows
+                        if (!allowCheats) {
+                                inv.setToolSwapEnabled(false);
+                                inv.setWeaponPreference(PiggyInventoryConfig.WeaponPreference.NONE);
+                        }
+                        if (features != null) {
+                                if (features.containsKey("tool_swap") && !features.get("tool_swap")) {
+                                        inv.setToolSwapEnabled(false);
+                                }
+                                if (features.containsKey("weapon_switch") && !features.get("weapon_switch")) {
+                                        inv.setWeaponPreference(PiggyInventoryConfig.WeaponPreference.NONE);
+                                }
+                        }
 
-                                                        PiggyInventoryClient.LOGGER.info("[ANTI-CHEAT DEBUG] PiggyInventoryConfig updated from server sync: allowCheats={}, features={}", allowCheats, features);
-                                });
+                        PiggyInventoryClient.LOGGER.info(
+                                        "[ANTI-CHEAT DEBUG] PiggyInventoryConfig updated from server sync: allowCheats={}, features={}",
+                                        allowCheats, features);
+                });
         }
 }

@@ -16,9 +16,16 @@ public class MinecraftClientMixin {
      */
     @Inject(method = "startAttack", at = @At("HEAD"), cancellable = true)
     private void piggyInventory$beforeAttack(CallbackInfoReturnable<Boolean> cir) {
-        boolean shouldCancel = InputController.getToolSwapHandler().onTick((Minecraft) (Object) this);
+        Minecraft mc = (Minecraft) (Object) this;
+        // Weapon Swap Logic (Entity Attack)
+        if (mc.hitResult instanceof net.minecraft.world.phys.EntityHitResult entityHit) {
+            InputController.getWeaponSwapHandler().onAttack(mc, entityHit.getEntity());
+        }
+
+        // Tool Swap Logic (Block Mining / Protection)
+        boolean shouldCancel = InputController.getToolSwapHandler().onTick(mc);
         if (shouldCancel) {
-            cir.setReturnValue(false); 
+            cir.setReturnValue(false);
         }
     }
 
