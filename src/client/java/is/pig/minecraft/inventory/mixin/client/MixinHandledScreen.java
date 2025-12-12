@@ -33,9 +33,8 @@ public abstract class MixinHandledScreen implements is.pig.minecraft.inventory.d
         AbstractContainerScreen<?> screen = (AbstractContainerScreen<?>) (Object) this;
 
         long window = Minecraft.getInstance().getWindow().getWindow();
-        boolean altHeld = ((PiggyInventoryConfig) PiggyInventoryConfig.getInstance()).isLockHotbar()
-                && InputConstants.isKeyDown(window,
-                        KeyBindingHelper.getBoundKeyOf(PiggyInventoryClient.lockKey).getValue());
+        boolean altHeld = InputConstants.isKeyDown(window,
+                KeyBindingHelper.getBoundKeyOf(PiggyInventoryClient.lockKey).getValue());
 
         // Debugging altHeld state every frame might be too spammy, but useful if
         // limited.
@@ -53,30 +52,38 @@ public abstract class MixinHandledScreen implements is.pig.minecraft.inventory.d
                     .contains(slot.getItem().getItem().getDescriptionId())) {
                 continue; // Don't draw lock for blacklisted items
             }
-            if (SlotLockingManager.getInstance().isLocked(screen, slot.index)) {
+
+            // Only allow locking for player inventory slots (Storage + Hotbar)
+            // Typically these are the last 36 slots in any container.
+            // Or use slot.container == client.player.getInventory() check?
+            if (slot.container != Minecraft.getInstance().player.getInventory()) {
+                continue;
+            }
+
+            // Exclude Armor (36-39) and Offhand (40)
+            // PlayerInventory size is 41 total? 36 Main + 4 Armor + 1 Offhand.
+            // Indices 0-35 are Main (Hotbar 0-8, Storage 9-35 or vice versa depending on
+            // mapping, but all < 36)
+            if (slot.getContainerSlot() >= 36) {
+                continue;
+            }
+
+            if (SlotLockingManager.getInstance().isLocked(slot)) {
                 int x = slot.x + this.leftPos;
                 int y = slot.y + this.topPos;
 
-                // Draw a faint Red Overlay
-                context.fill(x, y, x + 16, y + 16, 0x40FF0000); // 25% Opacity Red
+                context.pose().pushPose();
+                context.pose().translate(0, 0, 200); // High Z to render on top of items
 
-                // Draw Lock Icon (simulated geometry for "small lock on top right")
-                // A 5x7 lock
-                // Top-Right corner of slot is (x+15, y)
-                // Let's place it at x+10, y+0 (top right 6x6 area)
+                // Draw a dark overlay (darken background)
+                context.fill(x, y, x + 16, y + 16, 0x80000000); // 50% Opacity Black
 
-                int lx = x + 10;
-                int ly = y + 1;
+                // Draw Lock Texture at Top Right
+                net.minecraft.resources.ResourceLocation lockTexture = net.minecraft.resources.ResourceLocation
+                        .fromNamespaceAndPath("piggy-inventory", "textures/gui/lock.png");
+                context.blit(lockTexture, x + 8, y, 0, 0, 8, 8, 8, 8);
 
-                // Body (Gold/Yellow): 5x4 rect
-                int bodyColor = 0xFFD4AF37; // Gold
-                context.fill(lx, ly + 3, lx + 5, ly + 7, bodyColor);
-
-                // Shackle (Silver/White): Loop on top
-                int shackleColor = 0xFFC0C0C0;
-                context.fill(lx + 1, ly, lx + 2, ly + 3, shackleColor); // Left leg
-                context.fill(lx + 3, ly, lx + 4, ly + 3, shackleColor); // Right leg
-                context.fill(lx + 1, ly, lx + 4, ly + 1, shackleColor); // Top bar
+                context.pose().popPose();
             }
         }
     }
@@ -86,16 +93,22 @@ public abstract class MixinHandledScreen implements is.pig.minecraft.inventory.d
         AbstractContainerScreen<?> screen = (AbstractContainerScreen<?>) (Object) this;
 
         long window = Minecraft.getInstance().getWindow().getWindow();
-        boolean altHeld = ((PiggyInventoryConfig) PiggyInventoryConfig.getInstance()).isLockHotbar()
-                && InputConstants.isKeyDown(window,
-                        KeyBindingHelper.getBoundKeyOf(PiggyInventoryClient.lockKey).getValue());
+        boolean altHeld = InputConstants.isKeyDown(window,
+                KeyBindingHelper.getBoundKeyOf(PiggyInventoryClient.lockKey).getValue());
 
         if (altHeld) {
             PiggyInventoryClient.LOGGER.info("Click with Lock Key Mod! Toggling lock."); // DEBUG
             Slot slot = this.piggy_getSlotUnderMouse(mouseX, mouseY);
             if (slot != null) {
-                SlotLockingManager.getInstance().toggleLock(screen, slot.index);
-                cir.setReturnValue(true);
+                // Only allow locking for player inventory slots (Logic now centralised in
+                // Manager, but we check logic here too)
+                // Actually manager checks container, but we must check index range here too if
+                // we want to be safe,
+                // but manager handles logic nicely.
+                if (slot.container == Minecraft.getInstance().player.getInventory() && slot.getContainerSlot() < 36) {
+                    SlotLockingManager.getInstance().toggleLock(slot);
+                    cir.setReturnValue(true);
+                }
             }
         }
     }

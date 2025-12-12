@@ -5,11 +5,9 @@ import is.pig.minecraft.inventory.locking.SlotLockingManager;
 import is.pig.minecraft.lib.sorting.ISorter;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
-import net.minecraft.network.protocol.game.ServerboundContainerClickPacket;
 import net.minecraft.world.inventory.ClickType;
 import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.Items;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -54,7 +52,7 @@ public class InventorySorter {
             Slot slot = allSlots.get(i);
 
             // Skip locked slots
-            if (SlotLockingManager.getInstance().isLocked(screen, slot.index)) {
+            if (SlotLockingManager.getInstance().isLocked(slot)) {
                 continue;
             }
 
@@ -84,10 +82,17 @@ public class InventorySorter {
         List<ItemStack> layoutItems = LayoutEngine.applyLayout(extractableItems, validSlotIndices.size(), 9);
 
         // 5. Diff & Execution
+        is.pig.minecraft.inventory.PiggyInventoryClient.LOGGER.info(
+                "Executing Sort... Creative: " + client.player.isCreative() + ", Slots: " + validSlotIndices.size());
+
         if (client.player.isCreative()) {
             executeCreativeSort(client, validSlotIndices, layoutItems);
         } else {
-            executeSurvivalSort(client, screen, validSlotIndices, layoutItems);
+            try {
+                executeSurvivalSort(client, screen, validSlotIndices, layoutItems);
+            } catch (Exception e) {
+                is.pig.minecraft.inventory.PiggyInventoryClient.LOGGER.error("Sort Failed Detected", e);
+            }
         }
     }
 

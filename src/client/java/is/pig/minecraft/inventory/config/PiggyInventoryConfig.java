@@ -16,12 +16,16 @@ public class PiggyInventoryConfig extends is.pig.minecraft.lib.config.PiggyClien
     // --- CONFIG FIELDS ---
 
     // --- SORTING CONFIG ---
-    private boolean lockHotbar = true;
+    // private boolean lockHotbar = true; // Removed per user request
     private SortingAlgorithm defaultAlgorithm = SortingAlgorithm.SMART;
     private SortingLayout defaultLayout = SortingLayout.COMPACT;
     private int tickDelay = 1;
     private List<String> blacklistedInventories = new ArrayList<>();
     private List<String> blacklistedItems = new ArrayList<>();
+
+    // Persistent Locked Slots: ScreenClass -> Set of SlotIndices
+    // private java.util.Map<String, java.util.Set<Integer>> savedLocks = new
+    // java.util.HashMap<>();
 
     public enum SortingAlgorithm {
         ALPHABETICAL("Alphabetical"),
@@ -374,13 +378,7 @@ public class PiggyInventoryConfig extends is.pig.minecraft.lib.config.PiggyClien
     }
 
     // --- SORTING GETTERS/SETTERS ---
-    public boolean isLockHotbar() {
-        return lockHotbar;
-    }
-
-    public void setLockHotbar(boolean val) {
-        this.lockHotbar = val;
-    }
+    // Lock Hotbar methods removed
 
     public SortingAlgorithm getDefaultAlgorithm() {
         return defaultAlgorithm;
@@ -420,5 +418,20 @@ public class PiggyInventoryConfig extends is.pig.minecraft.lib.config.PiggyClien
 
     public void setBlacklistedItems(List<String> val) {
         this.blacklistedItems = val;
+    }
+
+    // Persistent Locked Slots: ScreenClass -> Set of SlotIndices
+    // private java.util.Map<String, java.util.Set<Integer>> savedLocks = new
+    // java.util.HashMap<>(); // Deprecated
+
+    // Global Player Inventory Locks (Indices 0-35)
+    private java.util.Set<Integer> lockedPlayerSlots = new java.util.HashSet<>();
+
+    public java.util.Set<Integer> getLockedPlayerSlots() {
+        return lockedPlayerSlots;
+    }
+
+    public void setLockedPlayerSlots(java.util.Set<Integer> val) {
+        this.lockedPlayerSlots = val;
     }
 }
