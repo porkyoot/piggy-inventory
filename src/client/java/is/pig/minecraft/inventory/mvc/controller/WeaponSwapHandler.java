@@ -41,7 +41,8 @@ public class WeaponSwapHandler {
         int bestSlot = currentSlot;
         double bestScore = getWeaponScore(client, currentStack, target, config);
 
-        for (int i = 0; i < 9; i++) { // Hotbar only for weapons usually
+        // Scan full inventory (0-35)
+        for (int i = 0; i < 36; i++) {
             if (i == currentSlot)
                 continue;
 
@@ -55,14 +56,45 @@ public class WeaponSwapHandler {
         }
 
         if (bestSlot != currentSlot) {
-            swapToSlot(client, bestSlot);
+            swapToSlot(client, currentSlot, bestSlot, config.getWeaponSwapHotbarSlots());
         }
     }
 
-    private void swapToSlot(Minecraft client, int bestSlot) {
-        client.player.getInventory().selected = bestSlot;
-        if (client.getConnection() != null) {
-            client.getConnection().send(new ServerboundSetCarriedItemPacket(bestSlot));
+    private void swapToSlot(Minecraft client, int currentSlot, int bestSlot, java.util.List<Integer> allowedSlots) {
+        if (bestSlot < 9) {
+            // Simple hotbar swap
+            client.player.getInventory().selected = bestSlot;
+            if (client.getConnection() != null) {
+                client.getConnection().send(new ServerboundSetCarriedItemPacket(bestSlot));
+            }
+        } else {
+            // Inventory swap logic
+            if (allowedSlots == null || allowedSlots.isEmpty()) {
+                return;
+            }
+
+            int targetSlot;
+            if (allowedSlots.contains(currentSlot)) {
+                targetSlot = currentSlot;
+            } else {
+                targetSlot = allowedSlots.get(0);
+                if (targetSlot < 0 || targetSlot > 8)
+                    targetSlot = 0;
+            }
+
+            client.gameMode.handleInventoryMouseClick(
+                    client.player.inventoryMenu.containerId,
+                    bestSlot,
+                    targetSlot,
+                    net.minecraft.world.inventory.ClickType.SWAP,
+                    client.player);
+
+            if (client.player.getInventory().selected != targetSlot) {
+                client.player.getInventory().selected = targetSlot;
+                if (client.getConnection() != null) {
+                    client.getConnection().send(new ServerboundSetCarriedItemPacket(targetSlot));
+                }
+            }
         }
     }
 
@@ -71,20 +103,54 @@ public class WeaponSwapHandler {
             return 0;
 
         double damage = 1.0;
-        double speed = 4.0; // Base speed
+        double speed = 4.0; // Base speed (fist) is roughly 4.0 but attack cooldown logic is tricky.
+        // Actually base player attack speed is 4.0.
+        // Sword modifies it by -2.4 -> 1.6
+        // Axe modifies it by -3.0 -> 1.0 (approx, varies by material)
+        // Trident -2.9 -> 1.1
+        // We will approximate speed based on item class since dynamic attribute lookup
+        // is complex here.
 
         if (stack.getItem() instanceof SwordItem sword) {
-            damage = 3.0 + 4.0; // Assume diamond level approx for scoring if unknown
-            // Or better:
-            // getDamage() is not public usually.
-            // Let's use hardcoded approximations for scoring:
-            // We can check material via simple name check if needed, or just prioritize
-            // class.
-            damage = 7.0;
+            damage = 3.0 + 4.0; // Placeholder base, ideally use explicit material checks if needed
+            // Simple material tiers check for slightly better accuracy:
+            String name = stack.getItem().toString();
+            if (name.contains("netherite"))
+                damage = 8.0;
+            else if (name.contains("diamond"))
+                damage = 7.0;
+            else if (name.contains("iron"))
+                damage = 6.0;
+            else if (name.contains("stone"))
+                damage = 5.0;
+            else if (name.contains("golden"))
+                damage = 4.0;
+            else
+                damage = 4.0; // Wood/Other
+
             speed = 1.6;
         } else if (stack.getItem() instanceof AxeItem axe) {
-            damage = 9.0;
-            speed = 1.0; // Variable but slow
+            String name = stack.getItem().toString();
+            if (name.contains("netherite")) {
+                damage = 10.0;
+                speed = 1.0;
+            } else if (name.contains("diamond")) {
+                damage = 9.0;
+                speed = 1.0;
+            } else if (name.contains("iron")) {
+                damage = 9.0;
+                speed = 0.9;
+            } // Iron axe is slower? Actually standard assumes 1.0 usually or 0.9
+            else if (name.contains("stone")) {
+                damage = 9.0;
+                speed = 0.8;
+            } else if (name.contains("golden")) {
+                damage = 7.0;
+                speed = 1.0;
+            } else {
+                damage = 7.0;
+                speed = 0.8;
+            } // Wood
         } else if (stack.getItem() instanceof TridentItem) {
             damage = 9.0;
             speed = 1.1;
@@ -92,93 +158,101 @@ public class WeaponSwapHandler {
             damage = 6.0;
             speed = 0.6;
         } else if (stack.getItem() instanceof net.minecraft.world.item.PickaxeItem) {
-            damage = 3.0; // Low
+            damage = 1.0 + 2.0; // Very base
             speed = 1.2;
         }
 
-        // Enchantment bonuses (Simplified)
-        // If we can't easily access Enchantments, we might skip detailed enchant logic
-        // or try catch loop.
-        // Assuming we can use EnchantmentHelper.getItemEnchantmentLevel logic from
-        // ToolSwapHandler mechanism
-        // But ToolSwapHandler uses ResourceKey.
-        // We will skip fine-grained enchantment logic for now unless critical.
-        // The user asked "Take into account the enchant depending on the enemy".
-        // We really should try.
-
-        // Try getting Sharpness level
+        // Enchantment bonuses
         int sharpness = getEnchantmentLevel(client, stack, Enchantments.SHARPNESS);
         if (sharpness > 0)
-            damage += sharpness * 0.5; // 1.21 math might differ
+            damage += sharpness * 0.5;
 
         int smite = getEnchantmentLevel(client, stack, Enchantments.SMITE);
-        if (smite > 0 && target instanceof LivingEntity living && living.isInvertedHealAndHarm()) { // Undead check
+        if (smite > 0 && target instanceof LivingEntity living && living.isInvertedHealAndHarm()) {
             damage += smite * 2.5;
         }
+
+        int bane = getEnchantmentLevel(client, stack, Enchantments.BANE_OF_ARTHROPODS);
+        if (bane > 0) {
+            boolean isArthropod = target instanceof net.minecraft.world.entity.monster.Spider
+                    || target instanceof net.minecraft.world.entity.monster.CaveSpider
+                    || target instanceof net.minecraft.world.entity.monster.Silverfish
+                    || target instanceof net.minecraft.world.entity.monster.Endermite
+                    || target instanceof net.minecraft.world.entity.animal.Bee;
+            if (isArthropod) {
+                damage += bane * 2.5;
+            }
+        }
+
+        int impaling = getEnchantmentLevel(client, stack, Enchantments.IMPALING);
+        if (impaling > 0) {
+            boolean isAquatic = target instanceof net.minecraft.world.entity.animal.WaterAnimal
+                    || target instanceof net.minecraft.world.entity.monster.Guardian
+                    || target instanceof net.minecraft.world.entity.animal.Turtle;
+            if (isAquatic) {
+                damage += impaling * 2.5;
+            }
+        }
+
+        int fireAspect = getEnchantmentLevel(client, stack, Enchantments.FIRE_ASPECT);
+        if (fireAspect > 0) {
+            damage += fireAspect * 1.5;
+        }
+
+        int sweeping = getEnchantmentLevel(client, stack, Enchantments.SWEEPING_EDGE);
+        if (sweeping > 0) {
+            damage += sweeping * 1.0;
+        }
+
+        // Calculate DPS
+        double dps = damage * speed;
 
         boolean isBoat = target instanceof Boat || target instanceof AbstractMinecart || target instanceof ChestBoat;
         boolean isShielded = (target instanceof LivingEntity living) && living.isBlocking();
         boolean isFalling = client.player.fallDistance > 2.0f;
 
         // 1. Critical Overrides
-
-        // Mace falling attack
-        if (isFalling && stack.getItem() instanceof MaceItem) {
+        if (isFalling && stack.getItem() instanceof MaceItem)
             return 10000.0;
-        }
-
-        // Axe vs Boat/Minecart/Shield
-        if ((isBoat || isShielded) && stack.getItem() instanceof AxeItem) {
+        if ((isBoat || isShielded) && stack.getItem() instanceof AxeItem)
             return 10000.0;
-        }
 
         PiggyInventoryConfig.WeaponPreference pref = config.getWeaponPreference();
 
+        // 2. Range Preference
         if (pref == PiggyInventoryConfig.WeaponPreference.RANGE) {
             int index = getPriorityIndex(stack, config.getRangeWeapons());
-            if (index != -1) {
-                // Return high score based on priority (lower index = better).
-                // Max range size usually small. 5000 base.
+            if (index != -1)
                 return 5000.0 + (100 - index);
-            }
+
+            // Only fall back to Trident, ignore Bow/Crossbow for melee
             if (stack.getItem() instanceof TridentItem)
                 return 4000.0;
-            return damage; // Fallback
+
+            return damage; // Fallback to raw damage if not a range weapon
         }
 
+        // 3. Speed Preference (DPS)
         if (pref == PiggyInventoryConfig.WeaponPreference.SPEED) {
-            // Check user priority list first
             int index = getPriorityIndex(stack, config.getFastWeapons());
-            if (index != -1) {
-                return 2000.0 + (100 - index) + damage;
-            }
+            if (index != -1)
+                return 2000.0 + (100 - index) + dps;
 
-            // Prefer Speed: High score for Swords
-            if (stack.getItem() instanceof SwordItem)
-                return 1500.0 + damage;
-            if (stack.getItem() instanceof TridentItem)
-                return 1400.0 + damage;
-            return damage;
+            // Otherwise purely prioritize DPS
+            return dps;
         }
 
+        // 4. Damage Preference (Single Hit)
         if (pref == PiggyInventoryConfig.WeaponPreference.DAMAGE) {
-            // Check user priority list first
             int index = getPriorityIndex(stack, config.getHeavyWeapons());
-            if (index != -1) {
+            if (index != -1)
                 return 2000.0 + (100 - index) + damage;
-            }
 
-            // Prefer Damage: High score for Axes
-            if (stack.getItem() instanceof AxeItem)
-                return 1500.0 + damage;
-            if (stack.getItem() instanceof MaceItem)
-                return 1450.0 + damage;
-            if (stack.getItem() instanceof SwordItem)
-                return 1000.0 + damage;
+            // Otherwise prioritize raw Damage
             return damage;
         }
 
-        // Default to damage
+        // Default
         return damage;
     }
 

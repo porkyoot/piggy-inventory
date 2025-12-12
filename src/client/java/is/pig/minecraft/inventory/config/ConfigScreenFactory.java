@@ -171,6 +171,23 @@ public class ConfigScreenFactory {
                                                                 .controller(TickBoxControllerBuilder::create)
                                                                 .build())
 
+                                                .option(Option.<String>createBuilder()
+                                                                .name(Component.literal("Weapon Hotbar Swap Slots"))
+                                                                .description(OptionDescription.of(
+                                                                                Component.literal(
+                                                                                                "Which hotbar slots can be overwritten/used when swapping weapons?"),
+                                                                                Component.literal(
+                                                                                                "Format: '0-3, 5, 7-8'")))
+                                                                .binding(
+                                                                                formatSlotList(config
+                                                                                                .getWeaponSwapHotbarSlots()),
+                                                                                () -> formatSlotList(config
+                                                                                                .getWeaponSwapHotbarSlots()),
+                                                                                (val) -> config.setWeaponSwapHotbarSlots(
+                                                                                                parseSlotString(val)))
+                                                                .controller(StringControllerBuilder::create)
+                                                                .build())
+
                                                 .option(Option.<PiggyInventoryConfig.WeaponPreference>createBuilder()
                                                                 .name(Component.literal("Weapon Preference"))
                                                                 .description(OptionDescription.of(

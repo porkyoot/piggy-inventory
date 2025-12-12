@@ -84,6 +84,8 @@ public class PiggyInventoryConfig extends is.pig.minecraft.lib.config.PiggyClien
     private WeaponPreference weaponPreference = WeaponPreference.NONE;
     private WeaponPreference lastActiveWeaponPreference = WeaponPreference.DAMAGE;
 
+    private List<Integer> weaponSwapHotbarSlots = new ArrayList<>(Arrays.asList(0, 1, 2, 3, 4, 5, 6, 7, 8));
+
     // Prioritized Lists
     private List<String> fastWeapons = new ArrayList<>(Arrays.asList(
             "minecraft:netherite_sword", "minecraft:diamond_sword",
@@ -314,6 +316,14 @@ public class PiggyInventoryConfig extends is.pig.minecraft.lib.config.PiggyClien
 
     public void setRangeWeapons(List<String> list) {
         this.rangeWeapons = list;
+    }
+
+    public List<Integer> getWeaponSwapHotbarSlots() {
+        return weaponSwapHotbarSlots;
+    }
+
+    public void setWeaponSwapHotbarSlots(List<Integer> list) {
+        this.weaponSwapHotbarSlots = list;
     }
 
     public List<String> getProtectedBlocks() {
