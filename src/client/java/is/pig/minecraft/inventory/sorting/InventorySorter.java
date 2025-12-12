@@ -198,6 +198,16 @@ public class InventorySorter {
                 return new is.pig.minecraft.inventory.sorting.AlphabeticalSorter();
             case COLOR:
                 return new is.pig.minecraft.inventory.sorting.ColorSorter();
+            case RARITY:
+                return new is.pig.minecraft.inventory.sorting.RaritySorter();
+            case MATERIAL:
+                return new is.pig.minecraft.inventory.sorting.MaterialSorter();
+            case TYPE:
+                return new is.pig.minecraft.inventory.sorting.TypeSorter();
+            case TAG:
+                return new is.pig.minecraft.inventory.sorting.TagSorter();
+            case JSON:
+                return new is.pig.minecraft.inventory.sorting.JsonListSorter();
             case SMART:
             default:
                 // existing logic

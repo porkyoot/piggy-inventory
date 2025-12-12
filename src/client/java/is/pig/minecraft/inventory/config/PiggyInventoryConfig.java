@@ -31,7 +31,12 @@ public class PiggyInventoryConfig extends is.pig.minecraft.lib.config.PiggyClien
         ALPHABETICAL("Alphabetical"),
         CREATIVE("Creative"),
         SMART("Smart Category"),
-        COLOR("Color");
+        COLOR("Color"),
+        RARITY("Rarity"),
+        MATERIAL("Material"),
+        TYPE("Type"),
+        TAG("Tag Priority"),
+        JSON("Custom List");
 
         public final String name;
 
