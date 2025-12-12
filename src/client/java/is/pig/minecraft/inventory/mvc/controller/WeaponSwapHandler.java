@@ -20,9 +20,6 @@ public class WeaponSwapHandler {
 
     /**
      * Called when the player is about to attack an entity.
-     * 
-     * @return true if we should probably cancel? No, validation logic.
-     *         Actually we just want to perform the swap.
      */
     public void onAttack(Minecraft client, Entity target) {
         PiggyInventoryConfig config = (PiggyInventoryConfig) PiggyInventoryConfig.getInstance();
@@ -111,7 +108,7 @@ public class WeaponSwapHandler {
         // We will approximate speed based on item class since dynamic attribute lookup
         // is complex here.
 
-        if (stack.getItem() instanceof SwordItem sword) {
+        if (stack.getItem() instanceof SwordItem) {
             damage = 3.0 + 4.0; // Placeholder base, ideally use explicit material checks if needed
             // Simple material tiers check for slightly better accuracy:
             String name = stack.getItem().toString();
@@ -129,7 +126,7 @@ public class WeaponSwapHandler {
                 damage = 4.0; // Wood/Other
 
             speed = 1.6;
-        } else if (stack.getItem() instanceof AxeItem axe) {
+        } else if (stack.getItem() instanceof AxeItem) {
             String name = stack.getItem().toString();
             if (name.contains("netherite")) {
                 damage = 10.0;

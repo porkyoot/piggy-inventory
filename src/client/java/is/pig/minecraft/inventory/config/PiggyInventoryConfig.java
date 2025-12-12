@@ -34,7 +34,9 @@ public class PiggyInventoryConfig extends is.pig.minecraft.lib.config.PiggyClien
             "minecraft:glass", "minecraft:glass_pane", "minecraft:ice", "minecraft:packed_ice",
             "minecraft:blue_ice", "minecraft:ender_chest", "minecraft:turtle_egg", "minecraft:bee_nest",
             "minecraft:beehive", "minecraft:sculk", "minecraft:sculk_catalyst", "minecraft:sculk_sensor",
-            "minecraft:sculk_shrieker", "*stained_glass*"));
+            "minecraft:sculk_shrieker", "*stained_glass*", "minecraft:sculk_vein",
+            "minecraft:budding_amethyst", "minecraft:small_amethyst_bud", "minecraft:medium_amethyst_bud",
+            "minecraft:large_amethyst_bud"));
 
     private List<String> fortuneBlocks = new ArrayList<>(Arrays.asList(
             "*_ore", "*ancient_debris*", "*amethyst_cluster*", "minecraft:clay",
@@ -47,14 +49,8 @@ public class PiggyInventoryConfig extends is.pig.minecraft.lib.config.PiggyClien
 
     // Blocks that should NOT be broken when in Silk Touch (Safe) mode.
     // These are blocks that usually drop nothing or lose their value when broken.
-    // Removed 'amethyst_cluster' because it DOES drop with Silk Touch.
-    // Added 'small/medium/large_amethyst_bud' because they DO NOT drop themselves.
-    // Blocks that should NOT be broken when in Silk Touch (Safe) mode.
-    // These are blocks that usually drop nothing or lose their value when broken.
-    // Removed 'amethyst_cluster' because it DOES drop with Silk Touch.
-    // Added 'small/medium/large_amethyst_bud' because they DO NOT drop themselves.
+    // Removed 'budding_amethyst' per user request to allow tool swapping/breaking.
     private List<String> protectedBlocks = new ArrayList<>(Arrays.asList(
-            "minecraft:budding_amethyst",
             "minecraft:farmland",
             "minecraft:suspicious_sand", "minecraft:suspicious_gravel",
             "minecraft:spawner", "minecraft:trial_spawner"));
