@@ -34,9 +34,15 @@ dependencies {
     // --- LIAISON AVEC PIGGY LIB ---
     
     // On utilise 'implementation' pour compiler avec les sources de la lib
-    implementation project(':piggy-lib')
-    clientImplementation project(':piggy-lib')
+    modImplementation project(path: ':piggy-lib', configuration: 'namedElements')
+    clientImplementation project(path: ':piggy-lib', configuration: 'namedElements')
     
     // Si vous voulez que la lib soit incluse dans le jar final de l'inventaire (Fat Jar) :
     include project(':piggy-lib')
+}
+
+// Force generation of the library jar before compiling client java
+// This fixes issues where the jar is not yet available on the classpath in CI environments
+tasks.named("compileClientJava").configure {
+    dependsOn project(":piggy-lib").tasks.named("jar")
 }
