@@ -80,15 +80,11 @@ public class InventorySorter {
 
         // 4. Layout
         PiggyInventoryConfig config = (PiggyInventoryConfig) PiggyInventoryConfig.getInstance();
-        List<ItemStack> layoutItems = LayoutEngine.applyLayout(extractableItems, validSlotIndices.size(), 9,
+        java.util.Map<Integer, ItemStack> layoutMap = LayoutEngine.calculateLayout(extractableItems, validSlotIndices,
+                9,
                 config.getDefaultLayout());
 
         // 5. Diff & Execution
-        // Creative Sort (Packet) is fast but only works if indices match the Packet's
-        // expectation (Player Inventory).
-        // It BREAKS if used on external containers (Chest) or transposed slots.
-        // Safe Condition: Only use Packet if explicitly in Creative Screen or standard
-        // Inventory Screen.
         boolean safeForCreativePacket = false;
         if (client.player.isCreative()) {
             if (screen instanceof net.minecraft.client.gui.screens.inventory.CreativeModeInventoryScreen) {
@@ -99,28 +95,27 @@ public class InventorySorter {
         }
 
         if (safeForCreativePacket) {
-            executeCreativeSort(client, validSlotIndices, layoutItems);
+            executeCreativeSort(client, validSlotIndices, layoutMap);
         } else {
             try {
-                executeSurvivalSort(client, screen, validSlotIndices, layoutItems);
+                executeSurvivalSort(client, screen, validSlotIndices, layoutMap);
             } catch (Exception e) {
                 is.pig.minecraft.inventory.PiggyInventoryClient.LOGGER.error("Sort Failed Detected", e);
             }
         }
     }
 
-    private static void executeCreativeSort(Minecraft client, List<Integer> slots, List<ItemStack> sortedItems) {
-        int itemIndex = 0;
+    private static void executeCreativeSort(Minecraft client, List<Integer> slots,
+            java.util.Map<Integer, ItemStack> layoutMap) {
         for (int slotIndex : slots) {
-            ItemStack desired = itemIndex < sortedItems.size() ? sortedItems.get(itemIndex) : ItemStack.EMPTY;
+            ItemStack desired = layoutMap.getOrDefault(slotIndex, ItemStack.EMPTY);
             client.player.connection.send(
                     new net.minecraft.network.protocol.game.ServerboundSetCreativeModeSlotPacket(slotIndex, desired));
-            itemIndex++;
         }
     }
 
     private static void executeSurvivalSort(Minecraft client, AbstractContainerScreen<?> screen,
-            List<Integer> slotIndices, List<ItemStack> sortedItems) {
+            List<Integer> slotIndices, java.util.Map<Integer, ItemStack> layoutMap) {
         int containerId = screen.getMenu().containerId;
 
         // Track virtual state of items to know where things are after swaps
@@ -139,9 +134,11 @@ public class InventorySorter {
         // reordering it works.
         // Assuming simple reorder for now.
 
+        // 4a. Execute Sort (Naive Swap)
         for (int i = 0; i < slotIndices.size(); i++) {
-            ItemStack desired = (i < sortedItems.size()) ? sortedItems.get(i) : ItemStack.EMPTY;
-            ItemStack currentAtI = currentItems.get(i);
+            int currentSlotIndex = slotIndices.get(i);
+            ItemStack desired = layoutMap.getOrDefault(currentSlotIndex, ItemStack.EMPTY);
+            ItemStack currentAtI = currentItems.get(i); // Virtual state tracker
 
             // If matches, skips
             // We use matches components to be safe

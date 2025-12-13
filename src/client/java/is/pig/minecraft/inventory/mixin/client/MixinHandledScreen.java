@@ -18,6 +18,7 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
+import com.mojang.blaze3d.systems.RenderSystem;
 
 @Environment(EnvType.CLIENT)
 @Mixin(AbstractContainerScreen.class)
@@ -27,6 +28,9 @@ public abstract class MixinHandledScreen implements is.pig.minecraft.inventory.d
     protected int leftPos;
     @Shadow
     protected int topPos;
+
+    private static final net.minecraft.resources.ResourceLocation LOCK_TEXTURE = net.minecraft.resources.ResourceLocation
+            .fromNamespaceAndPath("piggy-inventory", "textures/gui/lock.png");
 
     @Inject(method = "renderSlot", at = @At("TAIL"))
     private void renderSlotLock(GuiGraphics context, Slot slot, CallbackInfo ci) {
@@ -54,40 +58,6 @@ public abstract class MixinHandledScreen implements is.pig.minecraft.inventory.d
         }
 
         if (SlotLockingManager.getInstance().isLocked(slot)) {
-            // Render relative to slot position. renderSlot renders at (slot.x, slot.y).
-            // But wait, renderSlot uses context.
-            // The context might already be translated?
-            // AbstractContainerScreen.renderSlot does: guiGraphics.renderItem(item, slot.x,
-            // slot.y);
-            // So we should draw at slot.x, slot.y.
-
-            // Note: In renderSlot, coordinates are relative to the GuiGraphics current
-            // pose...?
-            // Usually renderSlot is called inside renderBg or a loop where pose is at 0,0
-            // usually (screen root).
-            // Slot.x and Slot.y are relative to guiLeft/guiTop usually? No, relative to
-            // Screen 0,0?
-            // AbstractContainerScreen.renderSlot impl:
-            // int i = slot.x; int j = slot.y;
-            // guiGraphics.renderItem(itemStack, i, j);
-
-            // Slot.x/y are relative to the Container's 0,0 (inside the GUI texture).
-            // But renderSlot often happens inside loop with translations.
-            // Let's use the same coordinates as the slot object, but add
-            // this.leftPos/topPos?
-            // The original renderLocks used `slot.x + this.leftPos` and `slot.y +
-            // this.topPos`.
-            // AbstractContainerScreen.renderSlot implementation typically uses absolute
-            // coordinates if it just does `this.leftPos + slot.x`.
-            // Let's look at `AbstractContainerScreen.renderSlot`:
-            // It runs: `guiGraphics.renderItem(itemStack, slot.x, slot.y);`
-            // Wait, does it add leftPos/topPos?
-            // Actually `render` sets up translation?
-            // No, standard loop calculates x/y: `int slotX = slot.x; int slotY = slot.y;`
-            // But wait, `render` usually translates by leftPos, topPos?
-            // Actually, usually `render` calls `renderBg` (background) then iterates slots.
-            // Slots usually are drawn relative to the screen, so `slot.x` is relative to
-            // container, need `leftPos`.
 
             int x = slot.x;
             int y = slot.y;
@@ -96,9 +66,12 @@ public abstract class MixinHandledScreen implements is.pig.minecraft.inventory.d
             context.fill(x, y, x + 16, y + 16, 0x80000000); // 50% Opacity Black
 
             // Draw Lock Texture at Top Right
-            net.minecraft.resources.ResourceLocation lockTexture = net.minecraft.resources.ResourceLocation
-                    .fromNamespaceAndPath("piggy-inventory", "textures/gui/lock.png");
-            context.blit(lockTexture, x + 8, y, 0, 0, 8, 8, 8, 8);
+            context.pose().pushPose();
+            context.pose().translate(0, 0, 300);
+            RenderSystem.disableDepthTest();
+            context.blit(LOCK_TEXTURE, x, y, 0, 0, 8, 8, 8, 8);
+            context.pose().popPose();
+            RenderSystem.enableDepthTest();
         }
     }
 
@@ -111,11 +84,7 @@ public abstract class MixinHandledScreen implements is.pig.minecraft.inventory.d
         if (altHeld) {
             Slot slot = this.piggy_getSlotUnderMouse(mouseX, mouseY);
             if (slot != null) {
-                // Only allow locking for player inventory slots (Logic now centralised in
-                // Manager, but we check logic here too)
-                // Actually manager checks container, but we must check index range here too if
-                // we want to be safe,
-                // but manager handles logic nicely.
+                // Only allow locking for player inventory slots
                 if (slot.container == Minecraft.getInstance().player.getInventory() && slot.getContainerSlot() < 36) {
                     SlotLockingManager.getInstance().toggleLock(slot);
                     cir.setReturnValue(true);
