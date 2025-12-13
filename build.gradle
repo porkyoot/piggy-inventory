@@ -41,3 +41,10 @@ dependencies {
     // Si vous voulez que la lib soit incluse dans le jar final de l'inventaire (Fat Jar) :
     include project(':piggy-lib')
 }
+
+// Ensure the client compiler sees the library classes
+// This manual classpath injection resolves issues where clientImplementation
+// fails to propagate file-collection dependencies correctly in CI
+tasks.named('compileClientJava').configure {
+    classpath += project(':piggy-lib').sourceSets.main.output
+}
