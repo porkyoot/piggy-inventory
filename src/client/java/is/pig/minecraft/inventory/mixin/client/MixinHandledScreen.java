@@ -105,6 +105,9 @@ public abstract class MixinHandledScreen implements is.pig.minecraft.inventory.d
             Slot slot = this.piggy_getSlotUnderMouse(mouseX, mouseY);
             if (slot != null) {
                 this.piggy_lastShiftClickedSlot = slot;
+                // Hook for Continuous Crafting
+                is.pig.minecraft.inventory.handler.CraftingHandler.getInstance()
+                        .onCraftingClick(slot, Minecraft.getInstance().player);
             }
         }
     }
@@ -113,6 +116,8 @@ public abstract class MixinHandledScreen implements is.pig.minecraft.inventory.d
     private void onMouseReleased(double mouseX, double mouseY, int button, CallbackInfoReturnable<Boolean> cir) {
         if (button == 0) {
             this.piggy_lastShiftClickedSlot = null;
+            // Hook for Continuous Crafting
+            is.pig.minecraft.inventory.handler.CraftingHandler.getInstance().onCraftingRelease();
         }
     }
 
