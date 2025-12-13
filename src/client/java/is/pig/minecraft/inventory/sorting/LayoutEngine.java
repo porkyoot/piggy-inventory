@@ -24,7 +24,8 @@ public class LayoutEngine {
      *         map mean EMPTY.
      */
     public static Map<Integer, ItemStack> calculateLayout(List<ItemStack> sortedItems, List<Integer> validSlots,
-            int rowSize, PiggyInventoryConfig.SortingLayout layoutType) {
+            int rowSize, PiggyInventoryConfig.SortingLayout layoutType,
+            PiggyInventoryConfig.SortingAlgorithm algorithm) {
 
         if (validSlots.isEmpty())
             return new HashMap<>();
@@ -55,7 +56,7 @@ public class LayoutEngine {
         // Group items if necessary
         if (layoutType == PiggyInventoryConfig.SortingLayout.ROWS
                 || layoutType == PiggyInventoryConfig.SortingLayout.COLUMNS) {
-            return planWithGroups(sortedItems, availableSet, minSlot, maxSlot, rowSize, layoutType);
+            return planWithGroups(sortedItems, availableSet, minSlot, maxSlot, rowSize, layoutType, algorithm);
         }
 
         // COMPACT: Just fill available slots in order
@@ -72,7 +73,8 @@ public class LayoutEngine {
     }
 
     private static Map<Integer, ItemStack> planWithGroups(List<ItemStack> sortedItems, Set<Integer> availableSlots,
-            int firstSlotIndex, int lastSlotIndex, int rowSize, PiggyInventoryConfig.SortingLayout layoutType) {
+            int firstSlotIndex, int lastSlotIndex, int rowSize, PiggyInventoryConfig.SortingLayout layoutType,
+            PiggyInventoryConfig.SortingAlgorithm algorithm) {
 
         Map<Integer, ItemStack> result = new HashMap<>();
 
@@ -83,15 +85,24 @@ public class LayoutEngine {
 
         List<ItemStack> currentGroup = new ArrayList<>();
         currentGroup.add(sortedItems.get(0));
-        int currentWeight = SmartCategorySorter.getItemWeight(sortedItems.get(0));
+        long currentGroupKey = getGroupKey(sortedItems.get(0), algorithm);
 
         for (int i = 1; i < sortedItems.size(); i++) {
             ItemStack stack = sortedItems.get(i);
-            int w = SmartCategorySorter.getItemWeight(stack);
-            if (Math.abs(w - currentWeight) >= 50) { // New Category
+            long key = getGroupKey(stack, algorithm);
+
+            boolean changed = false;
+            // Define change condition
+            if (algorithm == PiggyInventoryConfig.SortingAlgorithm.SMART) {
+                changed = Math.abs(key - currentGroupKey) >= 50;
+            } else {
+                changed = key != currentGroupKey;
+            }
+
+            if (changed) {
                 groups.add(currentGroup);
                 currentGroup = new ArrayList<>();
-                currentWeight = w;
+                currentGroupKey = key;
             }
             currentGroup.add(stack);
         }
@@ -114,34 +125,20 @@ public class LayoutEngine {
 
         if (layoutType == PiggyInventoryConfig.SortingLayout.ROWS) {
             // Calculate needed rows per group
-            int totalNeededRows = 0;
+            // Improved calculation accounting for locked slots (effective capacity)
+            double effectiveRowSize = Math.max(1.0, (double) availableSlots.size() / totalRows);
             List<Integer> groupRows = new ArrayList<>();
             for (List<ItemStack> g : groups) {
-                int needed = (g.size() + rowSize - 1) / rowSize;
+                int needed = (int) Math.ceil(g.size() / effectiveRowSize);
                 groupRows.add(needed);
-                totalNeededRows += needed;
             }
 
             // Allow for at least 1 row gap if possible
-            int gapsNeeded = groups.size() - 1;
-            int spareRows = totalRows - totalNeededRows;
 
             // Distribute spare rows
             // Strategy: Ensure at least 1 gap between groups, then distribute remainder
             // nicely?
             // Or just spread evenly.
-
-            int[] gapSizes = new int[Math.max(1, gapsNeeded)];
-            if (gapsNeeded > 0 && spareRows > 0) {
-                int baseGap = spareRows / gapsNeeded;
-                int remainder = spareRows % gapsNeeded;
-                for (int i = 0; i < gapsNeeded; i++) {
-                    gapSizes[i] = baseGap + (i < remainder ? 1 : 0);
-                    // Cap gap size? Maybe not too big. 2 rows max?
-                    // result can look sparse if container is huge. User said "spread regularly".
-                    // Let's stick to base logic.
-                }
-            }
 
             // 4. Place items
             int currentRowOffset = 0; // Relative to startRow
@@ -172,9 +169,22 @@ public class LayoutEngine {
                     currentRowOffset++;
                 }
 
-                // Add Gap
-                if (gIdx < gapsNeeded) {
-                    currentRowOffset += gapSizes[gIdx];
+                // Dynamic Gap Calculation
+                int groupsRemaining = groups.size() - 1 - gIdx;
+                if (groupsRemaining > 0) {
+                    // How many rows do future groups need?
+                    int rowsNeededForRest = 0;
+                    for (int k = gIdx + 1; k < groupRows.size(); k++)
+                        rowsNeededForRest += groupRows.get(k);
+
+                    int rowsLeftInGrid = (endRow - startRow + 1) - currentRowOffset;
+                    int spareRows = Math.max(0, rowsLeftInGrid - rowsNeededForRest);
+
+                    // Distribute spare rows evenly
+                    int gap = spareRows / groupsRemaining;
+
+                    // Apply Gap
+                    currentRowOffset += gap;
                 }
             }
 
@@ -191,19 +201,20 @@ public class LayoutEngine {
             // Group 2 starts at Next Col.
 
             // Calculate total cols needed
+            // Improved calculation
+            double effectiveRowsPerCol = Math.max(1.0, (double) availableSlots.size() / rowSize);
             List<Integer> groupCols = new ArrayList<>();
             int totalColsNeeded = 0;
             for (List<ItemStack> g : groups) {
-                // Check available capacity in a distinct column?
-                // This is complex because locks might make a column partially full.
-                // Heuristic: (Size / TotalRows).
-                int needed = (g.size() + totalRows - 1) / totalRows;
+                int needed = (int) Math.ceil(g.size() / effectiveRowsPerCol);
                 groupCols.add(needed);
                 totalColsNeeded += needed;
             }
 
-            int spareCols = rowSize - totalColsNeeded;
             int gapsNeeded = groups.size() - 1;
+            int spareCols = rowSize - totalColsNeeded;
+            // Distribute spare columns as gaps
+            // Distribute spare cols
             int[] gapSizes = new int[Math.max(1, gapsNeeded)];
 
             if (gapsNeeded > 0 && spareCols > 0) {
@@ -257,5 +268,30 @@ public class LayoutEngine {
         }
 
         return result;
+    }
+
+    private static long getGroupKey(ItemStack stack, PiggyInventoryConfig.SortingAlgorithm algorithm) {
+        switch (algorithm) {
+            case SMART:
+                return SmartCategorySorter.getItemWeight(stack);
+            case TAG:
+                return TagSorter.getTagGroupIndex(stack);
+            case RARITY:
+                return stack.getRarity().ordinal();
+            case COLOR:
+                // Bucket hue into 8 groups (45 degrees each)
+                return ColorSorter.getItemHue(stack) / 45;
+            case TYPE:
+                String id = net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(stack.getItem()).toString();
+                return is.pig.minecraft.lib.util.NameAnalysisUtils.extractType(id).hashCode();
+            case MATERIAL:
+                // Group by Item Class (BlockItem vs SwordItem etc)
+                return stack.getItem().getClass().hashCode();
+            case ALPHABETICAL:
+                String name = stack.getHoverName().getString();
+                return name.isEmpty() ? 0 : Character.toUpperCase(name.charAt(0));
+            default:
+                return 0;
+        }
     }
 }

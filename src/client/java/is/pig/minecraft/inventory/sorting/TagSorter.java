@@ -54,7 +54,7 @@ public class TagSorter implements ISorter {
         };
     }
 
-    private int getPriority(ItemStack stack) {
+    public static int getTagGroupIndex(ItemStack stack) {
         // Lower index is higher priority
         // If no match, return MAX_INT
 
@@ -72,6 +72,10 @@ public class TagSorter implements ISorter {
             }
         }
         return Integer.MAX_VALUE;
+    }
+
+    private int getPriority(ItemStack stack) {
+        return getTagGroupIndex(stack);
     }
 
     @Override

@@ -17,11 +17,11 @@ public class ColorSorter implements ISorter {
 
     @Override
     public Comparator<ItemStack> getComparator() {
-        return Comparator.comparingInt(this::getItemHue)
+        return Comparator.comparingInt(ColorSorter::getItemHue)
                 .thenComparing(stack -> stack.getDisplayName().getString());
     }
 
-    private int getItemHue(ItemStack stack) {
+    public static int getItemHue(ItemStack stack) {
         int color = getItemColor(stack);
         // Extract Hue from RGB
         float[] hsb = Color.RGBtoHSB((color >> 16) & 0xFF, (color >> 8) & 0xFF, color & 0xFF, null);
@@ -29,7 +29,7 @@ public class ColorSorter implements ISorter {
         return (int) (hsb[0] * 1000);
     }
 
-    private int getItemColor(ItemStack stack) {
+    private static int getItemColor(ItemStack stack) {
         // 1. Try ItemColors (Tint) - DISABLED due to mapping issues
         // Usually layer 0 is the main body
         /*

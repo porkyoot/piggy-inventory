@@ -23,51 +23,54 @@ public class InventorySorter {
             return;
 
         List<Slot> allSlots = screen.getMenu().slots;
-        int startSlot, endSlot; // inclusive, exclusive
-
-        // 1. Identify Range
-        if (sortPlayerInventory) {
-            // Player inventory is usually the last 36 slots (27 storage + 9 hotbar) in
-            // standard containers
-            // But getting exact range can be tricky depending on the container.
-            // A heuristic: Player slots are usually at the end.
-            int totalSlots = allSlots.size();
-            startSlot = totalSlots - 36;
-            endSlot = totalSlots;
-        } else {
-            // External container
-            // Usually from 0 to Size - 36
-            int totalSlots = allSlots.size();
-            startSlot = 0;
-            endSlot = totalSlots - 36;
-            if (endSlot <= 0)
-                return; // No external inventory
-        }
 
         // 2. Snapshot & Extract Items
         List<ItemStack> extractableItems = new ArrayList<>();
         List<Integer> validSlotIndices = new ArrayList<>();
 
-        for (int i = startSlot; i < endSlot; i++) {
-            Slot slot = allSlots.get(i);
+        // 1. Identify Range & Extract Items
+        if (sortPlayerInventory) {
+            // Strict Player Inventory (Storage + Hotbar)
+            // Iterate all slots and find those belonging to PlayerInventory < 36
+            for (Slot slot : allSlots) {
+                if (slot.container == client.player.getInventory() && slot.getContainerSlot() < 36) {
+                    if (SlotLockingManager.getInstance().isLocked(slot))
+                        continue;
 
-            // Skip locked slots
-            if (SlotLockingManager.getInstance().isLocked(slot)) {
-                continue;
-            }
-
-            ItemStack stack = slot.getItem();
-            if (!stack.isEmpty()) {
-                // Check blacklist
-                String itemId = net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(stack.getItem()).toString();
-                if (((PiggyInventoryConfig) PiggyInventoryConfig.getInstance()).getBlacklistedItems()
-                        .contains(itemId)) {
-                    continue; // Treat as locked/immovable
+                    ItemStack stack = slot.getItem();
+                    if (!stack.isEmpty()) {
+                        String itemId = net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(stack.getItem())
+                                .toString();
+                        if (((PiggyInventoryConfig) PiggyInventoryConfig.getInstance()).getBlacklistedItems()
+                                .contains(itemId)) {
+                            continue;
+                        }
+                        extractableItems.add(stack.copy());
+                    }
+                    validSlotIndices.add(slot.index);
                 }
-
-                extractableItems.add(stack.copy());
             }
-            validSlotIndices.add(slot.index);
+        } else {
+            // External Container
+            for (Slot slot : allSlots) {
+                // Must NOT be player inventory
+                if (slot.container != client.player.getInventory()) {
+                    if (SlotLockingManager.getInstance().isLocked(slot))
+                        continue;
+
+                    ItemStack stack = slot.getItem();
+                    if (!stack.isEmpty()) {
+                        String itemId = net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(stack.getItem())
+                                .toString();
+                        if (((PiggyInventoryConfig) PiggyInventoryConfig.getInstance()).getBlacklistedItems()
+                                .contains(itemId)) {
+                            continue;
+                        }
+                        extractableItems.add(stack.copy());
+                    }
+                    validSlotIndices.add(slot.index);
+                }
+            }
         }
 
         if (validSlotIndices.isEmpty() || extractableItems.isEmpty())
@@ -82,7 +85,7 @@ public class InventorySorter {
         PiggyInventoryConfig config = (PiggyInventoryConfig) PiggyInventoryConfig.getInstance();
         java.util.Map<Integer, ItemStack> layoutMap = LayoutEngine.calculateLayout(extractableItems, validSlotIndices,
                 9,
-                config.getDefaultLayout());
+                config.getDefaultLayout(), config.getDefaultAlgorithm());
 
         // 5. Diff & Execution
         boolean safeForCreativePacket = false;
