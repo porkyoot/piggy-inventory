@@ -32,6 +32,8 @@ public abstract class MixinHandledScreen implements is.pig.minecraft.inventory.d
     private static final net.minecraft.resources.ResourceLocation LOCK_TEXTURE = net.minecraft.resources.ResourceLocation
             .fromNamespaceAndPath("piggy-inventory", "textures/gui/lock.png");
 
+    private Slot piggy_lastShiftClickedSlot;
+
     @Inject(method = "renderSlot", at = @At("TAIL"))
     private void renderSlotLock(GuiGraphics context, Slot slot, CallbackInfo ci) {
         long window = Minecraft.getInstance().getWindow().getWindow();
@@ -80,6 +82,12 @@ public abstract class MixinHandledScreen implements is.pig.minecraft.inventory.d
         long window = Minecraft.getInstance().getWindow().getWindow();
         boolean altHeld = InputConstants.isKeyDown(window,
                 KeyBindingHelper.getBoundKeyOf(PiggyInventoryClient.lockKey).getValue());
+        boolean shiftHeld = InputConstants.isKeyDown(window, InputConstants.KEY_LSHIFT)
+                || InputConstants.isKeyDown(window, InputConstants.KEY_RSHIFT);
+
+        if (button == 0) {
+            this.piggy_lastShiftClickedSlot = null;
+        }
 
         if (altHeld) {
             Slot slot = this.piggy_getSlotUnderMouse(mouseX, mouseY);
@@ -88,7 +96,45 @@ public abstract class MixinHandledScreen implements is.pig.minecraft.inventory.d
                 if (slot.container == Minecraft.getInstance().player.getInventory() && slot.getContainerSlot() < 36) {
                     SlotLockingManager.getInstance().toggleLock(slot);
                     cir.setReturnValue(true);
+                    return;
                 }
+            }
+        }
+
+        if (shiftHeld && button == 0) {
+            Slot slot = this.piggy_getSlotUnderMouse(mouseX, mouseY);
+            if (slot != null) {
+                this.piggy_lastShiftClickedSlot = slot;
+            }
+        }
+    }
+
+    @Inject(method = "mouseReleased", at = @At("HEAD"), cancellable = true)
+    private void onMouseReleased(double mouseX, double mouseY, int button, CallbackInfoReturnable<Boolean> cir) {
+        if (button == 0) {
+            this.piggy_lastShiftClickedSlot = null;
+        }
+    }
+
+    @Inject(method = "mouseDragged", at = @At("HEAD"), cancellable = true)
+    private void onMouseDragged(double mouseX, double mouseY, int button, double deltaX, double deltaY,
+            CallbackInfoReturnable<Boolean> cir) {
+        long window = Minecraft.getInstance().getWindow().getWindow();
+        boolean shiftHeld = InputConstants.isKeyDown(window, InputConstants.KEY_LSHIFT)
+                || InputConstants.isKeyDown(window, InputConstants.KEY_RSHIFT);
+
+        if (shiftHeld && button == 0) {
+            Slot slot = this.piggy_getSlotUnderMouse(mouseX, mouseY);
+
+            if (slot != null && slot.hasItem() && slot != this.piggy_lastShiftClickedSlot) {
+                this.piggy_lastShiftClickedSlot = slot;
+
+                // Perform quick move (shift-click)
+                Minecraft client = Minecraft.getInstance();
+                AbstractContainerScreen<?> screen = (AbstractContainerScreen<?>) (Object) this;
+
+                client.gameMode.handleInventoryMouseClick(screen.getMenu().containerId, slot.index, 0,
+                        net.minecraft.world.inventory.ClickType.QUICK_MOVE, client.player);
             }
         }
     }
