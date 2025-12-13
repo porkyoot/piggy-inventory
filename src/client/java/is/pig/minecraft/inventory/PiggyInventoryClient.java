@@ -74,7 +74,6 @@ public class PiggyInventoryClient implements ClientModInitializer {
                 ConfigPersistence.load();
                 controller.initialize();
                 is.pig.minecraft.lib.ui.AntiCheatHudOverlay.register();
-                is.pig.minecraft.lib.network.SyncConfigPayload.registerPacket();
 
                 PiggyClientConfig.getInstance().registerConfigSyncListener((allowCheats, features) -> {
                         PiggyInventoryConfig inv = (PiggyInventoryConfig) PiggyInventoryConfig.getInstance();

@@ -2,9 +2,8 @@ base {
     archivesName = "piggy-inventory"
 }
 
-loom {
-    splitEnvironmentSourceSets()
 
+loom {
     mods {
         "piggy-inventory" {
             sourceSet sourceSets.main
@@ -26,5 +25,5 @@ dependencies {
     implementation project(path: ':piggy-lib', configuration: 'namedElements')
     clientImplementation project(path: ':piggy-lib', configuration: 'namedElements')
     
-    include project(':piggy-lib')
+    //include project(':piggy-lib')
 }
