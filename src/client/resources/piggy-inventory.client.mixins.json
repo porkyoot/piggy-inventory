@@ -5,7 +5,8 @@
 	"client": [
 		"MinecraftAccessorMixin",
 		"MinecraftClientMixin",
-		"MixinHandledScreen"
+		"MixinHandledScreen",
+		"MixinMouseHandler"
 	],
 	"injectors": {
 		"defaultRequire": 1

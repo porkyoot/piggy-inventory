@@ -127,6 +127,10 @@ public abstract class MixinHandledScreen implements is.pig.minecraft.inventory.d
             Slot slot = this.piggy_getSlotUnderMouse(mouseX, mouseY);
 
             if (slot != null && slot.hasItem() && slot != this.piggy_lastShiftClickedSlot) {
+                if (SlotLockingManager.getInstance().isLocked(slot)) {
+                    return;
+                }
+
                 this.piggy_lastShiftClickedSlot = slot;
 
                 // Perform quick move (shift-click)
