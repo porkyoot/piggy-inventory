@@ -5,6 +5,7 @@ import dev.isxander.yacl3.api.controller.TickBoxControllerBuilder;
 import dev.isxander.yacl3.api.controller.StringControllerBuilder;
 import dev.isxander.yacl3.api.controller.EnumControllerBuilder;
 import dev.isxander.yacl3.api.controller.EnumDropdownControllerBuilder;
+import dev.isxander.yacl3.api.controller.IntegerSliderControllerBuilder;
 
 import dev.isxander.yacl3.api.ListOption;
 import net.minecraft.client.gui.screens.Screen;
@@ -28,6 +29,14 @@ public class PiggyConfigScreenFactory {
                                 .category(ConfigCategory.createBuilder()
                                                 .name(Component.literal("Safety"))
                                                 .tooltip(is.pig.minecraft.lib.I18n.safetyTooltip())
+                                                .option(Option.<Integer>createBuilder()
+                                                                .name(Component.literal("Click Delay (cps equivalent)"))
+                                                                .description(OptionDescription.of(Component.literal(
+                                                                                "Ticks between click actions. (1 tick = 0.05s). Higher = Slower/Safer.")))
+                                                                .binding(1, config::getTickDelay, config::setTickDelay)
+                                                                .controller(opt -> IntegerSliderControllerBuilder
+                                                                                .create(opt).range(0, 10).step(1))
+                                                                .build())
                                                 .option(Option.<Boolean>createBuilder()
                                                                 .name(Component.literal("No Cheating Mode"))
                                                                 .description(OptionDescription.of(
@@ -38,22 +47,35 @@ public class PiggyConfigScreenFactory {
                                                                                                 "When enabled, utility features are disabled unless you are in Creative mode."),
                                                                                 Component.literal(
                                                                                                 "This option is locked if the server enforces anti-cheat.")))
-                                                                .binding(
-                                                                                true,
-                                                                                config::isNoCheatingMode,
+                                                                .binding(true, config::isNoCheatingMode,
                                                                                 config::setNoCheatingMode)
                                                                 .controller(TickBoxControllerBuilder::create)
-                                                                .available(config.isGlobalCheatsEditable()) // Gray out
-                                                                                                            // if server
-                                                                                                            // enforces
-                                                                                                            // rules
+                                                                .available(config.isGlobalCheatsEditable())
                                                                 .build())
                                                 .build())
 
-                                // TOOL SWAP CATEGORY
+                                // FEATURES CATEGORY
                                 .category(ConfigCategory.createBuilder()
-                                                .name(Component.literal("Tool Swap"))
-                                                .tooltip(Component.literal("Configure automatic tool swapping."))
+                                                .name(Component.literal("Features"))
+                                                .tooltip(Component.literal("General feature toggles."))
+
+                                                .option(Option.<Boolean>createBuilder()
+                                                                .name(Component.literal("Mouse + Shift Tweaks"))
+                                                                .description(OptionDescription.of(Component.literal(
+                                                                                "Enable Shift+Scroll/Drag transfer.")))
+                                                                .binding(true, config::isMouseTwicks,
+                                                                                config::setMouseTwicks)
+                                                                .controller(TickBoxControllerBuilder::create)
+                                                                .build())
+
+                                                .option(Option.<Boolean>createBuilder()
+                                                                .name(Component.literal("Continuous Crafting"))
+                                                                .description(OptionDescription.of(Component.literal(
+                                                                                "Enable holding click to craft/refill continuously.")))
+                                                                .binding(true, config::isContinuousCrafting,
+                                                                                config::setContinuousCrafting)
+                                                                .controller(TickBoxControllerBuilder::create)
+                                                                .build())
 
                                                 .option(Option.<Boolean>createBuilder()
                                                                 .name(Component.literal("Enable Tool Swap"))
@@ -62,90 +84,181 @@ public class PiggyConfigScreenFactory {
                                                                                                 "Automatically swaps to the faster tool in your inventory when attacking a block."),
                                                                                 Component.literal(
                                                                                                 "If Anti-Cheat is active, this cannot be enabled.")))
-                                                                .available(config.isToolSwapEditable()) // Gray out if
-                                                                                                        // enforced
-                                                                .binding(
-                                                                                true,
-                                                                                config::isToolSwapEnabled,
+                                                                .available(config.isToolSwapEditable())
+                                                                .binding(true, config::isToolSwapEnabled,
                                                                                 config::setToolSwapEnabled)
                                                                 .controller(TickBoxControllerBuilder::create)
                                                                 .build())
 
-                                                .option(Option.<String>createBuilder()
-                                                                .name(Component.literal("Hotbar Swap Slots"))
+                                                .option(Option.<Boolean>createBuilder()
+                                                                .name(Component.literal("Enable Weapon Swap"))
                                                                 .description(OptionDescription.of(
                                                                                 Component.literal(
-                                                                                                "Which hotbar slots can be overwritten/used when swapping?"),
+                                                                                                "Automatically swaps to the best weapon when attacking an entity."),
                                                                                 Component.literal(
-                                                                                                "Format: '0-3, 5, 7-8'")))
-                                                                .binding(
-                                                                                formatSlotList(config
-                                                                                                .getSwapHotbarSlots()),
+                                                                                                "If Anti-Cheat is active, this cannot be enabled.")))
+                                                                .available(config.isWeaponSwitchEditable())
+                                                                .binding(true, config::isWeaponSwitchBoolean,
+                                                                                config::setWeaponSwitchBoolean)
+                                                                .controller(TickBoxControllerBuilder::create)
+                                                                .build())
+
+                                                .group(OptionGroup.createBuilder()
+                                                                .name(Component.literal("Auto Refill"))
+                                                                .option(Option.<Boolean>createBuilder()
+                                                                                .name(Component.literal(
+                                                                                                "Enable Auto Refill"))
+                                                                                .binding(true, config::isAutoRefill,
+                                                                                                config::setAutoRefill)
+                                                                                .controller(TickBoxControllerBuilder::create)
+                                                                                .build())
+                                                                .option(Option.<Boolean>createBuilder()
+                                                                                .name(Component.literal(
+                                                                                                "Refill Containers (Stacks)"))
+                                                                                .binding(true, config::isAutoRefillContainers,
+                                                                                                config::setAutoRefillContainers)
+                                                                                .controller(TickBoxControllerBuilder::create)
+                                                                                .build())
+                                                                .option(Option.<Boolean>createBuilder()
+                                                                                .name(Component.literal("Refill Food"))
+                                                                                .binding(true, config::isAutoRefillFood,
+                                                                                                config::setAutoRefillFood)
+                                                                                .controller(TickBoxControllerBuilder::create)
+                                                                                .build())
+                                                                .option(Option.<Boolean>createBuilder()
+                                                                                .name(Component.literal(
+                                                                                                "Refill Weapon"))
+                                                                                .binding(true, config::isAutoRefillWeapon,
+                                                                                                config::setAutoRefillWeapon)
+                                                                                .controller(TickBoxControllerBuilder::create)
+                                                                                .build())
+                                                                .option(Option.<Boolean>createBuilder()
+                                                                                .name(Component.literal("Refill Tool"))
+                                                                                .binding(true, config::isAutoRefillTool,
+                                                                                                config::setAutoRefillTool)
+                                                                                .controller(TickBoxControllerBuilder::create)
+                                                                                .build())
+                                                                .option(Option.<Boolean>createBuilder()
+                                                                                .name(Component.literal(
+                                                                                                "Refill Harmful Food"))
+                                                                                .description(OptionDescription
+                                                                                                .of(Component.literal(
+                                                                                                                "Allows refilling items like Spider Eyes.")))
+                                                                                .binding(false, config::isAutoRefillHarmful,
+                                                                                                config::setAutoRefillHarmful)
+                                                                                .controller(TickBoxControllerBuilder::create)
+                                                                                .build())
+                                                                .build())
+
+                                                // Group: Fast Loot
+                                                .group(OptionGroup.createBuilder()
+                                                                .name(Component.literal("Fast Loot & Deposit"))
+                                                                .option(Option.<Boolean>createBuilder()
+                                                                                .name(Component.literal(
+                                                                                                "Enable Fast Loot"))
+                                                                                .binding(true, config::isFastLoot,
+                                                                                                config::setFastLoot)
+                                                                                .controller(TickBoxControllerBuilder::create)
+                                                                                .build())
+                                                                .option(Option.<Boolean>createBuilder()
+                                                                                .name(Component.literal(
+                                                                                                "In Container: Matching Slots"))
+                                                                                .description(OptionDescription
+                                                                                                .of(Component.literal(
+                                                                                                                "Fast loot/depo matching items.")))
+                                                                                .binding(true, config::isFastLootInContainerMatching,
+                                                                                                config::setFastLootInContainerMatching)
+                                                                                .controller(TickBoxControllerBuilder::create)
+                                                                                .build())
+                                                                .option(Option.<Boolean>createBuilder()
+                                                                                .name(Component.literal(
+                                                                                                "In Container: Entire Inventory"))
+                                                                                .description(OptionDescription
+                                                                                                .of(Component.literal(
+                                                                                                                "Fast loot/depo all items.")))
+                                                                                .binding(true, config::isFastLootInContainerAll,
+                                                                                                config::setFastLootInContainerAll)
+                                                                                .controller(TickBoxControllerBuilder::create)
+                                                                                .build())
+                                                                .option(Option.<Boolean>createBuilder()
+                                                                                .name(Component.literal(
+                                                                                                "Mouse Hover: Matching Slots"))
+                                                                                .description(OptionDescription
+                                                                                                .of(Component.literal(
+                                                                                                                "Fast loot/depo matching items via hover.")))
+                                                                                .binding(true, config::isFastLootLookingAtMatching,
+                                                                                                config::setFastLootLookingAtMatching)
+                                                                                .controller(TickBoxControllerBuilder::create)
+                                                                                .build())
+                                                                .option(Option.<Boolean>createBuilder()
+                                                                                .name(Component.literal(
+                                                                                                "Mouse Hover: Entire Inventory"))
+                                                                                .description(OptionDescription
+                                                                                                .of(Component.literal(
+                                                                                                                "Fast loot/depo all items via hover.")))
+                                                                                .binding(true, config::isFastLootLookingAtAll,
+                                                                                                config::setFastLootLookingAtAll)
+                                                                                .controller(TickBoxControllerBuilder::create)
+                                                                                .build())
+                                                                .build())
+                                                .build())
+
+                                // TOOL SWAP CATEGORY
+                                .category(ConfigCategory.createBuilder()
+                                                .name(Component.literal("Tool Swap"))
+                                                .tooltip(Component.literal("Configure automatic tool swapping."))
+
+                                                .option(Option.<String>createBuilder()
+                                                                .name(Component.literal("Hotbar Swap Slots"))
+                                                                .description(OptionDescription.of(Component.literal(
+                                                                                "Which hotbar slots can be overwritten?")))
+                                                                .binding(formatSlotList(config.getSwapHotbarSlots()),
                                                                                 () -> formatSlotList(config
                                                                                                 .getSwapHotbarSlots()),
                                                                                 (val) -> config.setSwapHotbarSlots(
                                                                                                 parseSlotString(val)))
                                                                 .controller(StringControllerBuilder::create)
                                                                 .build())
-
                                                 .option(Option.<PiggyInventoryConfig.OrePreference>createBuilder()
                                                                 .name(Component.literal("Ore Preference"))
-                                                                .description(OptionDescription.of(
-                                                                                Component.literal(
-                                                                                                "Prefer Silk Touch or Fortune for ores?")))
-                                                                .binding(
-                                                                                PiggyInventoryConfig.OrePreference.FORTUNE,
+                                                                .binding(PiggyInventoryConfig.OrePreference.FORTUNE,
                                                                                 config::getOrePreference,
                                                                                 config::setOrePreference)
                                                                 .controller(opt -> EnumControllerBuilder.create(opt)
                                                                                 .enumClass(PiggyInventoryConfig.OrePreference.class))
                                                                 .build())
 
-                                                .option(ListOption.<String>createBuilder()
-                                                                .name(Component.literal("Silk Touch Blocks"))
-                                                                .description(OptionDescription.of(
-                                                                                Component.literal(
-                                                                                                "Blocks that require Silk Touch to drop.")))
-                                                                .binding(
-                                                                                config.getSilkTouchBlocks(),
+                                                .group(ListOption.<String>createBuilder()
+                                                                .name(Component.literal(
+                                                                                "Silk Touch Blocks"))
+                                                                .binding(config.getSilkTouchBlocks(),
                                                                                 config::getSilkTouchBlocks,
                                                                                 config::setSilkTouchBlocks)
                                                                 .controller(StringControllerBuilder::create)
                                                                 .initial("")
                                                                 .build())
-
-                                                .option(ListOption.<String>createBuilder()
-                                                                .name(Component.literal("Fortune/Ore Blocks"))
-                                                                .description(OptionDescription.of(
-                                                                                Component.literal(
-                                                                                                "Blocks affected by Fortune preference.")))
-                                                                .binding(
-                                                                                config.getFortuneBlocks(),
+                                                .group(ListOption.<String>createBuilder()
+                                                                .name(Component.literal(
+                                                                                "Fortune/Ore Blocks"))
+                                                                .binding(config.getFortuneBlocks(),
                                                                                 config::getFortuneBlocks,
                                                                                 config::setFortuneBlocks)
                                                                 .controller(StringControllerBuilder::create)
                                                                 .initial("")
                                                                 .build())
-
-                                                .option(ListOption.<String>createBuilder()
-                                                                .name(Component.literal("Protected Blocks"))
-                                                                .description(OptionDescription.of(
-                                                                                Component.literal(
-                                                                                                "Blocks that must NOT be broken when in Silk Touch mode."),
-                                                                                Component.literal(
-                                                                                                "Use this to prevent accidental breaking of fragile blocks.")))
-                                                                .binding(
-                                                                                config.getProtectedBlocks(),
+                                                .group(ListOption.<String>createBuilder()
+                                                                .name(Component.literal(
+                                                                                "Protected Blocks"))
+                                                                .binding(config.getProtectedBlocks(),
                                                                                 config::getProtectedBlocks,
                                                                                 config::setProtectedBlocks)
                                                                 .controller(StringControllerBuilder::create)
                                                                 .initial("")
                                                                 .build())
-
-                                                .option(ListOption.<String>createBuilder()
-                                                                .name(Component.literal("Shears Blocks"))
-                                                                .binding(
-                                                                                config.getShearsBlocks(),
+                                                .group(ListOption.<String>createBuilder()
+                                                                .name(Component.literal(
+                                                                                "Shears Blocks"))
+                                                                .binding(config.getShearsBlocks(),
                                                                                 config::getShearsBlocks,
                                                                                 config::setShearsBlocks)
                                                                 .controller(StringControllerBuilder::create)
@@ -155,135 +268,62 @@ public class PiggyConfigScreenFactory {
 
                                 // WEAPON SWITCH CATEGORY
                                 .category(ConfigCategory.createBuilder()
-                                                .name(Component.literal("Weapon Switch"))
+                                                .name(Component.literal("Weapon Swap"))
                                                 .tooltip(Component.literal("Configure automatic weapon switching."))
-
-                                                .option(Option.<Boolean>createBuilder()
-                                                                .name(Component.literal("Enable Weapon Switch"))
-                                                                .description(OptionDescription.of(
-                                                                                Component.literal(
-                                                                                                "Automatically swaps to the best weapon when attacking an entity."),
-                                                                                Component.literal(
-                                                                                                "If Anti-Cheat is active, this cannot be enabled.")))
-                                                                .available(config.isWeaponSwitchEditable())
-                                                                .binding(
-                                                                                true,
-                                                                                config::isWeaponSwitchBoolean,
-                                                                                config::setWeaponSwitchBoolean)
-                                                                .controller(TickBoxControllerBuilder::create)
-                                                                .build())
 
                                                 .option(Option.<String>createBuilder()
                                                                 .name(Component.literal("Weapon Hotbar Swap Slots"))
-                                                                .description(OptionDescription.of(
-                                                                                Component.literal(
-                                                                                                "Which hotbar slots can be overwritten/used when swapping weapons?"),
-                                                                                Component.literal(
-                                                                                                "Format: '0-3, 5, 7-8'")))
-                                                                .binding(
-                                                                                formatSlotList(config
-                                                                                                .getWeaponSwapHotbarSlots()),
+                                                                .binding(formatSlotList(
+                                                                                config.getWeaponSwapHotbarSlots()),
                                                                                 () -> formatSlotList(config
                                                                                                 .getWeaponSwapHotbarSlots()),
                                                                                 (val) -> config.setWeaponSwapHotbarSlots(
                                                                                                 parseSlotString(val)))
                                                                 .controller(StringControllerBuilder::create)
                                                                 .build())
-
                                                 .option(Option.<PiggyInventoryConfig.WeaponPreference>createBuilder()
                                                                 .name(Component.literal("Weapon Preference"))
-                                                                .description(OptionDescription.of(
-                                                                                Component.literal(
-                                                                                                "Which type of weapon do you prefer?"),
-                                                                                Component.literal(
-                                                                                                "Speed (Sword), Damage (Axe), or Range.")))
-                                                                .binding(
-                                                                                PiggyInventoryConfig.WeaponPreference.DAMAGE,
+                                                                .binding(PiggyInventoryConfig.WeaponPreference.DAMAGE,
                                                                                 config::getGuiWeaponPreference,
                                                                                 config::setGuiWeaponPreference)
                                                                 .controller(opt -> EnumControllerBuilder.create(opt)
                                                                                 .enumClass(PiggyInventoryConfig.WeaponPreference.class))
                                                                 .build())
-
-                                                .option(ListOption.<String>createBuilder()
-                                                                .name(Component.literal("Speed Weapons Priority"))
-                                                                .description(OptionDescription.of(Component.literal(
-                                                                                "Priority list for 'Speed' preference (Top = Highest).")))
-                                                                .binding(
-                                                                                config.getFastWeapons(),
+                                                .group(ListOption.<String>createBuilder()
+                                                                .name(Component.literal(
+                                                                                "Speed Weapons Priority"))
+                                                                .binding(config.getFastWeapons(),
                                                                                 config::getFastWeapons,
                                                                                 config::setFastWeapons)
                                                                 .controller(StringControllerBuilder::create)
                                                                 .initial("")
                                                                 .build())
-
-                                                .option(ListOption.<String>createBuilder()
-                                                                .name(Component.literal("Damage Weapons Priority"))
-                                                                .description(OptionDescription.of(Component.literal(
-                                                                                "Priority list for 'Damage' preference (Top = Highest).")))
-                                                                .binding(
-                                                                                config.getHeavyWeapons(),
+                                                .group(ListOption.<String>createBuilder()
+                                                                .name(Component.literal(
+                                                                                "Damage Weapons Priority"))
+                                                                .binding(config.getHeavyWeapons(),
                                                                                 config::getHeavyWeapons,
                                                                                 config::setHeavyWeapons)
                                                                 .controller(StringControllerBuilder::create)
                                                                 .initial("")
                                                                 .build())
-
-                                                .option(ListOption.<String>createBuilder()
-                                                                .name(Component.literal("Range Weapons Priority"))
-                                                                .description(OptionDescription.of(Component.literal(
-                                                                                "Priority list for 'Range' preference (Top = Highest).")))
-                                                                .binding(
-                                                                                config.getRangeWeapons(),
+                                                .group(ListOption.<String>createBuilder()
+                                                                .name(Component.literal(
+                                                                                "Range Weapons Priority"))
+                                                                .binding(config.getRangeWeapons(),
                                                                                 config::getRangeWeapons,
                                                                                 config::setRangeWeapons)
                                                                 .controller(StringControllerBuilder::create)
                                                                 .initial("")
                                                                 .build())
-
                                                 .build())
 
                                 // INVENTORY SORTER CATEGORY
                                 .category(ConfigCategory.createBuilder()
                                                 .name(Component.literal("Inventory Sorter"))
                                                 .tooltip(Component.literal("Configure scanning and sorting behavior."))
-
-                                                // Lock Hotbar Default option removed per user request
-                                                /*
-                                                 * .option(Option.<Boolean>createBuilder()
-                                                 * .name(Component.literal("Lock Hotbar Default"))
-                                                 * .description(OptionDescription
-                                                 * .of(Component.literal("If true, hotbar slots are locked by default.")
-                                                 * ))
-                                                 * .binding(true, config::isLockHotbar, config::setLockHotbar)
-                                                 * .controller(TickBoxControllerBuilder::create)
-                                                 * .build())
-                                                 */
                                                 .option(Option.<PiggyInventoryConfig.SortingAlgorithm>createBuilder()
                                                                 .name(Component.literal("Default Algorithm"))
-                                                                .description(OptionDescription.of(
-                                                                                Component.literal(
-                                                                                                "Select the default sorting algorithm."),
-                                                                                Component.literal(""),
-                                                                                Component.literal("§6Available Modes:"),
-                                                                                Component.literal(
-                                                                                                "§eAlphabetical:§r Sorts items alphabetically (A-Z)."),
-                                                                                Component.literal(
-                                                                                                "§eCreative:§r Sorts based on Creative Inventory."),
-                                                                                Component.literal(
-                                                                                                "§eColor:§r Sorts by visual color/hue."),
-                                                                                Component.literal(
-                                                                                                "§eRarity:§r Sorts by rarity (Epic -> Common)."),
-                                                                                Component.literal(
-                                                                                                "§eMaterial:§r Groups by material (e.g. Acacia)."),
-                                                                                Component.literal(
-                                                                                                "§eType:§r Groups by type (e.g. Boats)."),
-                                                                                Component.literal(
-                                                                                                "§eTag:§r Sorts by Tag Priority (Tools > Food...)."),
-                                                                                Component.literal(
-                                                                                                "§eCustom List:§r Uses 'config/piggy-inventory/custom_sort.json'."),
-                                                                                Component.literal(
-                                                                                                "§eSmart:§r Default heuristic groupings.")))
                                                                 .binding(PiggyInventoryConfig.SortingAlgorithm.SMART,
                                                                                 config::getDefaultAlgorithm,
                                                                                 config::setDefaultAlgorithm)
@@ -291,35 +331,13 @@ public class PiggyConfigScreenFactory {
                                                                 .build())
                                                 .option(Option.<PiggyInventoryConfig.SortingLayout>createBuilder()
                                                                 .name(Component.literal("Default Layout"))
-                                                                .description(OptionDescription.of(
-                                                                                Component.literal(
-                                                                                                "Select the sorting layout structure."),
-                                                                                Component.literal(""),
-                                                                                Component.literal(
-                                                                                                "§eCompact:§r Default. Fills slots sequentially."),
-                                                                                Component.literal(
-                                                                                                "§eColumns:§r Groups items into vertical columns."),
-                                                                                Component.literal(
-                                                                                                "§eRows:§r Groups items into horizontal rows."),
-                                                                                Component.literal(""),
-                                                                                Component.literal(
-                                                                                                "Images can be added if assets are provided.")))
                                                                 .binding(PiggyInventoryConfig.SortingLayout.COMPACT,
                                                                                 config::getDefaultLayout,
                                                                                 config::setDefaultLayout)
                                                                 .controller(opt -> EnumControllerBuilder.create(opt)
                                                                                 .enumClass(PiggyInventoryConfig.SortingLayout.class))
                                                                 .build())
-                                                .option(Option.<Integer>createBuilder()
-                                                                .name(Component.literal("Sort Delay (Ticks)"))
-                                                                .description(OptionDescription.of(Component.literal(
-                                                                                "Ticks between click actions.")))
-                                                                .binding(1, config::getTickDelay, config::setTickDelay)
-                                                                .controller(opt -> dev.isxander.yacl3.api.controller.IntegerSliderControllerBuilder
-                                                                                .create(opt).range(0, 10).step(1))
-                                                                .build())
-                                                // Blacklists
-                                                .option(ListOption.<String>createBuilder()
+                                                .group(ListOption.<String>createBuilder()
                                                                 .name(Component.literal("Ignored Screen Classes"))
                                                                 .binding(new ArrayList<>(),
                                                                                 config::getBlacklistedInventories,
@@ -327,7 +345,7 @@ public class PiggyConfigScreenFactory {
                                                                 .controller(StringControllerBuilder::create)
                                                                 .initial("")
                                                                 .build())
-                                                .option(ListOption.<String>createBuilder()
+                                                .group(ListOption.<String>createBuilder()
                                                                 .name(Component.literal("Ignored Items"))
                                                                 .binding(new ArrayList<>(), config::getBlacklistedItems,
                                                                                 config::setBlacklistedItems)

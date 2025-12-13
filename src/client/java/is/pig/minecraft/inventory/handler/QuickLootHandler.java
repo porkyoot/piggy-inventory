@@ -31,8 +31,19 @@ public class QuickLootHandler {
     }
 
     public boolean onScroll(Minecraft client, double delta, boolean ctrlHeld) {
-        if (!((PiggyInventoryConfig) PiggyInventoryConfig.getInstance()).isFastLootingLookingAt())
+        PiggyInventoryConfig config = (PiggyInventoryConfig) PiggyInventoryConfig.getInstance();
+        if (!config.isFastLoot())
             return false;
+
+        // Granular check
+        if (ctrlHeld) {
+            if (!config.isFastLootLookingAtAll())
+                return false;
+        } else {
+            if (!config.isFastLootLookingAtMatching())
+                return false;
+        }
+
         if (client.player == null || client.level == null)
             return false;
 

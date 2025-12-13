@@ -9,9 +9,8 @@ import net.fabricmc.api.Environment;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
-import com.mojang.blaze3d.platform.InputConstants;
 import net.minecraft.world.inventory.Slot;
-import net.fabricmc.fabric.api.client.keybinding.v1.KeyBindingHelper;
+
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
@@ -36,9 +35,7 @@ public abstract class MixinHandledScreen implements is.pig.minecraft.inventory.d
 
     @Inject(method = "renderSlot", at = @At("TAIL"))
     private void renderSlotLock(GuiGraphics context, Slot slot, CallbackInfo ci) {
-        long window = Minecraft.getInstance().getWindow().getWindow();
-        boolean altHeld = InputConstants.isKeyDown(window,
-                KeyBindingHelper.getBoundKeyOf(PiggyInventoryClient.lockKey).getValue());
+        boolean altHeld = is.pig.minecraft.inventory.util.InventoryUtils.isLockDown();
 
         if (!altHeld)
             return;
@@ -77,13 +74,12 @@ public abstract class MixinHandledScreen implements is.pig.minecraft.inventory.d
         }
     }
 
+    private long piggy_lastDragTime = 0;
+
     @Inject(method = "mouseClicked", at = @At("HEAD"), cancellable = true)
     private void onMouseClicked(double mouseX, double mouseY, int button, CallbackInfoReturnable<Boolean> cir) {
-        long window = Minecraft.getInstance().getWindow().getWindow();
-        boolean altHeld = InputConstants.isKeyDown(window,
-                KeyBindingHelper.getBoundKeyOf(PiggyInventoryClient.lockKey).getValue());
-        boolean shiftHeld = InputConstants.isKeyDown(window, InputConstants.KEY_LSHIFT)
-                || InputConstants.isKeyDown(window, InputConstants.KEY_RSHIFT);
+        boolean altHeld = is.pig.minecraft.inventory.util.InventoryUtils.isLockDown();
+        boolean shiftHeld = is.pig.minecraft.inventory.util.InventoryUtils.isShiftDown();
 
         if (button == 0) {
             this.piggy_lastShiftClickedSlot = null;
@@ -106,8 +102,11 @@ public abstract class MixinHandledScreen implements is.pig.minecraft.inventory.d
             if (slot != null) {
                 this.piggy_lastShiftClickedSlot = slot;
                 // Hook for Continuous Crafting
-                is.pig.minecraft.inventory.handler.CraftingHandler.getInstance()
-                        .onCraftingClick(slot, Minecraft.getInstance().player);
+                if (((is.pig.minecraft.inventory.config.PiggyInventoryConfig) is.pig.minecraft.inventory.config.PiggyInventoryConfig
+                        .getInstance()).isContinuousCrafting()) {
+                    is.pig.minecraft.inventory.handler.CraftingHandler.getInstance()
+                            .onCraftingClick(slot, Minecraft.getInstance().player);
+                }
             }
         }
     }
@@ -124,11 +123,20 @@ public abstract class MixinHandledScreen implements is.pig.minecraft.inventory.d
     @Inject(method = "mouseDragged", at = @At("HEAD"), cancellable = true)
     private void onMouseDragged(double mouseX, double mouseY, int button, double deltaX, double deltaY,
             CallbackInfoReturnable<Boolean> cir) {
-        long window = Minecraft.getInstance().getWindow().getWindow();
-        boolean shiftHeld = InputConstants.isKeyDown(window, InputConstants.KEY_LSHIFT)
-                || InputConstants.isKeyDown(window, InputConstants.KEY_RSHIFT);
+        PiggyInventoryConfig config = (PiggyInventoryConfig) PiggyInventoryConfig.getInstance();
+        if (!config.isMouseTwicks())
+            return;
+
+        boolean shiftHeld = is.pig.minecraft.inventory.util.InventoryUtils.isShiftDown();
 
         if (shiftHeld && button == 0) {
+            // Check throttling
+            long now = System.currentTimeMillis();
+            long delayMs = config.getTickDelay() * 50L;
+            if (now - piggy_lastDragTime < delayMs) {
+                return;
+            }
+
             Slot slot = this.piggy_getSlotUnderMouse(mouseX, mouseY);
 
             if (slot != null && slot.hasItem() && slot != this.piggy_lastShiftClickedSlot) {
@@ -137,6 +145,7 @@ public abstract class MixinHandledScreen implements is.pig.minecraft.inventory.d
                 }
 
                 this.piggy_lastShiftClickedSlot = slot;
+                piggy_lastDragTime = now;
 
                 // Perform quick move (shift-click)
                 Minecraft client = Minecraft.getInstance();

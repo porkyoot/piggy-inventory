@@ -24,6 +24,7 @@ public class PiggyInventoryClient implements ClientModInitializer {
 
         public static KeyMapping sortKey;
         public static KeyMapping lockKey;
+        public static KeyMapping fastLootKey;
 
         @Override
         public void onInitializeClient() {
@@ -41,6 +42,13 @@ public class PiggyInventoryClient implements ClientModInitializer {
                                 "Lock Slot Modifier",
                                 InputConstants.Type.KEYSYM,
                                 GLFW.GLFW_KEY_LEFT_ALT,
+                                "Piggy Inventory"));
+
+                // Register Fast Loot Key
+                fastLootKey = KeyBindingHelper.registerKeyBinding(new KeyMapping(
+                                "Fast Loot Modifier",
+                                InputConstants.Type.KEYSYM,
+                                GLFW.GLFW_KEY_LEFT_CONTROL,
                                 "Piggy Inventory"));
 
                 // existing registrations...

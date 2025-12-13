@@ -136,8 +136,13 @@ public class AutoRefillHandler {
         // Check 1: Stack Depleted (Main case)
         if (newStack.isEmpty() && !oldStack.isEmpty()) {
             RefillCategory cat = RefillCategory.fromStack(oldStack);
-            if (cat == RefillCategory.FOOD && !config.isAutoRefillFood())
-                return false;
+            if (cat == RefillCategory.FOOD) {
+                if (!config.isAutoRefillFood())
+                    return false;
+                // Harmful check
+                if (isHarmful(oldStack) && !config.isAutoRefillHarmful())
+                    return false;
+            }
 
             // Note: Weapons/Tools usually don't "deplete" into air unless they break.
             // If they break, newStack is empty.
@@ -220,6 +225,18 @@ public class AutoRefillHandler {
             return true;
         }
 
+        return false;
+    }
+
+    private boolean isHarmful(ItemStack stack) {
+        net.minecraft.world.food.FoodProperties food = stack.get(net.minecraft.core.component.DataComponents.FOOD);
+        if (food != null) {
+            for (net.minecraft.world.food.FoodProperties.PossibleEffect effect : food.effects()) {
+                if (!effect.effect().getEffect().value().isBeneficial()) {
+                    return true;
+                }
+            }
+        }
         return false;
     }
 }

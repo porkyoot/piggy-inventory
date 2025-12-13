@@ -428,19 +428,41 @@ public class PiggyInventoryConfig extends is.pig.minecraft.lib.config.PiggyClien
         this.blacklistedItems = val;
     }
 
+    // --- FEATURES TOGGLES ---
+    private boolean mouseTwicks = true;
+    private boolean continuousCrafting = true;
+
     // --- AUTO-REFILL CONFIG ---
     private boolean autoRefill = true;
     private boolean autoRefillContainers = true;
     private boolean autoRefillFood = true;
     private boolean autoRefillWeapon = true;
     private boolean autoRefillTool = true;
-    private boolean autoRefillHarmful = false; // "Auto refill with harmfull food" - assumed default false safety
+    private boolean autoRefillHarmful = false;
 
     // --- FAST LOOT CONFIG ---
-    private boolean fastLootingInContainer = true;
-    private boolean fastLootingLookingAt = true;
+    private boolean fastLoot = true;
+    private boolean fastLootInContainerMatching = true;
+    private boolean fastLootInContainerAll = true;
+    private boolean fastLootLookingAtMatching = true;
+    private boolean fastLootLookingAtAll = true;
 
-    // Getters and Setters for new configs
+    public boolean isMouseTwicks() {
+        return mouseTwicks;
+    }
+
+    public void setMouseTwicks(boolean v) {
+        this.mouseTwicks = v;
+    }
+
+    public boolean isContinuousCrafting() {
+        return continuousCrafting;
+    }
+
+    public void setContinuousCrafting(boolean v) {
+        this.continuousCrafting = v;
+    }
+
     public boolean isAutoRefill() {
         return autoRefill;
     }
@@ -489,26 +511,47 @@ public class PiggyInventoryConfig extends is.pig.minecraft.lib.config.PiggyClien
         this.autoRefillHarmful = v;
     }
 
-    public boolean isFastLootingInContainer() {
-        return fastLootingInContainer;
+    public boolean isFastLoot() {
+        return fastLoot;
     }
 
-    public void setFastLootingInContainer(boolean v) {
-        this.fastLootingInContainer = v;
+    public void setFastLoot(boolean v) {
+        this.fastLoot = v;
     }
 
-    public boolean isFastLootingLookingAt() {
-        return fastLootingLookingAt;
+    public boolean isFastLootInContainerMatching() {
+        return fastLootInContainerMatching;
     }
 
-    public void setFastLootingLookingAt(boolean v) {
-        this.fastLootingLookingAt = v;
+    public void setFastLootInContainerMatching(boolean v) {
+        this.fastLootInContainerMatching = v;
+    }
+
+    public boolean isFastLootInContainerAll() {
+        return fastLootInContainerAll;
+    }
+
+    public void setFastLootInContainerAll(boolean v) {
+        this.fastLootInContainerAll = v;
+    }
+
+    public boolean isFastLootLookingAtMatching() {
+        return fastLootLookingAtMatching;
+    }
+
+    public void setFastLootLookingAtMatching(boolean v) {
+        this.fastLootLookingAtMatching = v;
+    }
+
+    public boolean isFastLootLookingAtAll() {
+        return fastLootLookingAtAll;
+    }
+
+    public void setFastLootLookingAtAll(boolean v) {
+        this.fastLootLookingAtAll = v;
     }
 
     // Persistent Locked Slots: ScreenClass -> Set of SlotIndices
-    // private java.util.Map<String, java.util.Set<Integer>> savedLocks = new
-    // java.util.HashMap<>(); // Deprecated
-
     // Global Player Inventory Locks (Indices 0-35)
     private java.util.Set<Integer> lockedPlayerSlots = new java.util.HashSet<>();
 

@@ -7,6 +7,19 @@ import net.minecraft.world.inventory.Slot;
 
 public class InventoryUtils {
 
+    public static boolean isShiftDown() {
+        return net.minecraft.client.Minecraft.getInstance().options.keyShift.isDown();
+    }
+
+    public static boolean isFastLootDown() {
+        return is.pig.minecraft.inventory.PiggyInventoryClient.fastLootKey.isDown();
+    }
+
+    // Using legacy alt key mapping which we will restore
+    public static boolean isLockDown() {
+        return is.pig.minecraft.inventory.PiggyInventoryClient.lockKey.isDown();
+    }
+
     /**
      * Handles scroll-based item transfer logic.
      * Moved from MixinMouseHandler to avoid Mixin restriction on public static

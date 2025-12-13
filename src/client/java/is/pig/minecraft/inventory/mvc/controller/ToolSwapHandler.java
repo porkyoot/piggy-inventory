@@ -25,8 +25,8 @@ public class ToolSwapHandler {
      */
     public boolean onTick(Minecraft client) {
         PiggyInventoryConfig config = (PiggyInventoryConfig) PiggyInventoryConfig.getInstance();
-        
-        if (!config.isFeatureToolSwapEnabled()) {
+
+        if (!config.isToolSwapEnabled()) {
             return false;
         }
 
@@ -44,7 +44,7 @@ public class ToolSwapHandler {
 
         if (client.hitResult instanceof BlockHitResult blockHit && blockHit.getType() == HitResult.Type.BLOCK) {
             BlockState state = client.level.getBlockState(blockHit.getBlockPos());
-            
+
             PiggyInventoryConfig.OrePreference mode = config.getOrePreference();
 
             // 2. Safety Check (Silk Touch Mode)
@@ -87,7 +87,7 @@ public class ToolSwapHandler {
                 swapToSlot(client, currentSlot, bestSlot, config.getSwapHotbarSlots());
             }
         }
-        
+
         return false; // Allow attack
     }
 
@@ -127,8 +127,8 @@ public class ToolSwapHandler {
         }
     }
 
-    private float getToolScore(Minecraft client, ItemStack stack, BlockState state, 
-                               PiggyInventoryConfig.OrePreference mode, PiggyInventoryConfig config) {
+    private float getToolScore(Minecraft client, ItemStack stack, BlockState state,
+            PiggyInventoryConfig.OrePreference mode, PiggyInventoryConfig config) {
         if (stack.isEmpty())
             return 0f;
 
@@ -145,25 +145,23 @@ public class ToolSwapHandler {
         int fortuneLevel = getEnchantmentLevel(client, stack, Enchantments.FORTUNE);
 
         boolean needsShears = requiresShears(state, config);
-        
+
         // In FORTUNE mode, we IGNORE the need for shears (destruction mode).
         // In SILK_TOUCH mode, we respect it.
         if (mode == PiggyInventoryConfig.OrePreference.FORTUNE) {
             needsShears = false;
         }
-        
-        boolean needsSilk = (mode == PiggyInventoryConfig.OrePreference.SILK_TOUCH) 
-                            && matchesConfigList(config.getSilkTouchBlocks(), state);
-                            
+
+        boolean needsSilk = (mode == PiggyInventoryConfig.OrePreference.SILK_TOUCH)
+                && matchesConfigList(config.getSilkTouchBlocks(), state);
+
         boolean isOre = isOreOrValuable(state, config);
 
         if (needsShears && stack.is(Items.SHEARS)) {
             speed += 10000.0f; // Bonus only applied if we *want* shears behavior
-        } 
-        else if (needsSilk && hasSilk) {
-            speed += 10000.0f; 
-        } 
-        else if (isOre) {
+        } else if (needsSilk && hasSilk) {
+            speed += 10000.0f;
+        } else if (isOre) {
             if (mode == PiggyInventoryConfig.OrePreference.SILK_TOUCH) {
                 if (hasSilk)
                     speed += 5000.0f;
@@ -175,10 +173,9 @@ public class ToolSwapHandler {
                 else if (hasSilk)
                     speed -= 100.0f;
             }
-        } 
-        else if (!needsSilk && hasSilk) {
-             // Slight penalty to save Silk Touch durability on things that don't need it
-            speed -= 0.1f; 
+        } else if (!needsSilk && hasSilk) {
+            // Slight penalty to save Silk Touch durability on things that don't need it
+            speed -= 0.1f;
         }
 
         return speed;
