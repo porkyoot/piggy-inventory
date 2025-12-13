@@ -55,7 +55,8 @@ public class PiggyInventoryConfig extends is.pig.minecraft.lib.config.PiggyClien
     public enum SortingLayout {
         COMPACT("Compact"),
         COLUMNS("Columns"),
-        ROWS("Rows");
+        ROWS("Rows"),
+        GRID("Grid");
 
         public final String name;
 

@@ -55,7 +55,8 @@ public class LayoutEngine {
 
         // Group items if necessary
         if (layoutType == PiggyInventoryConfig.SortingLayout.ROWS
-                || layoutType == PiggyInventoryConfig.SortingLayout.COLUMNS) {
+                || layoutType == PiggyInventoryConfig.SortingLayout.COLUMNS
+                || layoutType == PiggyInventoryConfig.SortingLayout.GRID) {
             return planWithGroups(sortedItems, availableSet, minSlot, maxSlot, rowSize, layoutType, algorithm);
         }
 
@@ -263,6 +264,43 @@ public class LayoutEngine {
                     currentCol += gapSizes[gIdx] + 1; // +1 to move pass the last used column
                 } else {
                     currentCol++;
+                }
+            }
+        } else if (layoutType == PiggyInventoryConfig.SortingLayout.GRID) {
+            // Grid Layout: Flow with Gaps
+            int currentRow = startRow;
+            int currentCol = 0;
+            int gapSize = 2;
+
+            for (List<ItemStack> group : groups) {
+                int itemsPlaced = 0;
+                while (itemsPlaced < group.size()) {
+                    // Safety
+                    if (currentRow > endRow)
+                        break;
+
+                    int absSlot = currentRow * rowSize + currentCol;
+
+                    if (availableSlots.contains(absSlot)) {
+                        result.put(absSlot, group.get(itemsPlaced));
+                        itemsPlaced++;
+                    }
+
+                    // Advance
+                    currentCol++;
+                    if (currentCol >= rowSize) {
+                        currentCol = 0;
+                        currentRow++;
+                    }
+                }
+
+                // Apply Gap between groups
+                for (int k = 0; k < gapSize; k++) {
+                    currentCol++;
+                    if (currentCol >= rowSize) {
+                        currentCol = 0;
+                        currentRow++;
+                    }
                 }
             }
         }
