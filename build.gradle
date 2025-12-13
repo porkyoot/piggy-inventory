@@ -42,9 +42,10 @@ dependencies {
     include project(':piggy-lib')
 }
 
-// Ensure the client compiler sees the library classes
-// This manual classpath injection resolves issues where clientImplementation
-// fails to propagate file-collection dependencies correctly in CI
-tasks.named('compileClientJava').configure {
-    classpath += project(':piggy-lib').sourceSets.main.output
+// Force classpath injection using file path to guarantee visibility
+// Wrapped in afterEvaluate to ensure it persists after Loom configuration
+afterEvaluate {
+    tasks.named('compileClientJava').configure {
+        classpath += project(':piggy-lib').sourceSets.main.output.classesDirs
+    }
 }
