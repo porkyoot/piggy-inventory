@@ -28,20 +28,22 @@ public class PiggyInventoryConfig extends is.pig.minecraft.lib.config.PiggyClien
     // java.util.HashMap<>();
 
     public enum SortingAlgorithm {
-        ALPHABETICAL("Alphabetical"),
-        CREATIVE("Creative"),
-        SMART("Smart Category"),
-        COLOR("Color"),
-        RARITY("Rarity"),
-        MATERIAL("Material"),
-        TYPE("Type"),
-        TAG("Tag Priority"),
-        JSON("Custom List");
+        ALPHABETICAL("Alphabetical", "Sorts items alphabetically (A-Z)."),
+        CREATIVE("Creative", "Sorts items based on the Creative Inventory order."),
+        SMART("Smart Category", "Groups items by heuristic categories."),
+        COLOR("Color", "Sorts items by their visual color/hue."),
+        RARITY("Rarity", "Sorts items by rarity (Epic -> Common)."),
+        MATERIAL("Material", "Groups items by their material (e.g. Acacia, Iron)."),
+        TYPE("Type", "Groups items by their type (e.g. Boats, Swords)."),
+        TAG("Tag Priority", "Sorts based on a hardcoded priority list of Tags."),
+        JSON("Custom List", "Sorts based on 'config/piggy-inventory/custom_sort.json'.");
 
         public final String name;
+        public final String description;
 
-        SortingAlgorithm(String name) {
+        SortingAlgorithm(String name, String description) {
             this.name = name;
+            this.description = description;
         }
 
         @Override

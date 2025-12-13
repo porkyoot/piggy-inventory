@@ -104,8 +104,6 @@ public abstract class MixinHandledScreen implements is.pig.minecraft.inventory.d
 
     @Inject(method = "mouseClicked", at = @At("HEAD"), cancellable = true)
     private void onMouseClicked(double mouseX, double mouseY, int button, CallbackInfoReturnable<Boolean> cir) {
-        AbstractContainerScreen<?> screen = (AbstractContainerScreen<?>) (Object) this;
-
         long window = Minecraft.getInstance().getWindow().getWindow();
         boolean altHeld = InputConstants.isKeyDown(window,
                 KeyBindingHelper.getBoundKeyOf(PiggyInventoryClient.lockKey).getValue());

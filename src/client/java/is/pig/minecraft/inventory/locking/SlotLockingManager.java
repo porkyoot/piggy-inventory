@@ -1,9 +1,7 @@
 package is.pig.minecraft.inventory.locking;
 
-import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import is.pig.minecraft.inventory.config.PiggyInventoryConfig;
 
-import java.util.HashSet;
 import java.util.Set;
 
 /**

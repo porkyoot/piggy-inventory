@@ -4,6 +4,8 @@ import dev.isxander.yacl3.api.*;
 import dev.isxander.yacl3.api.controller.TickBoxControllerBuilder;
 import dev.isxander.yacl3.api.controller.StringControllerBuilder;
 import dev.isxander.yacl3.api.controller.EnumControllerBuilder;
+import dev.isxander.yacl3.api.controller.EnumDropdownControllerBuilder;
+
 import dev.isxander.yacl3.api.ListOption;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
@@ -259,14 +261,49 @@ public class PiggyConfigScreenFactory {
                                                  */
                                                 .option(Option.<PiggyInventoryConfig.SortingAlgorithm>createBuilder()
                                                                 .name(Component.literal("Default Algorithm"))
+                                                                .description(OptionDescription.of(
+                                                                                Component.literal(
+                                                                                                "Select the default sorting algorithm."),
+                                                                                Component.literal(""),
+                                                                                Component.literal("§6Available Modes:"),
+                                                                                Component.literal(
+                                                                                                "§eAlphabetical:§r Sorts items alphabetically (A-Z)."),
+                                                                                Component.literal(
+                                                                                                "§eCreative:§r Sorts based on Creative Inventory."),
+                                                                                Component.literal(
+                                                                                                "§eColor:§r Sorts by visual color/hue."),
+                                                                                Component.literal(
+                                                                                                "§eRarity:§r Sorts by rarity (Epic -> Common)."),
+                                                                                Component.literal(
+                                                                                                "§eMaterial:§r Groups by material (e.g. Acacia)."),
+                                                                                Component.literal(
+                                                                                                "§eType:§r Groups by type (e.g. Boats)."),
+                                                                                Component.literal(
+                                                                                                "§eTag:§r Sorts by Tag Priority (Tools > Food...)."),
+                                                                                Component.literal(
+                                                                                                "§eCustom List:§r Uses 'config/piggy-inventory/custom_sort.json'."),
+                                                                                Component.literal(
+                                                                                                "§eSmart:§r Default heuristic groupings.")))
                                                                 .binding(PiggyInventoryConfig.SortingAlgorithm.SMART,
                                                                                 config::getDefaultAlgorithm,
                                                                                 config::setDefaultAlgorithm)
-                                                                .controller(opt -> EnumControllerBuilder.create(opt)
-                                                                                .enumClass(PiggyInventoryConfig.SortingAlgorithm.class))
+                                                                .controller(EnumDropdownControllerBuilder::create)
                                                                 .build())
                                                 .option(Option.<PiggyInventoryConfig.SortingLayout>createBuilder()
                                                                 .name(Component.literal("Default Layout"))
+                                                                .description(OptionDescription.of(
+                                                                                Component.literal(
+                                                                                                "Select the sorting layout structure."),
+                                                                                Component.literal(""),
+                                                                                Component.literal(
+                                                                                                "§eCompact:§r Default. Fills slots sequentially."),
+                                                                                Component.literal(
+                                                                                                "§eColumns:§r Groups items into vertical columns."),
+                                                                                Component.literal(
+                                                                                                "§eRows:§r Groups items into horizontal rows."),
+                                                                                Component.literal(""),
+                                                                                Component.literal(
+                                                                                                "Images can be added if assets are provided.")))
                                                                 .binding(PiggyInventoryConfig.SortingLayout.COMPACT,
                                                                                 config::getDefaultLayout,
                                                                                 config::setDefaultLayout)

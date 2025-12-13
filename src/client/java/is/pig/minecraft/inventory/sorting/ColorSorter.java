@@ -1,7 +1,6 @@
 package is.pig.minecraft.inventory.sorting;
 
 import is.pig.minecraft.lib.sorting.ISorter;
-import net.minecraft.client.Minecraft;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.ItemStack;
 
