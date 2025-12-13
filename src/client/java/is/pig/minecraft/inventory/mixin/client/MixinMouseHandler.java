@@ -1,6 +1,5 @@
 package is.pig.minecraft.inventory.mixin.client;
 
-import is.pig.minecraft.inventory.PiggyInventoryClient; // Kept if needed later, but removed unused warning earlier
 import is.pig.minecraft.inventory.locking.SlotLockingManager;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
@@ -13,7 +12,6 @@ import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
-import org.slf4j.Logger;
 
 @Environment(EnvType.CLIENT)
 @Mixin(MouseHandler.class)

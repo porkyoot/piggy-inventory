@@ -81,6 +81,7 @@ public class PiggyInventoryClient implements ClientModInitializer {
                         if (sortKey.consumeClick()) {
                                 handleSort(client);
                         }
+                        is.pig.minecraft.inventory.handler.AutoRefillHandler.getInstance().onTick(client);
                 });
         }
 
