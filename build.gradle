@@ -34,10 +34,9 @@ dependencies {
     // --- LIAISON AVEC PIGGY LIB ---
     
     // On utilise 'implementation' pour compiler avec les sources de la lib
-    // Use implementation (not modImplementation) to avoid Loom trying to read metadata during config
-    // Use namedElements to get the 'dev' (named) jar, which is compatible with our source code
-    implementation project(path: ':piggy-lib', configuration: 'namedElements')
-    clientImplementation project(path: ':piggy-lib', configuration: 'namedElements')
+    // Use sourceSets output directly to bypass jar artifact issues
+    implementation project(':piggy-lib').sourceSets.main.output
+    clientImplementation project(':piggy-lib').sourceSets.main.output
     
     // Si vous voulez que la lib soit incluse dans le jar final de l'inventaire (Fat Jar) :
     include project(':piggy-lib')
