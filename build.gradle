@@ -34,17 +34,11 @@ dependencies {
     // --- LIAISON AVEC PIGGY LIB ---
     
     // On utilise 'implementation' pour compiler avec les sources de la lib
-    modImplementation project(path: ':piggy-lib', configuration: 'namedElements')
+    // Use implementation (not modImplementation) to avoid Loom trying to read metadata during config
+    // Use namedElements to get the 'dev' (named) jar, which is compatible with our source code
+    implementation project(path: ':piggy-lib', configuration: 'namedElements')
     clientImplementation project(path: ':piggy-lib', configuration: 'namedElements')
     
     // Si vous voulez que la lib soit incluse dans le jar final de l'inventaire (Fat Jar) :
     include project(':piggy-lib')
-}
-
-// Fix race condition in CI by forcing jar generation
-// Wrapped in afterEvaluate to avoid configuration-time errors
-afterEvaluate {
-    tasks.named("compileClientJava").configure {
-        dependsOn project(":piggy-lib").tasks.named("jar")
-    }
 }
