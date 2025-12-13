@@ -128,9 +128,35 @@ public class AutoRefillHandler {
         if (oldStack.isEmpty())
             return false;
 
-        // standard case: stack depleted
-        if (newStack.isEmpty())
+        is.pig.minecraft.inventory.config.PiggyInventoryConfig config = (is.pig.minecraft.inventory.config.PiggyInventoryConfig) is.pig.minecraft.inventory.config.PiggyInventoryConfig
+                .getInstance();
+        if (!config.isAutoRefill())
+            return false;
+
+        // Check 1: Stack Depleted (Main case)
+        if (newStack.isEmpty() && !oldStack.isEmpty()) {
+            RefillCategory cat = RefillCategory.fromStack(oldStack);
+            if (cat == RefillCategory.FOOD && !config.isAutoRefillFood())
+                return false;
+
+            // Note: Weapons/Tools usually don't "deplete" into air unless they break.
+            // If they break, newStack is empty.
+            if (cat == RefillCategory.WEAPON && !config.isAutoRefillWeapon())
+                return false;
+            if (cat == RefillCategory.TOOL && !config.isAutoRefillTool())
+                return false;
+
             return true;
+        }
+
+        // --- Container Logic helpers ---
+        // We need 'oldItem' var if we want to use previous logic style, or just allow
+        // the helpers.
+        // Assuming helpers 'isFilledContainer' and 'isEmptyContainer' exist?
+        // Wait, I did not see them in the file view. I must implement logic inline or
+        // helpers.
+        // The previous file content shows inline logic. I will stick to inline logic
+        // for safety.
 
         net.minecraft.world.item.Item oldItem = oldStack.getItem();
         net.minecraft.world.item.Item newItem = newStack.getItem();
@@ -138,7 +164,9 @@ public class AutoRefillHandler {
         if (oldItem == newItem)
             return false;
 
-        // --- Full -> Empty (Consuming/Placing) ---
+        // Check 2: Container Item Transition (Full -> Empty)
+        if (!config.isAutoRefillContainers())
+            return false;
 
         // Potions / Honey -> Bottle
         if ((oldItem instanceof net.minecraft.world.item.PotionItem
@@ -161,11 +189,11 @@ public class AutoRefillHandler {
                 || oldItem instanceof net.minecraft.world.item.MilkBucketItem
                 || oldItem instanceof net.minecraft.world.item.SolidBucketItem)
                 && newItem == net.minecraft.world.item.Items.BUCKET) {
-            // Ensure old was NOT empty bucket
-            return oldItem != net.minecraft.world.item.Items.BUCKET;
+            if (oldItem != net.minecraft.world.item.Items.BUCKET)
+                return true;
         }
 
-        // --- Empty -> Full (Filling Containers) ---
+        // Check 3: Empty Container -> Filled Item (Reverse Refill)
 
         // Bottle -> Potion/Honey/DragonBreath
         if (oldItem == net.minecraft.world.item.Items.GLASS_BOTTLE &&

@@ -83,7 +83,15 @@ public class PiggyInventoryClient implements ClientModInitializer {
                         }
                         is.pig.minecraft.inventory.handler.AutoRefillHandler.getInstance().onTick(client);
                         is.pig.minecraft.inventory.handler.CraftingHandler.getInstance().onTick(client);
+                        is.pig.minecraft.inventory.handler.QuickLootHandler.getInstance().onTick(client);
                 });
+
+                // HUD Overlay
+                net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback.EVENT
+                                .register((guiGraphics, tickDelta) -> {
+                                        is.pig.minecraft.inventory.handler.QuickLootHandler.getInstance()
+                                                        .renderOverlay(guiGraphics);
+                                });
         }
 
         public static void handleSort(Minecraft client) {

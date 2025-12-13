@@ -6,6 +6,7 @@
 		"MinecraftAccessorMixin",
 		"MinecraftClientMixin",
 		"MixinHandledScreen",
+		"MixinMinecraft",
 		"MixinMouseHandler"
 	],
 	"injectors": {

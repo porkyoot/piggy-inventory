@@ -428,6 +428,83 @@ public class PiggyInventoryConfig extends is.pig.minecraft.lib.config.PiggyClien
         this.blacklistedItems = val;
     }
 
+    // --- AUTO-REFILL CONFIG ---
+    private boolean autoRefill = true;
+    private boolean autoRefillContainers = true;
+    private boolean autoRefillFood = true;
+    private boolean autoRefillWeapon = true;
+    private boolean autoRefillTool = true;
+    private boolean autoRefillHarmful = false; // "Auto refill with harmfull food" - assumed default false safety
+
+    // --- FAST LOOT CONFIG ---
+    private boolean fastLootingInContainer = true;
+    private boolean fastLootingLookingAt = true;
+
+    // Getters and Setters for new configs
+    public boolean isAutoRefill() {
+        return autoRefill;
+    }
+
+    public void setAutoRefill(boolean v) {
+        this.autoRefill = v;
+    }
+
+    public boolean isAutoRefillContainers() {
+        return autoRefillContainers;
+    }
+
+    public void setAutoRefillContainers(boolean v) {
+        this.autoRefillContainers = v;
+    }
+
+    public boolean isAutoRefillFood() {
+        return autoRefillFood;
+    }
+
+    public void setAutoRefillFood(boolean v) {
+        this.autoRefillFood = v;
+    }
+
+    public boolean isAutoRefillWeapon() {
+        return autoRefillWeapon;
+    }
+
+    public void setAutoRefillWeapon(boolean v) {
+        this.autoRefillWeapon = v;
+    }
+
+    public boolean isAutoRefillTool() {
+        return autoRefillTool;
+    }
+
+    public void setAutoRefillTool(boolean v) {
+        this.autoRefillTool = v;
+    }
+
+    public boolean isAutoRefillHarmful() {
+        return autoRefillHarmful;
+    }
+
+    public void setAutoRefillHarmful(boolean v) {
+        this.autoRefillHarmful = v;
+    }
+
+    public boolean isFastLootingInContainer() {
+        return fastLootingInContainer;
+    }
+
+    public void setFastLootingInContainer(boolean v) {
+        this.fastLootingInContainer = v;
+    }
+
+    public boolean isFastLootingLookingAt() {
+        return fastLootingLookingAt;
+    }
+
+    public void setFastLootingLookingAt(boolean v) {
+        this.fastLootingLookingAt = v;
+    }
+
     // Persistent Locked Slots: ScreenClass -> Set of SlotIndices
     // private java.util.Map<String, java.util.Set<Integer>> savedLocks = new
     // java.util.HashMap<>(); // Deprecated
