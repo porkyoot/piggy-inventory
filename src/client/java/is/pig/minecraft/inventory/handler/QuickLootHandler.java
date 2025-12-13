@@ -8,6 +8,10 @@ import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.InteractionHand;
+import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraft.world.Container;
+import net.minecraft.world.level.block.entity.EnderChestBlockEntity;
+import is.pig.minecraft.inventory.util.InventoryUtils;
 
 public class QuickLootHandler {
     private static final QuickLootHandler INSTANCE = new QuickLootHandler();
@@ -30,19 +34,21 @@ public class QuickLootHandler {
         return INSTANCE;
     }
 
-    public boolean onScroll(Minecraft client, double delta, boolean ctrlHeld) {
+    public boolean onScroll(Minecraft client, double delta, boolean lootAllPressed) {
         PiggyInventoryConfig config = (PiggyInventoryConfig) PiggyInventoryConfig.getInstance();
         if (!config.isFastLoot())
             return false;
 
-        // Granular check
-        if (ctrlHeld) {
-            if (!config.isFastLootLookingAtAll())
-                return false;
-        } else {
-            if (!config.isFastLootLookingAtMatching())
-                return false;
-        }
+        boolean lootMatchingPressed = InventoryUtils.isLootMatchingDown();
+
+        // Granular check - Strict Key Logic
+        boolean doAll = lootAllPressed && config.isFastLootLookingAtAll();
+        // Note: we check if Matching is pressed AND configured
+        boolean doMatching = lootMatchingPressed && config.isFastLootLookingAtMatching();
+
+        // If neither valid action is triggered, exit (allow vanilla behavior)
+        if (!doAll && !doMatching)
+            return false;
 
         if (client.player == null || client.level == null)
             return false;
@@ -52,6 +58,17 @@ public class QuickLootHandler {
         if (hit == null || hit.getType() != HitResult.Type.BLOCK)
             return false;
 
+        BlockHitResult blockHit = (BlockHitResult) hit;
+        BlockEntity blockEntity = client.level.getBlockEntity(blockHit.getBlockPos());
+
+        // STRICT CONTAINER CHECK
+        // effectively Container or EnderChest (which is special)
+        boolean isContainer = blockEntity instanceof Container || blockEntity instanceof EnderChestBlockEntity;
+
+        if (!isContainer) {
+            return false; // Not a container, let vanilla handle it (Sneak, etc)
+        }
+
         // Prevent spamming
         if (awaitingContainer && System.currentTimeMillis() - requestTime < 1000)
             return true;
@@ -60,7 +77,14 @@ public class QuickLootHandler {
         awaitingContainer = true;
         requestTime = System.currentTimeMillis();
         lastTransferWasUp = delta > 0;
-        lastTransferWasAll = ctrlHeld;
+        lastTransferWasAll = lootAllPressed; // Prioritize All or use what triggered it?
+        // Logic: If both pressed, what happens? 'All' usually overrides 'Matching' in
+        // transfer logic.
+        if (doAll) {
+            lastTransferWasAll = true;
+        } else {
+            lastTransferWasAll = false;
+        }
 
         // Sneak Bypass logic:
         boolean wasSneaking = client.player.isShiftKeyDown();

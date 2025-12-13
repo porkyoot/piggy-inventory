@@ -108,6 +108,9 @@ public class PiggyConfigScreenFactory {
                                                                 .option(Option.<Boolean>createBuilder()
                                                                                 .name(Component.literal(
                                                                                                 "Enable Auto Refill"))
+                                                                                .description(OptionDescription.of(
+                                                                                                Component.literal(
+                                                                                                                "Automatically replaces broken tools or depleted stacks in your hand.")))
                                                                                 .binding(true, config::isAutoRefill,
                                                                                                 config::setAutoRefill)
                                                                                 .controller(TickBoxControllerBuilder::create)
@@ -115,12 +118,18 @@ public class PiggyConfigScreenFactory {
                                                                 .option(Option.<Boolean>createBuilder()
                                                                                 .name(Component.literal(
                                                                                                 "Refill Containers (Stacks)"))
+                                                                                .description(OptionDescription.of(
+                                                                                                Component.literal(
+                                                                                                                "Refill stackable items (blocks, materials) when they run out.")))
                                                                                 .binding(true, config::isAutoRefillContainers,
                                                                                                 config::setAutoRefillContainers)
                                                                                 .controller(TickBoxControllerBuilder::create)
                                                                                 .build())
                                                                 .option(Option.<Boolean>createBuilder()
                                                                                 .name(Component.literal("Refill Food"))
+                                                                                .description(OptionDescription.of(
+                                                                                                Component.literal(
+                                                                                                                "Automatically eat food when hungry if it's in your hotbar.")))
                                                                                 .binding(true, config::isAutoRefillFood,
                                                                                                 config::setAutoRefillFood)
                                                                                 .controller(TickBoxControllerBuilder::create)
@@ -128,12 +137,18 @@ public class PiggyConfigScreenFactory {
                                                                 .option(Option.<Boolean>createBuilder()
                                                                                 .name(Component.literal(
                                                                                                 "Refill Weapon"))
+                                                                                .description(OptionDescription.of(
+                                                                                                Component.literal(
+                                                                                                                "Replace broken weapons with similar ones from inventory.")))
                                                                                 .binding(true, config::isAutoRefillWeapon,
                                                                                                 config::setAutoRefillWeapon)
                                                                                 .controller(TickBoxControllerBuilder::create)
                                                                                 .build())
                                                                 .option(Option.<Boolean>createBuilder()
                                                                                 .name(Component.literal("Refill Tool"))
+                                                                                .description(OptionDescription.of(
+                                                                                                Component.literal(
+                                                                                                                "Replace broken tools with similar ones from inventory.")))
                                                                                 .binding(true, config::isAutoRefillTool,
                                                                                                 config::setAutoRefillTool)
                                                                                 .controller(TickBoxControllerBuilder::create)
@@ -221,6 +236,9 @@ public class PiggyConfigScreenFactory {
                                                                 .build())
                                                 .option(Option.<PiggyInventoryConfig.OrePreference>createBuilder()
                                                                 .name(Component.literal("Ore Preference"))
+                                                                .description(OptionDescription.of(
+                                                                                Component.literal(
+                                                                                                "Prioritize Fortune or Silk Touch when both are applicable.")))
                                                                 .binding(PiggyInventoryConfig.OrePreference.FORTUNE,
                                                                                 config::getOrePreference,
                                                                                 config::setOrePreference)
@@ -231,6 +249,8 @@ public class PiggyConfigScreenFactory {
                                                 .group(ListOption.<String>createBuilder()
                                                                 .name(Component.literal(
                                                                                 "Silk Touch Blocks"))
+                                                                .description(OptionDescription.of(Component.literal(
+                                                                                "List of blocks that should be mined with Silk Touch.")))
                                                                 .binding(config.getSilkTouchBlocks(),
                                                                                 config::getSilkTouchBlocks,
                                                                                 config::setSilkTouchBlocks)
@@ -240,6 +260,8 @@ public class PiggyConfigScreenFactory {
                                                 .group(ListOption.<String>createBuilder()
                                                                 .name(Component.literal(
                                                                                 "Fortune/Ore Blocks"))
+                                                                .description(OptionDescription.of(Component.literal(
+                                                                                "List of blocks that should be mined with Fortune.")))
                                                                 .binding(config.getFortuneBlocks(),
                                                                                 config::getFortuneBlocks,
                                                                                 config::setFortuneBlocks)
@@ -249,6 +271,8 @@ public class PiggyConfigScreenFactory {
                                                 .group(ListOption.<String>createBuilder()
                                                                 .name(Component.literal(
                                                                                 "Protected Blocks"))
+                                                                .description(OptionDescription.of(Component.literal(
+                                                                                "Blocks that will NOT trigger a tool swap (manual mining only).")))
                                                                 .binding(config.getProtectedBlocks(),
                                                                                 config::getProtectedBlocks,
                                                                                 config::setProtectedBlocks)
@@ -258,6 +282,8 @@ public class PiggyConfigScreenFactory {
                                                 .group(ListOption.<String>createBuilder()
                                                                 .name(Component.literal(
                                                                                 "Shears Blocks"))
+                                                                .description(OptionDescription.of(Component.literal(
+                                                                                "Blocks that specifically constitute a shearing action.")))
                                                                 .binding(config.getShearsBlocks(),
                                                                                 config::getShearsBlocks,
                                                                                 config::setShearsBlocks)
@@ -273,6 +299,8 @@ public class PiggyConfigScreenFactory {
 
                                                 .option(Option.<String>createBuilder()
                                                                 .name(Component.literal("Weapon Hotbar Swap Slots"))
+                                                                .description(OptionDescription.of(Component.literal(
+                                                                                "Which hotbar slots can be overwritten by weapons?")))
                                                                 .binding(formatSlotList(
                                                                                 config.getWeaponSwapHotbarSlots()),
                                                                                 () -> formatSlotList(config
@@ -283,6 +311,8 @@ public class PiggyConfigScreenFactory {
                                                                 .build())
                                                 .option(Option.<PiggyInventoryConfig.WeaponPreference>createBuilder()
                                                                 .name(Component.literal("Weapon Preference"))
+                                                                .description(OptionDescription.of(Component.literal(
+                                                                                "Prioritize highest damage or highest attack speed.")))
                                                                 .binding(PiggyInventoryConfig.WeaponPreference.DAMAGE,
                                                                                 config::getGuiWeaponPreference,
                                                                                 config::setGuiWeaponPreference)
@@ -292,6 +322,8 @@ public class PiggyConfigScreenFactory {
                                                 .group(ListOption.<String>createBuilder()
                                                                 .name(Component.literal(
                                                                                 "Speed Weapons Priority"))
+                                                                .description(OptionDescription.of(Component.literal(
+                                                                                "Items considered 'Speed Weapons', in order of preference.")))
                                                                 .binding(config.getFastWeapons(),
                                                                                 config::getFastWeapons,
                                                                                 config::setFastWeapons)
@@ -301,6 +333,8 @@ public class PiggyConfigScreenFactory {
                                                 .group(ListOption.<String>createBuilder()
                                                                 .name(Component.literal(
                                                                                 "Damage Weapons Priority"))
+                                                                .description(OptionDescription.of(Component.literal(
+                                                                                "Items considered 'Damage Weapons', in order of preference.")))
                                                                 .binding(config.getHeavyWeapons(),
                                                                                 config::getHeavyWeapons,
                                                                                 config::setHeavyWeapons)
@@ -310,6 +344,8 @@ public class PiggyConfigScreenFactory {
                                                 .group(ListOption.<String>createBuilder()
                                                                 .name(Component.literal(
                                                                                 "Range Weapons Priority"))
+                                                                .description(OptionDescription.of(Component.literal(
+                                                                                "Items considered 'Range Weapons', in order of preference.")))
                                                                 .binding(config.getRangeWeapons(),
                                                                                 config::getRangeWeapons,
                                                                                 config::setRangeWeapons)
@@ -324,6 +360,8 @@ public class PiggyConfigScreenFactory {
                                                 .tooltip(Component.literal("Configure scanning and sorting behavior."))
                                                 .option(Option.<PiggyInventoryConfig.SortingAlgorithm>createBuilder()
                                                                 .name(Component.literal("Default Algorithm"))
+                                                                .description(OptionDescription.of(Component.literal(
+                                                                                "The primary sorting logic used.")))
                                                                 .binding(PiggyInventoryConfig.SortingAlgorithm.SMART,
                                                                                 config::getDefaultAlgorithm,
                                                                                 config::setDefaultAlgorithm)
@@ -331,6 +369,8 @@ public class PiggyConfigScreenFactory {
                                                                 .build())
                                                 .option(Option.<PiggyInventoryConfig.SortingLayout>createBuilder()
                                                                 .name(Component.literal("Default Layout"))
+                                                                .description(OptionDescription.of(Component.literal(
+                                                                                "The visual arrangement of items.")))
                                                                 .binding(PiggyInventoryConfig.SortingLayout.COMPACT,
                                                                                 config::getDefaultLayout,
                                                                                 config::setDefaultLayout)
@@ -339,6 +379,8 @@ public class PiggyConfigScreenFactory {
                                                                 .build())
                                                 .group(ListOption.<String>createBuilder()
                                                                 .name(Component.literal("Ignored Screen Classes"))
+                                                                .description(OptionDescription.of(Component.literal(
+                                                                                "Screens where sorting should be disabled (Full class names).")))
                                                                 .binding(new ArrayList<>(),
                                                                                 config::getBlacklistedInventories,
                                                                                 config::setBlacklistedInventories)
@@ -347,6 +389,8 @@ public class PiggyConfigScreenFactory {
                                                                 .build())
                                                 .group(ListOption.<String>createBuilder()
                                                                 .name(Component.literal("Ignored Items"))
+                                                                .description(OptionDescription.of(Component.literal(
+                                                                                "Items that will not be moved by the sorter.")))
                                                                 .binding(new ArrayList<>(), config::getBlacklistedItems,
                                                                                 config::setBlacklistedItems)
                                                                 .controller(StringControllerBuilder::create)

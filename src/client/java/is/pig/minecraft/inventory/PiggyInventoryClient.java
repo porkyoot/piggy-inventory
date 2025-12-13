@@ -24,7 +24,8 @@ public class PiggyInventoryClient implements ClientModInitializer {
 
         public static KeyMapping sortKey;
         public static KeyMapping lockKey;
-        public static KeyMapping fastLootKey;
+        public static KeyMapping lootMatchingKey;
+        public static KeyMapping lootAllKey;
 
         @Override
         public void onInitializeClient() {
@@ -37,18 +38,25 @@ public class PiggyInventoryClient implements ClientModInitializer {
                                 GLFW.GLFW_KEY_R,
                                 "Piggy Inventory"));
 
-                // Register Lock Key
+                // Register Lock Key (Default: Alt)
                 lockKey = KeyBindingHelper.registerKeyBinding(new KeyMapping(
                                 "Lock Slot Modifier",
                                 InputConstants.Type.KEYSYM,
                                 GLFW.GLFW_KEY_LEFT_ALT,
                                 "Piggy Inventory"));
 
-                // Register Fast Loot Key
-                fastLootKey = KeyBindingHelper.registerKeyBinding(new KeyMapping(
-                                "Fast Loot Modifier",
+                // Register Loot Matching Key (Default: Unbound / Shift)
+                lootMatchingKey = KeyBindingHelper.registerKeyBinding(new KeyMapping(
+                                "Loot Matching Modifier",
                                 InputConstants.Type.KEYSYM,
-                                GLFW.GLFW_KEY_LEFT_CONTROL,
+                                InputConstants.UNKNOWN.getValue(),
+                                "Piggy Inventory"));
+
+                // Register Loot All Key (Default: Unbound / Control)
+                lootAllKey = KeyBindingHelper.registerKeyBinding(new KeyMapping(
+                                "Loot All Modifier",
+                                InputConstants.Type.KEYSYM,
+                                InputConstants.UNKNOWN.getValue(),
                                 "Piggy Inventory"));
 
                 // existing registrations...

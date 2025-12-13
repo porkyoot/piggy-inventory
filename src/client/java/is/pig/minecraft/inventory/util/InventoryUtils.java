@@ -7,12 +7,28 @@ import net.minecraft.world.inventory.Slot;
 
 public class InventoryUtils {
 
+    public static boolean isLootMatchingDown() {
+        if (!is.pig.minecraft.inventory.PiggyInventoryClient.lootMatchingKey.isUnbound()) {
+            return is.pig.minecraft.inventory.PiggyInventoryClient.lootMatchingKey.isDown();
+        }
+        return net.minecraft.client.gui.screens.Screen.hasShiftDown();
+    }
+
+    public static boolean isLootAllDown() {
+        if (!is.pig.minecraft.inventory.PiggyInventoryClient.lootAllKey.isUnbound()) {
+            return is.pig.minecraft.inventory.PiggyInventoryClient.lootAllKey.isDown();
+        }
+        return net.minecraft.client.gui.screens.Screen.hasControlDown();
+    }
+
+    // Legacy method redirection for compatibility with existing mixins until
+    // updated
     public static boolean isShiftDown() {
-        return net.minecraft.client.Minecraft.getInstance().options.keyShift.isDown();
+        return isLootMatchingDown();
     }
 
     public static boolean isFastLootDown() {
-        return is.pig.minecraft.inventory.PiggyInventoryClient.fastLootKey.isDown();
+        return isLootAllDown();
     }
 
     // Using legacy alt key mapping which we will restore
