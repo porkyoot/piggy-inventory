@@ -31,9 +31,25 @@ public class InventoryUtils {
         return isLootAllDown();
     }
 
-    // Using legacy alt key mapping which we will restore
+    // Use direct GLFW calls for Alt key detection (more reliable than
+    // KeyMapping.isDown() for modifier keys)
     public static boolean isLockDown() {
-        return is.pig.minecraft.inventory.PiggyInventoryClient.lockKey.isDown();
+        net.minecraft.client.Minecraft client = net.minecraft.client.Minecraft.getInstance();
+        if (client.getWindow() == null) {
+            return false;
+        }
+
+        long window = client.getWindow().getWindow();
+        // Check both left and right Alt keys
+        boolean leftAlt = org.lwjgl.glfw.GLFW.glfwGetKey(window,
+                org.lwjgl.glfw.GLFW.GLFW_KEY_LEFT_ALT) == org.lwjgl.glfw.GLFW.GLFW_PRESS;
+        boolean rightAlt = org.lwjgl.glfw.GLFW.glfwGetKey(window,
+                org.lwjgl.glfw.GLFW.GLFW_KEY_RIGHT_ALT) == org.lwjgl.glfw.GLFW.GLFW_PRESS;
+
+        boolean result = leftAlt || rightAlt;
+        is.pig.minecraft.inventory.PiggyInventoryClient.LOGGER.debug("isLockDown: leftAlt={}, rightAlt={}, result={}",
+                leftAlt, rightAlt, result);
+        return result;
     }
 
     /**
