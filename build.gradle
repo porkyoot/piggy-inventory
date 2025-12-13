@@ -46,6 +46,31 @@ dependencies {
 // Wrapped in afterEvaluate to ensure it persists after Loom configuration
 afterEvaluate {
     tasks.named('compileClientJava').configure {
-        classpath += project(':piggy-lib').sourceSets.main.output.classesDirs
+        def libProject = project(':piggy-lib')
+        def libClassesDirs = libProject.sourceSets.main.output.classesDirs
+        
+        // Add classes to classpath
+        classpath += libClassesDirs
+        
+        doFirst {
+            println "=== CI DEBUG START: compileClientJava ==="
+            println "Task Classpath:"
+            classpath.each { println "  - ${it}" }
+            
+            println "\nChecking piggy-lib classes..."
+            libClassesDirs.each { dir ->
+                println "Dir: ${dir}"
+                println "Exists: ${dir.exists()}"
+                if (dir.exists()) {
+                    println "Contents:"
+                    fileTree(dir).visit { details ->
+                        println "  > ${details.relativePath}"
+                    }
+                } else {
+                    println "  ! Directory does not exist !"
+                }
+            }
+            println "=== CI DEBUG END ==="
+        }
     }
 }
