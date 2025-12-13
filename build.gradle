@@ -41,8 +41,10 @@ dependencies {
     include project(':piggy-lib')
 }
 
-// Force generation of the library jar before compiling client java
-// This fixes issues where the jar is not yet available on the classpath in CI environments
-tasks.named("compileClientJava").configure {
-    dependsOn project(":piggy-lib").tasks.named("jar")
+// Fix race condition in CI by forcing jar generation
+// Wrapped in afterEvaluate to avoid configuration-time errors
+afterEvaluate {
+    tasks.named("compileClientJava").configure {
+        dependsOn project(":piggy-lib").tasks.named("jar")
+    }
 }
