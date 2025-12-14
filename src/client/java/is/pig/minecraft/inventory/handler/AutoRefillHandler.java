@@ -154,14 +154,7 @@ public class AutoRefillHandler {
             return true;
         }
 
-        // --- Container Logic helpers ---
-        // We need 'oldItem' var if we want to use previous logic style, or just allow
-        // the helpers.
-        // Assuming helpers 'isFilledContainer' and 'isEmptyContainer' exist?
-        // Wait, I did not see them in the file view. I must implement logic inline or
-        // helpers.
-        // The previous file content shows inline logic. I will stick to inline logic
-        // for safety.
+        // Container transition logic (filled -> empty or reverse)
 
         net.minecraft.world.item.Item oldItem = oldStack.getItem();
         net.minecraft.world.item.Item newItem = newStack.getItem();

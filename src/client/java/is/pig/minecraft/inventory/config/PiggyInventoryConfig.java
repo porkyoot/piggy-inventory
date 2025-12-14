@@ -111,26 +111,8 @@ public class PiggyInventoryConfig extends is.pig.minecraft.lib.config.PiggyClien
             "minecraft:spawner", "minecraft:trial_spawner"));
 
     // --- WEAPON SWITCH CONFIG ---
-    // If true, the feature is active and will use weaponPreference.
-    // However, original logic tied "active" to "preference != NONE".
-    // We should keep that for simplicity or split it?
-    // User asked "Add a setting ... for both enabling/disabling and weapon
-    // preference".
-    // This implies boolean toggle AND preference.
-    // Currently isFeatureWeaponSwitchEnabled checks preference != NONE.
-    // Let's refactor:
-    // 1. Boolean field `weaponSwitchEnabled`.
-    // 2. WeaponPreference field (defaulting to DAMAGE or SPEED, not NONE).
-    // But original code (and ToolSwap) uses Enum NONE as disabled.
-    // If we want separate list config, maybe we should keep simple toggle logic.
-    // Let's stick to current logic: NONE = Disabled.
-    // But user wants "enabling/disabling AND weapon preference".
-    // If I select "Speed", it is enabled. If I select "None", it is disabled.
-    // The previous prompt said: "Add a key to enable/disable the feature
-    // [toggleWeaponSwitch]".
-    // This flips between NONE and lastActivePreference.
-    // To satisfy user desire for "Setting ... for enabling/disabling", we can
-    // expose a Boolean Option in GUI that toggles between NONE and LastActive.
+    // Weapon preference: NONE means disabled. When enabled, uses last active
+    // preference.
 
     private WeaponPreference weaponPreference = WeaponPreference.NONE;
     private WeaponPreference lastActiveWeaponPreference = WeaponPreference.DAMAGE;
@@ -179,12 +161,7 @@ public class PiggyInventoryConfig extends is.pig.minecraft.lib.config.PiggyClien
     }
 
     public void setGuiWeaponPreference(WeaponPreference pref) {
-        // This setter is for the selector. If user selects NONE, it disables.
-        // If user selects SPEED, it enables and sets preference.
-        // But if currently disabled (NONE), and user changes preference to SPEED in
-        // GUI, it should enable.
-        // If currently enabled (SPEED), and user changes to DAMAGE, it updates.
-        // If user selects NONE, it disables.
+        // Updates weapon preference. Selecting NONE disables the feature.
         setWeaponPreference(pref);
     }
 

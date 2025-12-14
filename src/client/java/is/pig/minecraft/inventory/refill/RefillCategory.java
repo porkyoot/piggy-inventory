@@ -71,9 +71,7 @@ public enum RefillCategory {
             case TOOL:
                 // Pickaxe matches Pickaxe, etc.
                 if (original.getItem() instanceof DiggerItem && candidate.getItem() instanceof DiggerItem) {
-                    // Check if they are the same TYPE of tool (Pickaxe vs Axe)
-                    // This is tricky without access to tool types directly, but usually classes
-                    // differ (PickaxeItem vs AxeItem)
+                    // Check if they are the same tool type via class hierarchy
                     return original.getItem().getClass().isAssignableFrom(candidate.getItem().getClass()) ||
                             candidate.getItem().getClass().isAssignableFrom(original.getItem().getClass());
                 }

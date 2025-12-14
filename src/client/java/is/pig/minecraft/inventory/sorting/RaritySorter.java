@@ -19,11 +19,7 @@ public class RaritySorter implements ISorter {
         return (stack1, stack2) -> {
             Rarity r1 = stack1.getRarity();
             Rarity r2 = stack2.getRarity();
-            // Compare rarity ordinal (COMMON=0, UNCOMMON=1, etc.)
-            // We want higher rarity first? Or lower? Standard seems to be high rarity first
-            // or grouped.
-            // Let's sort by ordinal ascending (Common -> Epic) or descending?
-            // Usually "better" items at the top. Epic > Common.
+            // Sort by rarity descending (Epic > Common)
             int cmp = r2.compareTo(r1);
             if (cmp != 0)
                 return cmp;

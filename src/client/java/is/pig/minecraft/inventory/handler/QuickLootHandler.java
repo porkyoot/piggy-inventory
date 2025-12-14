@@ -41,9 +41,8 @@ public class QuickLootHandler {
 
         boolean lootMatchingPressed = InventoryUtils.isLootMatchingDown();
 
-        // Granular check - Strict Key Logic
+        // Check if feature is enabled in config
         boolean doAll = lootAllPressed && config.isFastLootLookingAtAll();
-        // Note: we check if Matching is pressed AND configured
         boolean doMatching = lootMatchingPressed && config.isFastLootLookingAtMatching();
 
         // If neither valid action is triggered, exit (allow vanilla behavior)
@@ -179,11 +178,9 @@ public class QuickLootHandler {
             // Making `piggy_handleScrollTransfer` public is cleaner.
             // Assume we made it public (I will modify MixinMouseHandler to be public).
 
-            // Invoke transfer
-            // Note: handleScroll used scrollDelta +/- 1.
+            // Invoke transfer with appropriate delta direction
             double delta = lastTransferWasUp ? 1.0 : -1.0;
 
-            // We need to cast because hiddenScreen is Screen
             if (hiddenScreen instanceof AbstractContainerScreen) {
                 boolean result = is.pig.minecraft.inventory.util.InventoryUtils.handleScrollTransfer(
                         (AbstractContainerScreen<?>) hiddenScreen, delta,
@@ -245,14 +242,8 @@ public class QuickLootHandler {
         // fade?
         // Or just disappear.
 
+        // Render item icon (alpha transparency not easily supported)
         context.renderItem(new net.minecraft.world.item.ItemStack(itemIcon), 0, 0);
-
-        // Fade overlay
-        // context.fill(0, 0, 16, 16, (255 - alpha) << 24); // Darken as it effectively
-        // fades IN darkness? No.
-        // This is hard.
-        // Standard icons don't fade easily.
-        // Just show it for 0.5s is fine.
 
         context.pose().popPose();
     }

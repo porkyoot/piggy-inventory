@@ -36,9 +36,7 @@ public class CraftingHandler {
 
     private void snapshotRecipe(Player player) {
         lastRecipe.clear();
-        // Snapshot current grid (excluding output)
-        // Usually, container 0 is the player inventory/crafting screen open.
-        // We need to iterate the slots of the OPEN container.
+        // Snapshot current crafting grid (excluding output slot).
         if (player.containerMenu != null) {
             for (Slot s : player.containerMenu.slots) {
                 // Skip result slot and player inventory slots
@@ -128,9 +126,7 @@ public class CraftingHandler {
             java.util.List<Integer> sourceSlots = findItemSlotsInInventory(player, key.stack);
 
             if (sourceSlots.isEmpty()) {
-                // If we can't find specific ingredient, fail?
-                // Or continue to try others? If recipe incomplete, craft will fail anyway.
-                // We should probably fail to stop loop.
+                // Cannot find required ingredient, crafting will fail.
                 return false;
             }
 
@@ -154,9 +150,7 @@ public class CraftingHandler {
                 client.gameMode.handleInventoryMouseClick(player.containerMenu.containerId, -999, 2,
                         net.minecraft.world.inventory.ClickType.QUICK_CRAFT, player);
 
-                // If cursor still has items (remainder), put back to inventory?
-                // The drag logic deposits evenly. Remainder stays in mouse.
-                // We should put it back.
+                // If cursor still has items after drag, put remainder back to source slot.
                 if (!client.player.containerMenu.getCarried().isEmpty()) {
                     client.gameMode.handleInventoryMouseClick(player.containerMenu.containerId, sourceSlot, 0,
                             net.minecraft.world.inventory.ClickType.PICKUP, player);

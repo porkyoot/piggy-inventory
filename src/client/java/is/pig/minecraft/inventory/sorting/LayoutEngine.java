@@ -34,20 +34,8 @@ public class LayoutEngine {
         int minSlot = validSlots.get(0);
         int maxSlot = validSlots.get(validSlots.size() - 1);
 
-        // Determine grid dimensions relative to the first slot
-        // This assumes slots are roughly contiguous or chunked.
-        // For accurate grid mapping, we assume standard container logic: index /
-        // rowSize
-        // But since we have a subset of slots, we should map them based on their
-        // absolute index.
-
-        // We need to know the 'start' of the container to align columns correctly (e.g.
-        // correct modulus)
-        // Usually minSlot is the start, but if the first few slots are locked, minSlot
-        // might be 3.
-        // We'll trust relative row/col to the container start.
-        // Wait, standard containers are 9 wide.
-        // Col = index % 9. Row = index / 9.
+        // Determine grid dimensions. Standard containers are 9 wide.
+        // Col = index % rowSize. Row = index / rowSize.
 
         // Optimization: Pre-compute available slots as a fast lookup set
         Set<Integer> availableSet = new HashSet<>(validSlots);
@@ -118,11 +106,8 @@ public class LayoutEngine {
         int totalRows = endRow - startRow + 1;
 
         // 3. Spreading Logic
-        // Calculate minimal rows needed
-        // For ROWS layout: each group needs ceil(size / 9) rows.
-        // For COLUMNS layout: ... distinct columns? Maybe spreading columns is better?
-        // Let's stick to ROWS spreading for now as it's more requested "Rows and
-        // Columns layout".
+        // For ROWS layout: each group needs ceil(size / rowSize) rows.
+        // For COLUMNS layout: groups fill vertically.
 
         if (layoutType == PiggyInventoryConfig.SortingLayout.ROWS) {
             // Calculate needed rows per group
