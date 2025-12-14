@@ -1,13 +1,5 @@
-name: Piggy Inventory - GameTest
-
-on:
-  push:
-    paths:
-      - 'piggy-inventory/**'
-      - '.github/workflows/piggy-inventory-test.yml'
-  pull_request:
-    paths:
-      - 'piggy-inventory/**'
+name: test
+on: [pull_request, push]
 
 jobs:
   test:
