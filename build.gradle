@@ -16,6 +16,13 @@ fabricApi {
     configureDataGeneration {
         client = true
     }
+    
+    // Configure GameTest framework
+    configureTests {
+        createSourceSet = true
+        modId = "piggy-inventory-test"
+        eula = true
+    }
 }
 
 dependencies {
