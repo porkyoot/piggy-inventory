@@ -1,8 +1,17 @@
 [![build](https://github.com/porkyoot/piggy-inventory/actions/workflows/build.yml/badge.svg)](https://github.com/porkyoot/piggy-inventory/actions/workflows/build.yml)
+[![test](https://github.com/porkyoot/piggy-inventory/actions/workflows/test.yml/badge.svg)](https://github.com/porkyoot/piggy-inventory/actions/workflows/test.yml)
 
 # Piggy Inventory
 
 A simple yet powerful mod designed to enhance your inventory management experience in Minecraft. Piggy Inventory aims to streamline your interactions with items, tools, and containers.
+
+---
+
+## Screenshots
+
+*Coming soon*
+
+---
 
 ## ⚠️ Disclaimer
 
@@ -16,32 +25,63 @@ Feel free to fork the project or submit a Pull Request if you want to contribute
 ---
 
 ## Features
-### ⚡ Core Features
-*   **Auto Tool Swap**: Automatically selects the best tool for the block you are mining. Supports Silk Touch/Fortune preferences.
+
+### ⚡ Automatic Swapping
+*   **Auto Tool Swap**: Automatically selects the best tool for the block you are mining.
+    *   Supports Silk Touch/Fortune preferences (configurable per-ore).
+    *   Respects enchantments (Efficiency, Unbreaking, etc.).
 *   **Auto Weapon Swap**: Automatically switches to your best weapon when attacking.
-*   **Auto Refill**: Automatically replaces broken tools and depleted item stacks in your hands. Includes:
-    *   **Food Refill**: Eat continuously without opening inventory.
-    *   **Weapon/Tool Refill**: Never stop fighting or mining.
-*   **Continuous Crafting**: Hold your click to craft, trade, or move items repeatedly. No more clicking spam!
+    *   Considers damage, enchantments (Sharpness, Smite, Bane of Arthropods, etc.).
+    *   Configurable preferences for different target types.
+
+### 🔄 Auto Refill
+*   **Tool/Weapon Refill**: Never stop fighting or mining - broken tools are automatically replaced.
+*   **Food Refill**: Eat continuously without opening inventory.
+*   **Smart Matching**: Finds the next best item in your inventory automatically.
 
 ### 🎒 Inventory Management
 *   **Inventory Sorting**: Sort your inventory or containers instantly with **R** or **Middle Click**.
+    *   Multiple sorting algorithms: Smart Category, Alphabetical, Creative Order, Rarity, Type, Material, Color, Tag
+    *   Customizable via JSON lists
 *   **Fast Loot / Deposit**:
     *   **Shift + Scroll**: Move matching items between inventories.
     *   **Ctrl + Scroll**: Move ALL items between inventories.
     *   **Note**: This only works when looking at a **Container** (Chest, Barrel, etc.) to preserve vanilla crouching!
+*   **Slot Locking**: Lock inventory slots to prevent accidental sorting or quick-looting.
+*   **Continuous Crafting**: Hold your click to craft, trade, or move items repeatedly. No more clicking spam!
 
-### 🎮 Controls & Hybrid System
-To resolve conflicts with other mods and Vanilla, Piggy Inventory uses a **Hybrid Key System**:
-*   **Loot Matching** (Fast Loot Matching): Defaults to **Unbound**. When unbound, it uses **Shift**.
-*   **Loot All** (Fast Loot All): Defaults to **Unbound**. When unbound, it uses **Control**.
-*   **Customization**: You can bind these to any specific key in the Controls menu if you prefer not to use Shift/Ctrl.
+---
 
-### ⚙️ Configuration
-The mod is fully configurable via **Mod Menu** (requires YACL).
-*   **Safety**: Click delays, Anti-Cheat compliance.
-*   **Features**: Toggle specific features on/off.
-*   **Lists**: Configure custom blocks for Silk Touch, tools, etc.
+## Controls
+
+You can rebind these keys in the standard Minecraft Controls menu under **"Piggy Inventory"**.
+
+| Action | Default Key | Description |
+| :--- | :--- | :--- |
+| **Tool Preference Menu** | `H` | Opens radial menu to set Silk Touch/Fortune preference. |
+| **Weapon Preference Menu** | `G` | Opens radial menu to configure weapon swap behavior. |
+| **Sort Inventory** | `R` (in inventory) | Sorts your player inventory. |
+| **Sort Container** | `Middle Click` | Sorts the container you're looking at. |
+| **Fast Loot Matching** | `Shift + Scroll` (unbound by default) | Moves matching items while looking at container. |
+| **Fast Loot All** | `Ctrl + Scroll` (unbound by default) | Moves all items while looking at container. |
+
+### 🎮 Hybrid Key System
+To avoid conflicts with vanilla controls:
+*   **Loot Matching**: Defaults to **Unbound**. When unbound, uses **Shift**.
+*   **Loot All**: Defaults to **Unbound**. When unbound, uses **Control**.
+*   **Customization**: Bind to specific keys in Controls menu if you prefer not using Shift/Ctrl.
+
+---
+
+## Configuration
+
+Access the configuration menu via **Mod Menu**.
+
+*   **Sorting**: Choose default algorithm and layout (Compact, Rows, Columns, Grid).
+*   **Tool/Weapon Swap**: Toggle auto-swapping, configure preferences.
+*   **Slot Locking**: Set which slots to lock.
+*   **Quick Loot**: Adjust delays and behavior.
+*   **Custom Lists**: Configure Silk Touch blocks, tool priorities, etc.
 
 ---
 
@@ -53,15 +93,22 @@ The mod is fully configurable via **Mod Menu** (requires YACL).
 *   **Java**: >=21
 
 ### Required Mods
-*   **[Fabric API](https://modrinth.com/mod/fabric-api)**
-*   **[YACL (Yet Another Config Lib)](https://modrinth.com/mod/yacl)**
-*   *(Optional)* **[Mod Menu](https://modrinth.com/mod/modmenu)** - Highly recommended for accessing the configuration screen.
+*   **[Fabric API](https://modrinth.com/mod/fabric-api)**: Any version
+*   **[YACL (Yet Another Config Lib)](https://modrinth.com/mod/yacl)**: ~=3.6.1+1.21-fabric
+*   **[Piggy Lib](https://github.com/porkyoot/piggy-lib)**: >=1.0.0
+*   *(Optional)* **[Mod Menu](https://modrinth.com/mod/modmenu)**: >=11.0.3 - Highly recommended for accessing configuration.
 
 ### Installation
-1.  Download the `.jar` file.
+1.  Download the `.jar` file from [Releases](https://github.com/porkyoot/piggy-inventory/releases).
 2.  Install Fabric Loader for Minecraft 1.21.1.
-3.  Place the `piggy-inventory` jar (along with Fabric API and YACL) into your `.minecraft/mods` folder.
+3.  Place the `piggy-inventory` jar (along with Fabric API, YACL, and Piggy Lib) into your `.minecraft/mods` folder.
 4.  Launch the game!
+
+---
+
+## Inspiration
+
+<!-- Projects that inspired this mod will be listed here -->
 
 ---
 
