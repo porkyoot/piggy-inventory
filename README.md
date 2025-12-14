@@ -108,7 +108,11 @@ Access the configuration menu via **Mod Menu**.
 
 ## Inspiration
 
-<!-- Projects that inspired this mod will be listed here -->
+This mod was inspired by:
+- **[Tweakeroo](https://modrinth.com/mod/tweakeroo)** - For advanced inventory management features and auto-refill mechanics.
+- **[Inventory Profiles Next](https://modrinth.com/mod/inventory-profiles-next)** - For sorting algorithms and inventory organization.
+- **[Mouse Tweaks](https://modrinth.com/mod/mouse-tweaks)** - For scroll-based item movement and quick loot features.
+- **[Inventory Tabs](https://modrinth.com/mod/inventory-tabs)** - For UI/UX inspiration in inventory management.
 
 ---
 
