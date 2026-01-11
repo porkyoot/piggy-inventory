@@ -11,7 +11,38 @@ import is.pig.minecraft.lib.ui.BlockReason;
  * Configuration data model for Piggy Inventory.
  * Holds the state of user settings.
  */
-public class PiggyInventoryConfig extends is.pig.minecraft.lib.config.PiggyClientConfig {
+public class PiggyInventoryConfig extends is.pig.minecraft.lib.config.PiggyClientConfig<PiggyInventoryConfig> {
+
+    private static PiggyInventoryConfig INSTANCE = new PiggyInventoryConfig();
+
+    static {
+        is.pig.minecraft.lib.config.PiggyConfigRegistry.getInstance().register(INSTANCE);
+    }
+
+    public static PiggyInventoryConfig getInstance() {
+        return INSTANCE;
+    }
+
+    public static void setInstance(PiggyInventoryConfig instance) {
+        is.pig.minecraft.lib.config.PiggyConfigRegistry.getInstance().unregister(INSTANCE);
+        INSTANCE = instance;
+        is.pig.minecraft.lib.config.PiggyConfigRegistry.getInstance().register(INSTANCE);
+    }
+
+    @Override
+    public void onServerSync(boolean allowCheats, java.util.Map<String, Boolean> features) {
+        super.onServerSync(allowCheats, features);
+        if (!allowCheats) {
+            this.setToolSwapEnabled(false);
+            this.setWeaponPreference(WeaponPreference.NONE);
+        }
+        if (features != null) {
+            if (features.containsKey("tool_swap") && !features.get("tool_swap"))
+                this.setToolSwapEnabled(false);
+            if (features.containsKey("weapon_switch") && !features.get("weapon_switch"))
+                this.setWeaponPreference(WeaponPreference.NONE);
+        }
+    }
 
     // --- CONFIG FIELDS ---
 

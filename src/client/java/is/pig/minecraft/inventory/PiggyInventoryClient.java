@@ -4,8 +4,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import is.pig.minecraft.inventory.config.ConfigPersistence;
-import is.pig.minecraft.inventory.config.PiggyInventoryConfig;
-import is.pig.minecraft.lib.config.PiggyClientConfig;
+
 import is.pig.minecraft.inventory.mvc.controller.InputController;
 import is.pig.minecraft.inventory.sorting.InventorySorter;
 import net.fabricmc.api.ClientModInitializer;
@@ -75,21 +74,7 @@ public class PiggyInventoryClient implements ClientModInitializer {
                 controller.initialize();
                 is.pig.minecraft.lib.ui.AntiCheatHudOverlay.register();
 
-                PiggyClientConfig.getInstance().registerConfigSyncListener((allowCheats, features) -> {
-                        PiggyInventoryConfig inv = (PiggyInventoryConfig) PiggyInventoryConfig.getInstance();
-                        inv.serverAllowCheats = allowCheats;
-                        inv.serverFeatures = features;
-                        if (!allowCheats) {
-                                inv.setToolSwapEnabled(false);
-                                inv.setWeaponPreference(PiggyInventoryConfig.WeaponPreference.NONE);
-                        }
-                        if (features != null) {
-                                if (features.containsKey("tool_swap") && !features.get("tool_swap"))
-                                        inv.setToolSwapEnabled(false);
-                                if (features.containsKey("weapon_switch") && !features.get("weapon_switch"))
-                                        inv.setWeaponPreference(PiggyInventoryConfig.WeaponPreference.NONE);
-                        }
-                });
+                // Listener registration moved to PiggyInventoryConfig self-registration.
 
                 // Input Handling (Backup/Global)
                 ClientTickEvents.END_CLIENT_TICK.register(client -> {

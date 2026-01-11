@@ -242,6 +242,7 @@ public class PiggyConfigScreenFactory {
                                                                 .binding(PiggyInventoryConfig.OrePreference.FORTUNE,
                                                                                 config::getOrePreference,
                                                                                 config::setOrePreference)
+                                                                .available(config.isToolSwapEnabled())
                                                                 .controller(opt -> EnumControllerBuilder.create(opt)
                                                                                 .enumClass(PiggyInventoryConfig.OrePreference.class))
                                                                 .build())

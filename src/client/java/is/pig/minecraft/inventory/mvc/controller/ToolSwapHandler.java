@@ -59,7 +59,8 @@ public class ToolSwapHandler {
             ItemStack currentStack = client.player.getMainHandItem();
 
             int bestSlot = currentSlot;
-            float bestScore = getToolScore(client, currentStack, state, mode, config);
+            float currentScore = getToolScore(client, currentStack, state, mode, config);
+            float bestScore = currentScore;
             boolean bestDamageable = currentStack.isDamageableItem();
 
             for (int i = 0; i < 36; i++) {
@@ -70,7 +71,22 @@ public class ToolSwapHandler {
                 float score = getToolScore(client, stack, state, mode, config);
                 boolean damageable = stack.isDamageableItem();
 
-                if (score > bestScore) {
+                // Logic fix:
+                // If we are in "bonus territory" (score > 1000), we don't use percentage based
+                // improvement
+                // because the base speed is small compared to the bonus.
+                boolean isBetter;
+
+                if (bestScore > 1000.0f) {
+                    // With large bonuses, just check if it's strictly better by a noticeable margin
+                    // (e.g. 1.0 speed unit)
+                    isBetter = score > bestScore + 1.0f;
+                } else {
+                    // Standard behavior for normal tools
+                    isBetter = score > bestScore * 1.05f;
+                }
+
+                if (isBetter) {
                     bestScore = score;
                     bestSlot = i;
                     bestDamageable = damageable;
@@ -131,6 +147,16 @@ public class ToolSwapHandler {
             PiggyInventoryConfig.OrePreference mode, PiggyInventoryConfig config) {
         if (stack.isEmpty())
             return 0f;
+
+        // NEW: Check if the tool works for drops
+        // If the block *requires* a specific tool for drops (like Stone requires a
+        // pickaxe),
+        // and this stack is NOT that tool, we penalize it heavily so we don't switch to
+        // it.
+        // We do allow it if the block doesn't require a tool (leaves, dirt, etc).
+        if (state.requiresCorrectToolForDrops() && !stack.isCorrectToolForDrops(state)) {
+            return -1.0f;
+        }
 
         float speed = stack.getDestroySpeed(state);
 

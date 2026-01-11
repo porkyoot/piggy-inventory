@@ -31,25 +31,30 @@ public class InventoryUtils {
         return isLootAllDown();
     }
 
-    // Use direct GLFW calls for Alt key detection (more reliable than
-    // KeyMapping.isDown() for modifier keys)
+    // Use KeyMapping for Alt key detection to respect user binds
+    // MODIFIED: Use direct polling because some mods break KeyMapping event
+    // propagation
     public static boolean isLockDown() {
-        net.minecraft.client.Minecraft client = net.minecraft.client.Minecraft.getInstance();
-        if (client.getWindow() == null) {
+        if (is.pig.minecraft.inventory.PiggyInventoryClient.lockKey.isUnbound()) {
             return false;
         }
 
-        long window = client.getWindow().getWindow();
-        // Check both left and right Alt keys
-        boolean leftAlt = org.lwjgl.glfw.GLFW.glfwGetKey(window,
-                org.lwjgl.glfw.GLFW.GLFW_KEY_LEFT_ALT) == org.lwjgl.glfw.GLFW.GLFW_PRESS;
-        boolean rightAlt = org.lwjgl.glfw.GLFW.glfwGetKey(window,
-                org.lwjgl.glfw.GLFW.GLFW_KEY_RIGHT_ALT) == org.lwjgl.glfw.GLFW.GLFW_PRESS;
+        com.mojang.blaze3d.platform.InputConstants.Key key = net.fabricmc.fabric.api.client.keybinding.v1.KeyBindingHelper
+                .getBoundKeyOf(is.pig.minecraft.inventory.PiggyInventoryClient.lockKey);
+        long window = Minecraft.getInstance().getWindow().getWindow();
 
-        boolean result = leftAlt || rightAlt;
-        is.pig.minecraft.inventory.PiggyInventoryClient.LOGGER.debug("isLockDown: leftAlt={}, rightAlt={}, result={}",
-                leftAlt, rightAlt, result);
-        return result;
+        try {
+            if (key.getType() == com.mojang.blaze3d.platform.InputConstants.Type.KEYSYM) {
+                return com.mojang.blaze3d.platform.InputConstants.isKeyDown(window, key.getValue());
+            } else if (key.getType() == com.mojang.blaze3d.platform.InputConstants.Type.MOUSE) {
+                return org.lwjgl.glfw.GLFW.glfwGetMouseButton(window, key.getValue()) == org.lwjgl.glfw.GLFW.GLFW_PRESS;
+            }
+        } catch (Exception e) {
+            // Fallback to vanilla
+            return is.pig.minecraft.inventory.PiggyInventoryClient.lockKey.isDown();
+        }
+
+        return false;
     }
 
     /**
@@ -57,6 +62,39 @@ public class InventoryUtils {
      * Moved from MixinMouseHandler to avoid Mixin restriction on public static
      * methods.
      */
+    public static void debugLockKey() {
+        try {
+            if (is.pig.minecraft.inventory.PiggyInventoryClient.lockKey.isUnbound()) {
+                is.pig.minecraft.inventory.PiggyInventoryClient.LOGGER.info("DEBUG: Lock Key is UNBOUND.");
+                return;
+            }
+            com.mojang.blaze3d.platform.InputConstants.Key key = net.fabricmc.fabric.api.client.keybinding.v1.KeyBindingHelper
+                    .getBoundKeyOf(is.pig.minecraft.inventory.PiggyInventoryClient.lockKey);
+            long window = Minecraft.getInstance().getWindow().getWindow();
+
+            is.pig.minecraft.inventory.PiggyInventoryClient.LOGGER.info(
+                    "DEBUG: Lock Key Info. Type: {}, Value: {}, Name: {}",
+                    key.getType(), key.getValue(), key.getDisplayName().getString());
+
+            boolean polled = false;
+            if (key.getType() == com.mojang.blaze3d.platform.InputConstants.Type.KEYSYM) {
+                polled = com.mojang.blaze3d.platform.InputConstants.isKeyDown(window, key.getValue());
+                is.pig.minecraft.inventory.PiggyInventoryClient.LOGGER.info("DEBUG: Polling KEYSYM. Result: {}",
+                        polled);
+            } else if (key.getType() == com.mojang.blaze3d.platform.InputConstants.Type.MOUSE) {
+                polled = org.lwjgl.glfw.GLFW.glfwGetMouseButton(window,
+                        key.getValue()) == org.lwjgl.glfw.GLFW.GLFW_PRESS;
+                is.pig.minecraft.inventory.PiggyInventoryClient.LOGGER.info("DEBUG: Polling MOUSE. Result: {}", polled);
+            }
+
+            is.pig.minecraft.inventory.PiggyInventoryClient.LOGGER.info("DEBUG: Vanilla KeyMapping.isDown(): {}",
+                    is.pig.minecraft.inventory.PiggyInventoryClient.lockKey.isDown());
+
+        } catch (Exception e) {
+            is.pig.minecraft.inventory.PiggyInventoryClient.LOGGER.error("DEBUG: Exception checking lock key", e);
+        }
+    }
+
     public static boolean handleScrollTransfer(AbstractContainerScreen<?> screen, double scrollDelta,
             boolean forceMoveAll) {
         Minecraft client = Minecraft.getInstance();

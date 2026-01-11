@@ -20,7 +20,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 import com.mojang.blaze3d.systems.RenderSystem;
 
 @Environment(EnvType.CLIENT)
-@Mixin(AbstractContainerScreen.class)
+@Mixin(value = AbstractContainerScreen.class, priority = 2000)
 public abstract class MixinHandledScreen implements is.pig.minecraft.inventory.duck.IHandledScreen {
 
     @Shadow
