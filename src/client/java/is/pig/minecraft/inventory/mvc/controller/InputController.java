@@ -41,7 +41,6 @@ public class InputController {
             if (client.player == null)
                 return;
 
-            toolSwapHandler.onTick(client);
             preferenceHandler.onTick(client);
             weaponPreferenceHandler.onTick(client);
         });

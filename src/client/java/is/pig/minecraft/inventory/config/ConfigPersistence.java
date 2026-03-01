@@ -28,6 +28,31 @@ public class ConfigPersistence {
     private static final Gson GSON = new GsonBuilder()
             .setPrettyPrinting()
             .registerTypeAdapter(Color.class, new ColorTypeAdapter())
+            .registerTypeHierarchyAdapter(java.util.function.BiConsumer.class,
+                    new TypeAdapter<java.util.function.BiConsumer<?, ?>>() {
+                        @Override
+                        public void write(JsonWriter out, java.util.function.BiConsumer<?, ?> value)
+                                throws IOException {
+                            out.beginObject().endObject();
+                        }
+
+                        @Override
+                        public java.util.function.BiConsumer<?, ?> read(JsonReader in) throws IOException {
+                            in.skipValue();
+                            return null;
+                        }
+                    })
+            .setExclusionStrategies(new com.google.gson.ExclusionStrategy() {
+                @Override
+                public boolean shouldSkipField(com.google.gson.FieldAttributes f) {
+                    return f.getName().equals("syncListeners");
+                }
+
+                @Override
+                public boolean shouldSkipClass(Class<?> clazz) {
+                    return false;
+                }
+            })
             .create();
 
     /**
@@ -45,9 +70,11 @@ public class ConfigPersistence {
             } catch (com.google.gson.JsonSyntaxException | com.google.gson.JsonIOException e) {
                 LOGGER.error("Failed to parse configuration file: {}", CONFIG_FILE.getAbsolutePath(), e);
                 // Throwing a RuntimeException with a clear message to inform the user
-                throw new RuntimeException("PiggyInventory Config Error: The configuration file '" + CONFIG_FILE.getName()
-                        + "' is malformed. Please fix the syntax or delete the file to regenerate it. Details: "
-                        + e.getMessage(), e);
+                throw new RuntimeException(
+                        "PiggyInventory Config Error: The configuration file '" + CONFIG_FILE.getName()
+                                + "' is malformed. Please fix the syntax or delete the file to regenerate it. Details: "
+                                + e.getMessage(),
+                        e);
             } catch (IOException e) {
                 LOGGER.error("Failed to load configuration", e);
             }

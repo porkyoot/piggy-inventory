@@ -192,8 +192,13 @@ public class PiggyInventoryConfig extends is.pig.minecraft.lib.config.PiggyClien
     }
 
     public void setGuiWeaponPreference(WeaponPreference pref) {
-        // Updates weapon preference. Selecting NONE disables the feature.
-        setWeaponPreference(pref);
+        if (weaponPreference == WeaponPreference.NONE) {
+            if (pref != WeaponPreference.NONE) {
+                this.lastActiveWeaponPreference = pref;
+            }
+        } else {
+            setWeaponPreference(pref);
+        }
     }
 
     public WeaponPreference getGuiWeaponPreference() {
@@ -256,18 +261,24 @@ public class PiggyInventoryConfig extends is.pig.minecraft.lib.config.PiggyClien
     // --- SINGLETON ACCESS ---
 
     public boolean isToolSwapEnabled() {
-        return orePreference != OrePreference.NONE;
+        boolean enabled = orePreference != OrePreference.NONE;
+        System.out.println(
+                "[YACL DEBUG] isToolSwapEnabled called. orePreference=" + orePreference + ", returning=" + enabled);
+        return enabled;
     }
 
     public void setToolSwapEnabled(boolean enabled) {
+        System.out.println("[YACL DEBUG] setToolSwapEnabled called with param: " + enabled);
         if (enabled) {
             boolean serverForces = !this.serverAllowCheats
                     || (this.serverFeatures != null && this.serverFeatures.containsKey("tool_swap")
                             && !this.serverFeatures.get("tool_swap"));
 
             if (serverForces) {
+                // ... server forces it off anyway
                 AntiCheatFeedbackManager.getInstance().onFeatureBlocked("tool_swap", BlockReason.SERVER_ENFORCEMENT);
                 this.orePreference = OrePreference.NONE;
+                System.out.println("[YACL DEBUG] setToolSwapEnabled blocked by server. orePreference set to NONE");
                 return;
             }
 
@@ -275,8 +286,11 @@ public class PiggyInventoryConfig extends is.pig.minecraft.lib.config.PiggyClien
                 lastActivePreference = OrePreference.FORTUNE;
             }
             this.orePreference = lastActivePreference;
+            System.out.println(
+                    "[YACL DEBUG] setToolSwapEnabled applied true. orePreference set to " + lastActivePreference);
         } else {
             this.orePreference = OrePreference.NONE;
+            System.out.println("[YACL DEBUG] setToolSwapEnabled applied false. orePreference set to NONE");
         }
     }
 
@@ -319,6 +333,31 @@ public class PiggyInventoryConfig extends is.pig.minecraft.lib.config.PiggyClien
             this.lastActivePreference = pref;
         }
         this.orePreference = pref;
+    }
+
+    public void setGuiOrePreference(OrePreference pref) {
+        System.out.println("[YACL DEBUG] setGuiOrePreference called with param: " + pref + ". Current orePreference="
+                + orePreference);
+        if (orePreference == OrePreference.NONE) {
+            if (pref != OrePreference.NONE) {
+                this.lastActivePreference = pref;
+                System.out.println("[YACL DEBUG] setGuiOrePreference updated lastActivePreference to " + pref);
+            }
+        } else {
+            setOrePreference(pref);
+            System.out.println("[YACL DEBUG] setGuiOrePreference bypassed to setOrePreference");
+        }
+    }
+
+    public OrePreference getGuiOrePreference() {
+        OrePreference ret;
+        if (orePreference == OrePreference.NONE) {
+            ret = lastActivePreference;
+        } else {
+            ret = orePreference;
+        }
+        System.out.println("[YACL DEBUG] getGuiOrePreference called. Returning: " + ret);
+        return ret;
     }
 
     public List<Integer> getSwapHotbarSlots() {

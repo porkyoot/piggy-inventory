@@ -20,30 +20,51 @@ import net.minecraft.world.phys.HitResult;
 
 public class ToolSwapHandler {
 
+    private net.minecraft.core.BlockPos lastTargetedBlock = null;
+    private int ticksHovered = 0;
+
     /**
      * @return true if the attack should be CANCELLED (protected block).
      */
     public boolean onTick(Minecraft client) {
         PiggyInventoryConfig config = (PiggyInventoryConfig) PiggyInventoryConfig.getInstance();
 
-        if (!config.isToolSwapEnabled()) {
-            return false;
-        }
-
-        if (client.player == null || client.level == null) {
-            return false;
-        }
-
-        if (client.screen != null) {
+        if (!config.isToolSwapEnabled() || client.player == null || client.level == null || client.screen != null) {
+            this.lastTargetedBlock = null;
+            this.ticksHovered = 0;
             return false;
         }
 
         if (!client.options.keyAttack.isDown()) {
+            this.lastTargetedBlock = null;
+            this.ticksHovered = 0;
             return false;
         }
 
         if (client.hitResult instanceof BlockHitResult blockHit && blockHit.getType() == HitResult.Type.BLOCK) {
-            BlockState state = client.level.getBlockState(blockHit.getBlockPos());
+            net.minecraft.core.BlockPos currentPos = blockHit.getBlockPos();
+            BlockState state = client.level.getBlockState(currentPos);
+
+            if (currentPos.equals(this.lastTargetedBlock)) {
+                this.ticksHovered++;
+            } else {
+                this.lastTargetedBlock = currentPos;
+                this.ticksHovered = 0;
+            }
+
+            if (this.ticksHovered < 2 && state.getDestroySpeed(client.level, currentPos) != 0.0F) {
+                return false;
+            }
+
+            int currentSlot = client.player.getInventory().selected;
+            ItemStack currentStack = client.player.getMainHandItem();
+
+            // Intercept: If the player is holding a Veinminer-like tool, give the server
+            // 10 ticks (0.5s) to finish breaking the block vein before we swap the tool
+            // away.
+            if (hasVeinminerEnchantment(currentStack) && this.ticksHovered < 10) {
+                return false;
+            }
 
             PiggyInventoryConfig.OrePreference mode = config.getOrePreference();
 
@@ -55,9 +76,6 @@ public class ToolSwapHandler {
             }
 
             // 3. Tool Selection Logic
-            int currentSlot = client.player.getInventory().selected;
-            ItemStack currentStack = client.player.getMainHandItem();
-
             int bestSlot = currentSlot;
             float currentScore = getToolScore(client, currentStack, state, mode, config);
             float bestScore = currentScore;
@@ -91,7 +109,10 @@ public class ToolSwapHandler {
                     bestSlot = i;
                     bestDamageable = damageable;
                 } else if (Math.abs(score - bestScore) < 0.0001f) {
-                    if (bestDamageable && !damageable) {
+                    // Only switch to a non-damageable item to save durability if we've hovered long
+                    // enough (0.5 seconds).
+                    // Prevents frantic no-tool -> tool -> no-tool swapping when Veinmining.
+                    if (bestDamageable && !damageable && this.ticksHovered >= 10) {
                         bestScore = score;
                         bestSlot = i;
                         bestDamageable = damageable;
@@ -102,6 +123,9 @@ public class ToolSwapHandler {
             if (bestSlot != currentSlot) {
                 swapToSlot(client, currentSlot, bestSlot, config.getSwapHotbarSlots());
             }
+        } else {
+            this.lastTargetedBlock = null;
+            this.ticksHovered = 0;
         }
 
         return false; // Allow attack
@@ -261,6 +285,29 @@ public class ToolSwapHandler {
                 if (id.equals(pattern) || path.equals(pattern))
                     return true;
             }
+        }
+        return false;
+    }
+
+    private boolean hasVeinminerEnchantment(ItemStack stack) {
+        if (stack.isEmpty())
+            return false;
+        try {
+            var enchantments = stack.get(net.minecraft.core.component.DataComponents.ENCHANTMENTS);
+            if (enchantments != null) {
+                for (var enchantHolder : enchantments.keySet()) {
+                    var key = enchantHolder.unwrapKey().orElse(null);
+                    if (key != null) {
+                        String path = key.location().getPath().toLowerCase();
+                        if (path.contains("veinminer") || path.contains("timber") || path.contains("treecapitator")
+                                || path.contains("lumberjack")) {
+                            return true;
+                        }
+                    }
+                }
+            }
+        } catch (Exception e) {
+            // Safe fallback
         }
         return false;
     }

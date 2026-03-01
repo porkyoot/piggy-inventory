@@ -240,8 +240,8 @@ public class PiggyConfigScreenFactory {
                                                                                 Component.literal(
                                                                                                 "Prioritize Fortune or Silk Touch when both are applicable.")))
                                                                 .binding(PiggyInventoryConfig.OrePreference.FORTUNE,
-                                                                                config::getOrePreference,
-                                                                                config::setOrePreference)
+                                                                                config::getGuiOrePreference,
+                                                                                config::setGuiOrePreference)
                                                                 .available(config.isToolSwapEnabled())
                                                                 .controller(opt -> EnumControllerBuilder.create(opt)
                                                                                 .enumClass(PiggyInventoryConfig.OrePreference.class))
