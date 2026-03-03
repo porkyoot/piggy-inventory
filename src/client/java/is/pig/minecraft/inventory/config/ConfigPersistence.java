@@ -89,7 +89,6 @@ public class ConfigPersistence {
     public static void save() {
         try (FileWriter writer = new FileWriter(CONFIG_FILE)) {
             GSON.toJson(PiggyInventoryConfig.getInstance(), writer);
-            LOGGER.debug("Configuration saved successfully.");
         } catch (IOException e) {
             LOGGER.error("Failed to save configuration", e);
         }

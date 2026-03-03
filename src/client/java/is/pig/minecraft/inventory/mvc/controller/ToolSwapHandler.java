@@ -3,6 +3,7 @@ package is.pig.minecraft.inventory.mvc.controller;
 import java.util.List;
 import is.pig.minecraft.inventory.config.PiggyInventoryConfig;
 import net.minecraft.client.Minecraft;
+import net.minecraft.network.chat.Component;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.network.protocol.game.ServerboundSetCarriedItemPacket;
 import net.minecraft.resources.ResourceKey;
@@ -22,6 +23,8 @@ public class ToolSwapHandler {
 
     private net.minecraft.core.BlockPos lastTargetedBlock = null;
     private int ticksHovered = 0;
+    private int ticksWantingToSwap = 0;
+    private int targetSwapSlot = -1;
 
     /**
      * @return true if the attack should be CANCELLED (protected block).
@@ -32,12 +35,16 @@ public class ToolSwapHandler {
         if (!config.isToolSwapEnabled() || client.player == null || client.level == null || client.screen != null) {
             this.lastTargetedBlock = null;
             this.ticksHovered = 0;
+            this.ticksWantingToSwap = 0;
+            this.targetSwapSlot = -1;
             return false;
         }
 
         if (!client.options.keyAttack.isDown()) {
             this.lastTargetedBlock = null;
             this.ticksHovered = 0;
+            this.ticksWantingToSwap = 0;
+            this.targetSwapSlot = -1;
             return false;
         }
 
@@ -52,32 +59,29 @@ public class ToolSwapHandler {
                 this.ticksHovered = 0;
             }
 
-            if (this.ticksHovered < 2 && state.getDestroySpeed(client.level, currentPos) != 0.0F) {
-                return false;
-            }
-
             int currentSlot = client.player.getInventory().selected;
             ItemStack currentStack = client.player.getMainHandItem();
-
-            // Intercept: If the player is holding a Veinminer-like tool, give the server
-            // 10 ticks (0.5s) to finish breaking the block vein before we swap the tool
-            // away.
-            if (hasVeinminerEnchantment(currentStack) && this.ticksHovered < 10) {
-                return false;
-            }
 
             PiggyInventoryConfig.OrePreference mode = config.getOrePreference();
 
             // 2. Safety Check (Silk Touch Mode)
             if (mode == PiggyInventoryConfig.OrePreference.SILK_TOUCH) {
                 if (matchesConfigList(config.getProtectedBlocks(), state)) {
+                    this.ticksWantingToSwap = 0;
+                    this.targetSwapSlot = -1;
                     return true; // Cancel attack
                 }
             }
 
             // 3. Tool Selection Logic
+            boolean currentBreakingSoon = isToolBreakingSoon(currentStack, config);
+
             int bestSlot = currentSlot;
             float currentScore = getToolScore(client, currentStack, state, mode, config);
+            if (currentBreakingSoon) {
+                currentScore = -10000.0f; // Penalize deeply
+            }
+
             float bestScore = currentScore;
             boolean bestDamageable = currentStack.isDamageableItem();
 
@@ -86,6 +90,9 @@ public class ToolSwapHandler {
                     continue;
 
                 ItemStack stack = client.player.getInventory().getItem(i);
+                if (isToolBreakingSoon(stack, config)) {
+                    continue; // Never swap to a breaking tool
+                }
                 float score = getToolScore(client, stack, state, mode, config);
                 boolean damageable = stack.isDamageableItem();
 
@@ -121,11 +128,45 @@ public class ToolSwapHandler {
             }
 
             if (bestSlot != currentSlot) {
-                swapToSlot(client, currentSlot, bestSlot, config.getSwapHotbarSlots());
+                if (currentBreakingSoon) {
+                    swapToSlot(client, currentSlot, bestSlot, config.getSwapHotbarSlots());
+                    client.player.displayClientMessage(Component.literal("§c[Piggy] Tool swap: Saved your tool!"),
+                            true);
+                    this.ticksWantingToSwap = 0;
+                    this.targetSwapSlot = -1;
+                } else {
+                    if (this.targetSwapSlot == bestSlot) {
+                        this.ticksWantingToSwap++;
+                    } else {
+                        this.targetSwapSlot = bestSlot;
+                        this.ticksWantingToSwap = 1;
+                    }
+
+                    int requiredTicks = hasVeinminerEnchantment(currentStack) ? 10
+                            : (state.getDestroySpeed(client.level, currentPos) == 0.0F ? 0 : 2);
+
+                    if (this.ticksWantingToSwap >= requiredTicks) {
+                        swapToSlot(client, currentSlot, bestSlot, config.getSwapHotbarSlots());
+                        this.ticksWantingToSwap = 0;
+                        this.targetSwapSlot = -1;
+                    }
+                }
+            } else {
+                if (currentBreakingSoon) {
+                    client.player.displayClientMessage(
+                            Component.literal("§c[Piggy] Tool breaking soon! Mining prevented."), true);
+                    this.ticksWantingToSwap = 0;
+                    this.targetSwapSlot = -1;
+                    return true; // Cancel attack
+                }
+                this.ticksWantingToSwap = 0;
+                this.targetSwapSlot = -1;
             }
         } else {
             this.lastTargetedBlock = null;
             this.ticksHovered = 0;
+            this.ticksWantingToSwap = 0;
+            this.targetSwapSlot = -1;
         }
 
         return false; // Allow attack
@@ -300,7 +341,7 @@ public class ToolSwapHandler {
                     if (key != null) {
                         String path = key.location().getPath().toLowerCase();
                         if (path.contains("veinminer") || path.contains("timber") || path.contains("treecapitator")
-                                || path.contains("lumberjack")) {
+                                || path.contains("lumberjack") || path.contains("magnetic") || path.contains("smelting")) {
                             return true;
                         }
                     }
@@ -310,5 +351,31 @@ public class ToolSwapHandler {
             // Safe fallback
         }
         return false;
+    }
+
+    private boolean isToolBreakingSoon(ItemStack stack, PiggyInventoryConfig config) {
+        if (!config.isPreventToolBreak() || !stack.isDamageableItem()) {
+            return false;
+        }
+
+        int remainingDurability = stack.getMaxDamage() - stack.getDamageValue();
+        if (remainingDurability > 10) {
+            return false;
+        }
+
+        if (config.isAllowUnenchantedToolsToBreak() && !hasAnyEnchantments(stack)) {
+            return false;
+        }
+
+        return true;
+    }
+
+    private boolean hasAnyEnchantments(ItemStack stack) {
+        try {
+            var enchantments = stack.get(net.minecraft.core.component.DataComponents.ENCHANTMENTS);
+            return enchantments != null && !enchantments.isEmpty();
+        } catch (Exception e) {
+            return false;
+        }
     }
 }

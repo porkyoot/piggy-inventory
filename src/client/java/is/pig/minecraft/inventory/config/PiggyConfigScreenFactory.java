@@ -246,6 +246,22 @@ public class PiggyConfigScreenFactory {
                                                                 .controller(opt -> EnumControllerBuilder.create(opt)
                                                                                 .enumClass(PiggyInventoryConfig.OrePreference.class))
                                                                 .build())
+                                                .option(Option.<Boolean>createBuilder()
+                                                                .name(Component.literal("Prevent Tool Break"))
+                                                                .description(OptionDescription.of(Component.literal(
+                                                                                "Prevents the use of tools with 10 or lower durability, automatically swapping to a better tool or preventing mining.")))
+                                                                .binding(true, config::isPreventToolBreak,
+                                                                                config::setPreventToolBreak)
+                                                                .controller(TickBoxControllerBuilder::create)
+                                                                .build())
+                                                .option(Option.<Boolean>createBuilder()
+                                                                .name(Component.literal("Allow Unenchanted Break"))
+                                                                .description(OptionDescription.of(Component.literal(
+                                                                                "If Tool Break Prevention is on, still allow unenchanted tools to break.")))
+                                                                .binding(false, config::isAllowUnenchantedToolsToBreak,
+                                                                                config::setAllowUnenchantedToolsToBreak)
+                                                                .controller(TickBoxControllerBuilder::create)
+                                                                .build())
 
                                                 .group(ListOption.<String>createBuilder()
                                                                 .name(Component.literal(

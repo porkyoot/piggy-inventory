@@ -57,44 +57,6 @@ public class InventoryUtils {
         return false;
     }
 
-    /**
-     * Handles scroll-based item transfer logic.
-     * Moved from MixinMouseHandler to avoid Mixin restriction on public static
-     * methods.
-     */
-    public static void debugLockKey() {
-        try {
-            if (is.pig.minecraft.inventory.PiggyInventoryClient.lockKey.isUnbound()) {
-                is.pig.minecraft.inventory.PiggyInventoryClient.LOGGER.info("DEBUG: Lock Key is UNBOUND.");
-                return;
-            }
-            com.mojang.blaze3d.platform.InputConstants.Key key = net.fabricmc.fabric.api.client.keybinding.v1.KeyBindingHelper
-                    .getBoundKeyOf(is.pig.minecraft.inventory.PiggyInventoryClient.lockKey);
-            long window = Minecraft.getInstance().getWindow().getWindow();
-
-            is.pig.minecraft.inventory.PiggyInventoryClient.LOGGER.info(
-                    "DEBUG: Lock Key Info. Type: {}, Value: {}, Name: {}",
-                    key.getType(), key.getValue(), key.getDisplayName().getString());
-
-            boolean polled = false;
-            if (key.getType() == com.mojang.blaze3d.platform.InputConstants.Type.KEYSYM) {
-                polled = com.mojang.blaze3d.platform.InputConstants.isKeyDown(window, key.getValue());
-                is.pig.minecraft.inventory.PiggyInventoryClient.LOGGER.info("DEBUG: Polling KEYSYM. Result: {}",
-                        polled);
-            } else if (key.getType() == com.mojang.blaze3d.platform.InputConstants.Type.MOUSE) {
-                polled = org.lwjgl.glfw.GLFW.glfwGetMouseButton(window,
-                        key.getValue()) == org.lwjgl.glfw.GLFW.GLFW_PRESS;
-                is.pig.minecraft.inventory.PiggyInventoryClient.LOGGER.info("DEBUG: Polling MOUSE. Result: {}", polled);
-            }
-
-            is.pig.minecraft.inventory.PiggyInventoryClient.LOGGER.info("DEBUG: Vanilla KeyMapping.isDown(): {}",
-                    is.pig.minecraft.inventory.PiggyInventoryClient.lockKey.isDown());
-
-        } catch (Exception e) {
-            is.pig.minecraft.inventory.PiggyInventoryClient.LOGGER.error("DEBUG: Exception checking lock key", e);
-        }
-    }
-
     public static boolean handleScrollTransfer(AbstractContainerScreen<?> screen, double scrollDelta,
             boolean forceMoveAll) {
         Minecraft client = Minecraft.getInstance();
