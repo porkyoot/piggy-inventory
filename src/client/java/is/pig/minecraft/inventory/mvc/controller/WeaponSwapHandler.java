@@ -11,7 +11,6 @@ import net.minecraft.world.entity.vehicle.ChestBoat;
 import net.minecraft.world.item.AxeItem;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.MaceItem;
-import net.minecraft.world.item.SwordItem;
 import net.minecraft.world.item.TridentItem;
 import net.minecraft.world.item.enchantment.EnchantmentHelper;
 import net.minecraft.world.item.enchantment.Enchantments;
@@ -99,74 +98,44 @@ public class WeaponSwapHandler {
         if (stack.isEmpty())
             return 0;
 
-        double damage = 1.0;
-        double speed = 4.0; // Base speed (fist) is roughly 4.0 but attack cooldown logic is tricky.
-        // Actually base player attack speed is 4.0.
-        // Sword modifies it by -2.4 -> 1.6
-        // Axe modifies it by -3.0 -> 1.0 (approx, varies by material)
-        // Trident -2.9 -> 1.1
-        // We will approximate speed based on item class since dynamic attribute lookup
-        // is complex here.
+        // 1. DYNAMIC ATTRIBUTE EXTRACTION (No more string matching!)
+        double baseDamage = 1.0; // Base player fist damage
+        double baseSpeed = 4.0;  // Base player attack speed
 
-        if (stack.getItem() instanceof SwordItem) {
-            damage = 3.0 + 4.0; // Placeholder base, ideally use explicit material checks if needed
-            // Simple material tiers check for slightly better accuracy:
-            String name = stack.getItem().toString();
-            if (name.contains("netherite"))
-                damage = 8.0;
-            else if (name.contains("diamond"))
-                damage = 7.0;
-            else if (name.contains("iron"))
-                damage = 6.0;
-            else if (name.contains("stone"))
-                damage = 5.0;
-            else if (name.contains("golden"))
-                damage = 4.0;
-            else
-                damage = 4.0; // Wood/Other
-
-            speed = 1.6;
-        } else if (stack.getItem() instanceof AxeItem) {
-            String name = stack.getItem().toString();
-            if (name.contains("netherite")) {
-                damage = 10.0;
-                speed = 1.0;
-            } else if (name.contains("diamond")) {
-                damage = 9.0;
-                speed = 1.0;
-            } else if (name.contains("iron")) {
-                damage = 9.0;
-                speed = 0.9;
-            } // Iron axe is slower? Actually standard assumes 1.0 usually or 0.9
-            else if (name.contains("stone")) {
-                damage = 9.0;
-                speed = 0.8;
-            } else if (name.contains("golden")) {
-                damage = 7.0;
-                speed = 1.0;
-            } else {
-                damage = 7.0;
-                speed = 0.8;
-            } // Wood
-        } else if (stack.getItem() instanceof TridentItem) {
-            damage = 9.0;
-            speed = 1.1;
-        } else if (stack.getItem() instanceof MaceItem) {
-            damage = 6.0;
-            speed = 0.6;
-        } else if (stack.getItem() instanceof net.minecraft.world.item.PickaxeItem) {
-            damage = 1.0 + 2.0; // Very base
-            speed = 1.2;
-        }
+        net.minecraft.world.item.component.ItemAttributeModifiers modifiers = stack.getOrDefault(net.minecraft.core.component.DataComponents.ATTRIBUTE_MODIFIERS, net.minecraft.world.item.component.ItemAttributeModifiers.EMPTY);
+        
+        final double[] dmg = {baseDamage};
+        final double[] spd = {baseSpeed};
+        final double initDmg = baseDamage;
+        final double initSpd = baseSpeed;
+        
+        modifiers.forEach(net.minecraft.world.entity.EquipmentSlot.MAINHAND, (attribute, modifier) -> {
+            if (attribute.equals(net.minecraft.world.entity.ai.attributes.Attributes.ATTACK_DAMAGE)) {
+                if (modifier.operation() == net.minecraft.world.entity.ai.attributes.AttributeModifier.Operation.ADD_VALUE) {
+                    dmg[0] += modifier.amount();
+                } else if (modifier.operation() == net.minecraft.world.entity.ai.attributes.AttributeModifier.Operation.ADD_MULTIPLIED_BASE) {
+                    dmg[0] += initDmg * modifier.amount();
+                }
+            } else if (attribute.equals(net.minecraft.world.entity.ai.attributes.Attributes.ATTACK_SPEED)) {
+                if (modifier.operation() == net.minecraft.world.entity.ai.attributes.AttributeModifier.Operation.ADD_VALUE) {
+                    spd[0] += modifier.amount();
+                } else if (modifier.operation() == net.minecraft.world.entity.ai.attributes.AttributeModifier.Operation.ADD_MULTIPLIED_BASE) {
+                    spd[0] += initSpd * modifier.amount();
+                }
+            }
+        });
+        
+        baseDamage = dmg[0];
+        baseSpeed = spd[0];
 
         // Enchantment bonuses
         int sharpness = getEnchantmentLevel(client, stack, Enchantments.SHARPNESS);
         if (sharpness > 0)
-            damage += sharpness * 0.5;
+            baseDamage += sharpness * 0.5;
 
         int smite = getEnchantmentLevel(client, stack, Enchantments.SMITE);
         if (smite > 0 && target instanceof LivingEntity living && living.isInvertedHealAndHarm()) {
-            damage += smite * 2.5;
+            baseDamage += smite * 2.5;
         }
 
         int bane = getEnchantmentLevel(client, stack, Enchantments.BANE_OF_ARTHROPODS);
@@ -177,7 +146,7 @@ public class WeaponSwapHandler {
                     || target instanceof net.minecraft.world.entity.monster.Endermite
                     || target instanceof net.minecraft.world.entity.animal.Bee;
             if (isArthropod) {
-                damage += bane * 2.5;
+                baseDamage += bane * 2.5;
             }
         }
 
@@ -187,70 +156,48 @@ public class WeaponSwapHandler {
                     || target instanceof net.minecraft.world.entity.monster.Guardian
                     || target instanceof net.minecraft.world.entity.animal.Turtle;
             if (isAquatic) {
-                damage += impaling * 2.5;
+                baseDamage += impaling * 2.5;
             }
         }
 
         int fireAspect = getEnchantmentLevel(client, stack, Enchantments.FIRE_ASPECT);
         if (fireAspect > 0) {
-            damage += fireAspect * 1.5;
+            baseDamage += fireAspect * 1.5;
         }
 
         int sweeping = getEnchantmentLevel(client, stack, Enchantments.SWEEPING_EDGE);
         if (sweeping > 0) {
-            damage += sweeping * 1.0;
+            baseDamage += sweeping * 1.0;
         }
 
         // Calculate DPS
-        double dps = damage * speed;
+        double dps = baseDamage * baseSpeed;
 
         boolean isBoat = target instanceof Boat || target instanceof AbstractMinecart || target instanceof ChestBoat;
         boolean isShielded = (target instanceof LivingEntity living) && living.isBlocking();
         boolean isFalling = client.player.fallDistance > 2.0f;
 
         // 1. Critical Overrides
-        if (isFalling && stack.getItem() instanceof MaceItem)
-            return 10000.0;
-        if ((isBoat || isShielded) && stack.getItem() instanceof AxeItem)
-            return 10000.0;
+        if (isFalling && stack.getItem() instanceof MaceItem) return 10000.0;
+        if ((isBoat || isShielded) && stack.getItem() instanceof AxeItem) return 10000.0;
 
         PiggyInventoryConfig.WeaponPreference pref = config.getWeaponPreference();
 
-        // 2. Range Preference
-        if (pref == PiggyInventoryConfig.WeaponPreference.RANGE) {
-            int index = getPriorityIndex(stack, config.getRangeWeapons());
-            if (index != -1)
-                return 5000.0 + (100 - index);
-
-            // Only fall back to Trident, ignore Bow/Crossbow for melee
-            if (stack.getItem() instanceof TridentItem)
-                return 4000.0;
-
-            return damage; // Fallback to raw damage if not a range weapon
-        }
-
-        // 3. Speed Preference (DPS)
+        // 2. Mode Evaluation
         if (pref == PiggyInventoryConfig.WeaponPreference.SPEED) {
             int index = getPriorityIndex(stack, config.getFastWeapons());
-            if (index != -1)
-                return 2000.0 + (100 - index) + dps;
-
-            // Otherwise purely prioritize DPS
-            return dps;
-        }
-
-        // 4. Damage Preference (Single Hit)
-        if (pref == PiggyInventoryConfig.WeaponPreference.DAMAGE) {
+            return index != -1 ? (5000.0 - index) : dps;
+        } 
+        else if (pref == PiggyInventoryConfig.WeaponPreference.DAMAGE) {
             int index = getPriorityIndex(stack, config.getHeavyWeapons());
-            if (index != -1)
-                return 2000.0 + (100 - index) + damage;
-
-            // Otherwise prioritize raw Damage
-            return damage;
+            return index != -1 ? (5000.0 - index) : baseDamage;
+        }
+        else if (pref == PiggyInventoryConfig.WeaponPreference.RANGE) {
+            int index = getPriorityIndex(stack, config.getRangeWeapons());
+            return index != -1 ? (5000.0 - index) : (stack.getItem() instanceof TridentItem ? 4000.0 : baseDamage);
         }
 
-        // Default
-        return damage;
+        return baseDamage;
     }
 
     private int getPriorityIndex(ItemStack stack, java.util.List<String> list) {

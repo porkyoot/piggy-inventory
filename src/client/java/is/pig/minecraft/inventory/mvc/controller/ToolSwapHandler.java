@@ -1,5 +1,7 @@
 package is.pig.minecraft.inventory.mvc.controller;
 
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import is.pig.minecraft.inventory.config.PiggyInventoryConfig;
 import net.minecraft.client.Minecraft;
@@ -22,7 +24,6 @@ import net.minecraft.world.phys.HitResult;
 public class ToolSwapHandler {
 
     private net.minecraft.core.BlockPos lastTargetedBlock = null;
-    private int ticksHovered = 0;
     private int ticksWantingToSwap = 0;
     private int targetSwapSlot = -1;
 
@@ -34,7 +35,6 @@ public class ToolSwapHandler {
 
         if (!config.isToolSwapEnabled() || client.player == null || client.level == null || client.screen != null) {
             this.lastTargetedBlock = null;
-            this.ticksHovered = 0;
             this.ticksWantingToSwap = 0;
             this.targetSwapSlot = -1;
             return false;
@@ -42,7 +42,6 @@ public class ToolSwapHandler {
 
         if (!client.options.keyAttack.isDown()) {
             this.lastTargetedBlock = null;
-            this.ticksHovered = 0;
             this.ticksWantingToSwap = 0;
             this.targetSwapSlot = -1;
             return false;
@@ -53,10 +52,10 @@ public class ToolSwapHandler {
             BlockState state = client.level.getBlockState(currentPos);
 
             if (currentPos.equals(this.lastTargetedBlock)) {
-                this.ticksHovered++;
+                // Keep swapping progress
             } else {
                 this.lastTargetedBlock = currentPos;
-                this.ticksHovered = 0;
+                this.ticksWantingToSwap = 0;
             }
 
             int currentSlot = client.player.getInventory().selected;
@@ -64,74 +63,83 @@ public class ToolSwapHandler {
 
             PiggyInventoryConfig.OrePreference mode = config.getOrePreference();
 
-            // 2. Safety Check (Silk Touch Mode)
-            if (mode == PiggyInventoryConfig.OrePreference.SILK_TOUCH) {
-                if (matchesConfigList(config.getProtectedBlocks(), state)) {
+            // 1. Gather all valid tools from inventory (including main hand)
+            List<Integer> validSlots = new ArrayList<>();
+            boolean currentBreakingSoon = isToolBreakingSoon(currentStack, config);
+            
+            for (int i = 0; i < 36; i++) {
+                ItemStack stack = client.player.getInventory().getItem(i);
+                
+                // FILTER: Don't use a tool that is about to break
+                if (isToolBreakingSoon(stack, config)) continue;
+
+                // FILTER: Strict modes prevent selecting tools that don't have the required enchant
+                if (isOreOrValuable(state, config)) {
+                    if (mode == PiggyInventoryConfig.OrePreference.FORTUNE_STRICT && getEnchantmentLevel(client, stack, Enchantments.FORTUNE) == 0) continue;
+                    if (mode == PiggyInventoryConfig.OrePreference.SILK_TOUCH_STRICT && getEnchantmentLevel(client, stack, Enchantments.SILK_TOUCH) == 0) continue;
+                }
+
+                validSlots.add(i);
+            }
+
+            // Safety Check for protected blocks / strict mode exclusions
+            if (isOreOrValuable(state, config)) {
+                if (validSlots.isEmpty() && (mode == PiggyInventoryConfig.OrePreference.FORTUNE_STRICT || mode == PiggyInventoryConfig.OrePreference.SILK_TOUCH_STRICT)) {
+                    client.player.displayClientMessage(Component.literal("§c[Piggy] Block protected: No valid tool found!"), true);
                     this.ticksWantingToSwap = 0;
                     this.targetSwapSlot = -1;
                     return true; // Cancel attack
                 }
-            }
-
-            // 3. Tool Selection Logic
-            boolean currentBreakingSoon = isToolBreakingSoon(currentStack, config);
-
-            int bestSlot = currentSlot;
-            float currentScore = getToolScore(client, currentStack, state, mode, config);
-            if (currentBreakingSoon) {
-                currentScore = -10000.0f; // Penalize deeply
-            }
-
-            float bestScore = currentScore;
-            boolean bestDamageable = currentStack.isDamageableItem();
-
-            for (int i = 0; i < 36; i++) {
-                if (i == currentSlot)
-                    continue;
-
-                ItemStack stack = client.player.getInventory().getItem(i);
-                if (isToolBreakingSoon(stack, config)) {
-                    continue; // Never swap to a breaking tool
-                }
-                float score = getToolScore(client, stack, state, mode, config);
-                boolean damageable = stack.isDamageableItem();
-
-                // Logic fix:
-                // If we are in "bonus territory" (score > 1000), we don't use percentage based
-                // improvement
-                // because the base speed is small compared to the bonus.
-                boolean isBetter;
-
-                if (bestScore > 1000.0f) {
-                    // With large bonuses, just check if it's strictly better by a noticeable margin
-                    // (e.g. 1.0 speed unit)
-                    isBetter = score > bestScore + 1.0f;
-                } else {
-                    // Standard behavior for normal tools
-                    isBetter = score > bestScore * 1.05f;
-                }
-
-                if (isBetter) {
-                    bestScore = score;
-                    bestSlot = i;
-                    bestDamageable = damageable;
-                } else if (Math.abs(score - bestScore) < 0.0001f) {
-                    // Only switch to a non-damageable item to save durability if we've hovered long
-                    // enough (0.5 seconds).
-                    // Prevents frantic no-tool -> tool -> no-tool swapping when Veinmining.
-                    if (bestDamageable && !damageable && this.ticksHovered >= 10) {
-                        bestScore = score;
-                        bestSlot = i;
-                        bestDamageable = damageable;
+            } else if (mode == PiggyInventoryConfig.OrePreference.SILK_TOUCH_STRICT || mode == PiggyInventoryConfig.OrePreference.SILK_TOUCH_PREFERRED) {
+                // Legacy strict silk touch protection on general blocks
+                if (matchesConfigList(config.getProtectedBlocks(), state)) {
+                    if (validSlots.isEmpty() || getEnchantmentLevel(client, client.player.getInventory().getItem(validSlots.get(0)), Enchantments.SILK_TOUCH) == 0) {
+                         this.ticksWantingToSwap = 0;
+                         this.targetSwapSlot = -1;
+                         return true; // Cancel attack
                     }
                 }
             }
 
+            if (validSlots.isEmpty()) {
+                if (currentBreakingSoon) {
+                    client.player.displayClientMessage(Component.literal("§c[Piggy] Tool breaking soon! Mining prevented."), true);
+                    this.ticksWantingToSwap = 0;
+                    this.targetSwapSlot = -1;
+                    return true;
+                }
+                return false;
+            }
+
+            // 2. Sort the tools
+            int bestSlot = validSlots.stream().max(Comparator
+                // Tier 1: Is it the correct tool for drops? (True > False)
+                .comparing((Integer slot) -> {
+                    if (!state.requiresCorrectToolForDrops()) return true; // everything is "correct"
+                    return client.player.getInventory().getItem(slot).isCorrectToolForDrops(state);
+                })
+                
+                // Tier 2: Does it meet our preferred enchantment mode?
+                .thenComparing(slot -> matchesPreference(client, client.player.getInventory().getItem(slot), state, mode, config))
+                
+                // Tier 3: Is it Shears for a shearable block?
+                .thenComparing(slot -> requiresShears(state, config) && client.player.getInventory().getItem(slot).is(Items.SHEARS))
+                
+                // Tier 4: Raw mining speed (including Efficiency)
+                .thenComparingDouble(slot -> calculateMiningSpeed(client, client.player.getInventory().getItem(slot), state, currentPos))
+                
+                // Tier 5: Prefer current slot to avoid unnecessary swaps
+                .thenComparing(slot -> slot == currentSlot)
+                
+                // Tier 6: Prefer non-damageable items (save durability on fallback)
+                .thenComparing(slot -> !client.player.getInventory().getItem(slot).isDamageableItem())
+            ).orElse(currentSlot);
+
+            // 3. Swap logic
             if (bestSlot != currentSlot) {
                 if (currentBreakingSoon) {
                     swapToSlot(client, currentSlot, bestSlot, config.getSwapHotbarSlots());
-                    client.player.displayClientMessage(Component.literal("§c[Piggy] Tool swap: Saved your tool!"),
-                            true);
+                    client.player.displayClientMessage(Component.literal("§c[Piggy] Tool swap: Saved your tool!"), true);
                     this.ticksWantingToSwap = 0;
                     this.targetSwapSlot = -1;
                 } else {
@@ -142,8 +150,7 @@ public class ToolSwapHandler {
                         this.ticksWantingToSwap = 1;
                     }
 
-                    int requiredTicks = hasVeinminerEnchantment(currentStack) ? 10
-                            : (state.getDestroySpeed(client.level, currentPos) == 0.0F ? 0 : 2);
+                    int requiredTicks = state.getDestroySpeed(client.level, currentPos) == 0.0F ? 0 : 2;
 
                     if (this.ticksWantingToSwap >= requiredTicks) {
                         swapToSlot(client, currentSlot, bestSlot, config.getSwapHotbarSlots());
@@ -152,24 +159,39 @@ public class ToolSwapHandler {
                     }
                 }
             } else {
-                if (currentBreakingSoon) {
-                    client.player.displayClientMessage(
-                            Component.literal("§c[Piggy] Tool breaking soon! Mining prevented."), true);
-                    this.ticksWantingToSwap = 0;
-                    this.targetSwapSlot = -1;
-                    return true; // Cancel attack
-                }
                 this.ticksWantingToSwap = 0;
                 this.targetSwapSlot = -1;
             }
         } else {
             this.lastTargetedBlock = null;
-            this.ticksHovered = 0;
             this.ticksWantingToSwap = 0;
             this.targetSwapSlot = -1;
         }
 
         return false; // Allow attack
+    }
+
+    private boolean matchesPreference(Minecraft client, ItemStack stack, BlockState state, PiggyInventoryConfig.OrePreference mode, PiggyInventoryConfig config) {
+        if (!isOreOrValuable(state, config)) return false;
+        if (mode == PiggyInventoryConfig.OrePreference.FORTUNE_PREFERRED || mode == PiggyInventoryConfig.OrePreference.FORTUNE_STRICT) {
+            return getEnchantmentLevel(client, stack, Enchantments.FORTUNE) > 0;
+        }
+        if (mode == PiggyInventoryConfig.OrePreference.SILK_TOUCH_PREFERRED || mode == PiggyInventoryConfig.OrePreference.SILK_TOUCH_STRICT) {
+            return getEnchantmentLevel(client, stack, Enchantments.SILK_TOUCH) > 0;
+        }
+        return false;
+    }
+
+    private double calculateMiningSpeed(Minecraft client, ItemStack stack, BlockState state, net.minecraft.core.BlockPos pos) {
+        if (state.getDestroySpeed(client.level, pos) == 0.0F) {
+            return 1.0; // Speed doesn't matter for instant-break blocks
+        }
+        float baseSpeed = stack.getDestroySpeed(state);
+        if (baseSpeed > 1.0f) {
+            int eff = getEnchantmentLevel(client, stack, Enchantments.EFFICIENCY);
+            if (eff > 0) baseSpeed += (eff * eff + 1);
+        }
+        return baseSpeed;
     }
 
     private void swapToSlot(Minecraft client, int currentSlot, int bestSlot, List<Integer> allowedSlots) {
@@ -208,70 +230,6 @@ public class ToolSwapHandler {
         }
     }
 
-    private float getToolScore(Minecraft client, ItemStack stack, BlockState state,
-            PiggyInventoryConfig.OrePreference mode, PiggyInventoryConfig config) {
-        if (stack.isEmpty())
-            return 0f;
-
-        // NEW: Check if the tool works for drops
-        // If the block *requires* a specific tool for drops (like Stone requires a
-        // pickaxe),
-        // and this stack is NOT that tool, we penalize it heavily so we don't switch to
-        // it.
-        // We do allow it if the block doesn't require a tool (leaves, dirt, etc).
-        if (state.requiresCorrectToolForDrops() && !stack.isCorrectToolForDrops(state)) {
-            return -1.0f;
-        }
-
-        float speed = stack.getDestroySpeed(state);
-
-        if (speed > 1.0f) {
-            int efficiencyLevel = getEnchantmentLevel(client, stack, Enchantments.EFFICIENCY);
-            if (efficiencyLevel > 0) {
-                speed += (efficiencyLevel * efficiencyLevel + 1);
-            }
-        }
-
-        boolean hasSilk = getEnchantmentLevel(client, stack, Enchantments.SILK_TOUCH) > 0;
-        int fortuneLevel = getEnchantmentLevel(client, stack, Enchantments.FORTUNE);
-
-        boolean needsShears = requiresShears(state, config);
-
-        // In FORTUNE mode, we IGNORE the need for shears (destruction mode).
-        // In SILK_TOUCH mode, we respect it.
-        if (mode == PiggyInventoryConfig.OrePreference.FORTUNE) {
-            needsShears = false;
-        }
-
-        boolean needsSilk = (mode == PiggyInventoryConfig.OrePreference.SILK_TOUCH)
-                && matchesConfigList(config.getSilkTouchBlocks(), state);
-
-        boolean isOre = isOreOrValuable(state, config);
-
-        if (needsShears && stack.is(Items.SHEARS)) {
-            speed += 10000.0f; // Bonus only applied if we *want* shears behavior
-        } else if (needsSilk && hasSilk) {
-            speed += 10000.0f;
-        } else if (isOre) {
-            if (mode == PiggyInventoryConfig.OrePreference.SILK_TOUCH) {
-                if (hasSilk)
-                    speed += 5000.0f;
-                else if (fortuneLevel > 0)
-                    speed -= 100.0f;
-            } else if (mode == PiggyInventoryConfig.OrePreference.FORTUNE) {
-                if (fortuneLevel > 0)
-                    speed += (1000.0f * fortuneLevel);
-                else if (hasSilk)
-                    speed -= 100.0f;
-            }
-        } else if (!needsSilk && hasSilk) {
-            // Slight penalty to save Silk Touch durability on things that don't need it
-            speed -= 0.1f;
-        }
-
-        return speed;
-    }
-
     private int getEnchantmentLevel(Minecraft client, ItemStack stack, ResourceKey<Enchantment> key) {
         if (client.level == null)
             return 0;
@@ -289,7 +247,8 @@ public class ToolSwapHandler {
     }
 
     private boolean isOreOrValuable(BlockState state, PiggyInventoryConfig config) {
-        return matchesConfigList(config.getFortuneBlocks(), state);
+        // Includes both Fortune and Silk Touch lists acting as "Valuables"
+        return matchesConfigList(config.getFortuneBlocks(), state) || matchesConfigList(config.getSilkTouchBlocks(), state);
     }
 
     private boolean matchesConfigList(List<String> configList, BlockState state) {
@@ -326,29 +285,6 @@ public class ToolSwapHandler {
                 if (id.equals(pattern) || path.equals(pattern))
                     return true;
             }
-        }
-        return false;
-    }
-
-    private boolean hasVeinminerEnchantment(ItemStack stack) {
-        if (stack.isEmpty())
-            return false;
-        try {
-            var enchantments = stack.get(net.minecraft.core.component.DataComponents.ENCHANTMENTS);
-            if (enchantments != null) {
-                for (var enchantHolder : enchantments.keySet()) {
-                    var key = enchantHolder.unwrapKey().orElse(null);
-                    if (key != null) {
-                        String path = key.location().getPath().toLowerCase();
-                        if (path.contains("veinminer") || path.contains("timber") || path.contains("treecapitator")
-                                || path.contains("lumberjack") || path.contains("magnetic") || path.contains("smelting")) {
-                            return true;
-                        }
-                    }
-                }
-            }
-        } catch (Exception e) {
-            // Safe fallback
         }
         return false;
     }

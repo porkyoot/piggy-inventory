@@ -239,7 +239,7 @@ public class PiggyConfigScreenFactory {
                                                                 .description(OptionDescription.of(
                                                                                 Component.literal(
                                                                                                 "Prioritize Fortune or Silk Touch when both are applicable.")))
-                                                                .binding(PiggyInventoryConfig.OrePreference.FORTUNE,
+                                                                .binding(PiggyInventoryConfig.OrePreference.FORTUNE_PREFERRED,
                                                                                 config::getGuiOrePreference,
                                                                                 config::setGuiOrePreference)
                                                                 .available(config.isToolSwapEnabled())

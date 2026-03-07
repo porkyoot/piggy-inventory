@@ -104,19 +104,21 @@ public class PiggyInventoryConfig extends is.pig.minecraft.lib.config.PiggyClien
     private List<Integer> swapHotbarSlots = new ArrayList<>(Arrays.asList(0, 1, 2, 3, 4, 5, 6, 7, 8));
 
     // Current state (NONE means disabled)
-    private OrePreference orePreference = OrePreference.FORTUNE;
+    private OrePreference orePreference = OrePreference.FORTUNE_PREFERRED;
 
     // Default tool break prevention settings
     private boolean preventToolBreak = true;
     private boolean allowUnenchantedToolsToBreak = false;
 
     // Remember last choice for toggling (default Fortune)
-    private OrePreference lastActivePreference = OrePreference.FORTUNE;
+    private OrePreference lastActivePreference = OrePreference.FORTUNE_PREFERRED;
 
     public enum OrePreference {
         NONE,
-        FORTUNE,
-        SILK_TOUCH
+        FORTUNE_PREFERRED,
+        FORTUNE_STRICT,
+        SILK_TOUCH_PREFERRED,
+        SILK_TOUCH_STRICT
     }
 
     // Default lists
@@ -282,7 +284,7 @@ public class PiggyInventoryConfig extends is.pig.minecraft.lib.config.PiggyClien
             }
 
             if (lastActivePreference == OrePreference.NONE) {
-                lastActivePreference = OrePreference.FORTUNE;
+                lastActivePreference = OrePreference.FORTUNE_PREFERRED;
             }
             this.orePreference = lastActivePreference;
         } else {
