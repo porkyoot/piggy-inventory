@@ -33,7 +33,7 @@ public class ToolPreferenceHandler {
         ToolPreference current = ToolPreference.fromConfig(config.getOrePreference());
         
         ToolPreference center = ToolPreference.NONE;
-        List<ToolPreference> radials = Arrays.asList(ToolPreference.FORTUNE_PREFERRED, ToolPreference.FORTUNE_STRICT, ToolPreference.SILK_TOUCH_PREFERRED, ToolPreference.SILK_TOUCH_STRICT);
+        List<ToolPreference> radials = Arrays.asList(ToolPreference.FORTUNE_PREFERRED, ToolPreference.SILK_TOUCH_PREFERRED);
 
         client.setScreen(new GenericRadialMenuScreen<>(
             Component.literal("Tool Preference"),
