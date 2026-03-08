@@ -4,7 +4,6 @@ import dev.isxander.yacl3.api.*;
 import dev.isxander.yacl3.api.controller.TickBoxControllerBuilder;
 import dev.isxander.yacl3.api.controller.StringControllerBuilder;
 import dev.isxander.yacl3.api.controller.EnumControllerBuilder;
-import dev.isxander.yacl3.api.controller.EnumDropdownControllerBuilder;
 import dev.isxander.yacl3.api.controller.IntegerSliderControllerBuilder;
 
 import dev.isxander.yacl3.api.ListOption;
@@ -30,12 +29,12 @@ public class PiggyConfigScreenFactory {
                                                 .name(Component.literal("Safety"))
                                                 .tooltip(is.pig.minecraft.lib.I18n.safetyTooltip())
                                                 .option(Option.<Integer>createBuilder()
-                                                                .name(Component.literal("Click Delay (cps equivalent)"))
+                                                                .name(Component.literal("Click Speed (CPS)"))
                                                                 .description(OptionDescription.of(Component.literal(
-                                                                                "Ticks between click actions. (1 tick = 0.05s). Higher = Slower/Safer.")))
-                                                                .binding(1, config::getTickDelay, config::setTickDelay)
+                                                                                "Clicks per second for sorting. Higher = Faster (Riskier). 0 = Unlimited (Instant).")))
+                                                                .binding(10, config::getTickDelay, config::setTickDelay)
                                                                 .controller(opt -> IntegerSliderControllerBuilder
-                                                                                .create(opt).range(0, 10).step(1))
+                                                                                .create(opt).range(0, 20).step(1).formatValue(v -> Component.literal(v == 0 ? "Unlimited" : v + " CPS")))
                                                                 .build())
                                                 .option(Option.<Boolean>createBuilder()
                                                                 .name(Component.literal("No Cheating Mode"))
@@ -371,47 +370,31 @@ public class PiggyConfigScreenFactory {
                                                                 .build())
                                                 .build())
 
-                                // INVENTORY SORTER CATEGORY
+                                // SORTING CATEGORY
                                 .category(ConfigCategory.createBuilder()
-                                                .name(Component.literal("Inventory Sorter"))
-                                                .tooltip(Component.literal("Configure scanning and sorting behavior."))
-                                                .option(Option.<PiggyInventoryConfig.SortingAlgorithm>createBuilder()
-                                                                .name(Component.literal("Default Algorithm"))
+                                                .name(Component.literal("Sorting"))
+                                                .tooltip(Component.literal("Configure how inventory sorting works."))
+
+                                                .option(Option.<PiggyInventoryConfig.SortLayout>createBuilder()
+                                                                .name(Component.literal("Layout Mode"))
                                                                 .description(OptionDescription.of(Component.literal(
-                                                                                "The primary sorting logic used.")))
-                                                                .binding(PiggyInventoryConfig.SortingAlgorithm.SMART,
-                                                                                config::getDefaultAlgorithm,
-                                                                                config::setDefaultAlgorithm)
-                                                                .controller(EnumDropdownControllerBuilder::create)
-                                                                .build())
-                                                .option(Option.<PiggyInventoryConfig.SortingLayout>createBuilder()
-                                                                .name(Component.literal("Default Layout"))
-                                                                .description(OptionDescription.of(Component.literal(
-                                                                                "The visual arrangement of items.")))
-                                                                .binding(PiggyInventoryConfig.SortingLayout.COMPACT,
-                                                                                config::getDefaultLayout,
-                                                                                config::setDefaultLayout)
+                                                                                "Row: groups items left-to-right, breaking to the next row between groups.\nColumn: groups items top-to-bottom, breaking to the next column between groups.")))
+                                                                .binding(PiggyInventoryConfig.SortLayout.ROW,
+                                                                                config::getSortLayout,
+                                                                                config::setSortLayout)
                                                                 .controller(opt -> EnumControllerBuilder.create(opt)
-                                                                                .enumClass(PiggyInventoryConfig.SortingLayout.class))
+                                                                                .enumClass(PiggyInventoryConfig.SortLayout.class))
                                                                 .build())
+
                                                 .group(ListOption.<String>createBuilder()
-                                                                .name(Component.literal("Ignored Screen Classes"))
+                                                                .name(Component.literal("Comparator Order"))
                                                                 .description(OptionDescription.of(Component.literal(
-                                                                                "Screens where sorting should be disabled (Full class names).")))
-                                                                .binding(new ArrayList<>(),
-                                                                                config::getBlacklistedInventories,
-                                                                                config::setBlacklistedInventories)
+                                                                                "Ordered list of sort comparators applied left-to-right.\nValid values: CATEGORY, MOD, COLOR, LETTER, RARITY, NAME, ID, AMOUNT.\nDrag entries to reorder. Remove to disable a comparator.")))
+                                                                .binding(config.getSortComparatorOrder(),
+                                                                                config::getSortComparatorOrder,
+                                                                                config::setSortComparatorOrder)
                                                                 .controller(StringControllerBuilder::create)
-                                                                .initial("")
-                                                                .build())
-                                                .group(ListOption.<String>createBuilder()
-                                                                .name(Component.literal("Ignored Items"))
-                                                                .description(OptionDescription.of(Component.literal(
-                                                                                "Items that will not be moved by the sorter.")))
-                                                                .binding(new ArrayList<>(), config::getBlacklistedItems,
-                                                                                config::setBlacklistedItems)
-                                                                .controller(StringControllerBuilder::create)
-                                                                .initial("")
+                                                                .initial("CATEGORY")
                                                                 .build())
                                                 .build())
 

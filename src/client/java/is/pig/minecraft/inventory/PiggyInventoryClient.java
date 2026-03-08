@@ -6,13 +6,10 @@ import org.slf4j.LoggerFactory;
 import is.pig.minecraft.inventory.config.ConfigPersistence;
 
 import is.pig.minecraft.inventory.mvc.controller.InputController;
-import is.pig.minecraft.inventory.sorting.InventorySorter;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.keybinding.v1.KeyBindingHelper;
 import net.minecraft.client.KeyMapping;
-import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import org.lwjgl.glfw.GLFW;
 import com.mojang.blaze3d.platform.InputConstants;
 
@@ -36,6 +33,7 @@ public class PiggyInventoryClient implements ClientModInitializer {
                                 InputConstants.Type.KEYSYM,
                                 GLFW.GLFW_KEY_R,
                                 "Piggy Inventory"));
+
 
                 // Register Lock Key (Default: Alt)
                 lockKey = KeyBindingHelper.registerKeyBinding(new KeyMapping(
@@ -79,7 +77,7 @@ public class PiggyInventoryClient implements ClientModInitializer {
                 // Input Handling (Backup/Global)
                 ClientTickEvents.END_CLIENT_TICK.register(client -> {
                         if (sortKey.consumeClick()) {
-                                handleSort(client);
+                                is.pig.minecraft.inventory.handler.SortHandler.getInstance().handleSort(client, null);
                         }
                         is.pig.minecraft.inventory.handler.AutoRefillHandler.getInstance().onTick(client);
                         is.pig.minecraft.inventory.handler.CraftingHandler.getInstance().onTick(client);
@@ -92,43 +90,5 @@ public class PiggyInventoryClient implements ClientModInitializer {
                                         is.pig.minecraft.inventory.handler.QuickLootHandler.getInstance()
                                                         .renderOverlay(guiGraphics);
                                 });
-        }
-
-        public static void handleSort(Minecraft client) {
-                if (client.screen instanceof AbstractContainerScreen<?> screen) {
-                        try {
-                                // Target Detection Logic
-                                boolean sortPlayer = false;
-
-                                // If mouse is over player inventory part, sort player.
-
-                                // Calculate scaled mouse position for slot detection
-                                double mouseX = client.mouseHandler.xpos() * client.getWindow().getGuiScaledWidth()
-                                                / client.getWindow().getScreenWidth();
-                                double mouseY = client.mouseHandler.ypos() * client.getWindow().getGuiScaledHeight()
-                                                / client.getWindow().getScreenHeight();
-
-                                net.minecraft.world.inventory.Slot slot = ((is.pig.minecraft.inventory.duck.IHandledScreen) screen)
-                                                .piggy_getSlotUnderMouse(mouseX, mouseY);
-
-                                if (slot != null) {
-                                        // If hovering a slot, check if it is player inventory
-                                        if (slot.container == client.player.getInventory()) {
-                                                sortPlayer = true;
-                                        }
-                                } else {
-                                        // Not hovering slot.
-                                        // Default: Sort External if available.
-                                        // If no external (e.g. Player Inventory Screen), sort Player.
-                                        if (screen instanceof net.minecraft.client.gui.screens.inventory.InventoryScreen) {
-                                                sortPlayer = true;
-                                        }
-                                }
-
-                                InventorySorter.sortInventory(screen, sortPlayer);
-                        } catch (Exception e) {
-                                LOGGER.error("Error sorting inventory", e);
-                        }
-                }
         }
 }

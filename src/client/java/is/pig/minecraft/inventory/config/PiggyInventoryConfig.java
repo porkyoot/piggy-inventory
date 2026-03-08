@@ -48,58 +48,44 @@ public class PiggyInventoryConfig extends is.pig.minecraft.lib.config.PiggyClien
 
     // --- SORTING CONFIG ---
     // private boolean lockHotbar = true; // Removed per user request
-    private SortingAlgorithm defaultAlgorithm = SortingAlgorithm.SMART;
-    private SortingLayout defaultLayout = SortingLayout.COMPACT;
     private int tickDelay = 1;
-    private List<String> blacklistedInventories = new ArrayList<>();
-    private List<String> blacklistedItems = new ArrayList<>();
+
+    public enum SortLayout {
+        ROW, COLUMN;
+
+        @Override
+        public String toString() {
+            return name().charAt(0) + name().substring(1).toLowerCase();
+        }
+    }
+
+    private SortLayout sortLayout = SortLayout.ROW;
+
+    public SortLayout getSortLayout() {
+        return sortLayout;
+    }
+
+    public void setSortLayout(SortLayout val) {
+        if (this.sortLayout != val) {
+            is.pig.minecraft.inventory.PiggyInventory.LOGGER.debug("Sort layout mode changed to: {}", val);
+        }
+        this.sortLayout = val;
+    }
+
+    private List<String> sortComparatorOrder = new ArrayList<>(Arrays.asList(
+            "CATEGORY", "MOD", "COLOR", "LETTER", "RARITY", "NAME", "ID", "AMOUNT"));
+
+    public List<String> getSortComparatorOrder() {
+        return sortComparatorOrder;
+    }
+
+    public void setSortComparatorOrder(List<String> val) {
+        this.sortComparatorOrder = val;
+    }
 
     // Persistent Locked Slots: ScreenClass -> Set of SlotIndices
     // private java.util.Map<String, java.util.Set<Integer>> savedLocks = new
     // java.util.HashMap<>();
-
-    public enum SortingAlgorithm {
-        ALPHABETICAL("Alphabetical", "Sorts items alphabetically (A-Z)."),
-        CREATIVE("Creative", "Sorts items based on the Creative Inventory order."),
-        SMART("Smart Category", "Groups items by heuristic categories."),
-        COLOR("Color", "Sorts items by their visual color/hue."),
-        RARITY("Rarity", "Sorts items by rarity (Epic -> Common)."),
-        MATERIAL("Material", "Groups items by their material (e.g. Acacia, Iron)."),
-        TYPE("Type", "Groups items by their type (e.g. Boats, Swords)."),
-        TAG("Tag Priority", "Sorts based on a hardcoded priority list of Tags."),
-        JSON("Custom List", "Sorts based on 'config/piggy-inventory/custom_sort.json'.");
-
-        public final String name;
-        public final String description;
-
-        SortingAlgorithm(String name, String description) {
-            this.name = name;
-            this.description = description;
-        }
-
-        @Override
-        public String toString() {
-            return name;
-        }
-    }
-
-    public enum SortingLayout {
-        COMPACT("Compact"),
-        COLUMNS("Columns"),
-        ROWS("Rows"),
-        GRID("Grid");
-
-        public final String name;
-
-        SortingLayout(String name) {
-            this.name = name;
-        }
-
-        @Override
-        public String toString() {
-            return name;
-        }
-    }
 
     private List<Integer> swapHotbarSlots = new ArrayList<>(Arrays.asList(0, 1, 2, 3, 4, 5, 6, 7, 8));
 
@@ -444,44 +430,12 @@ public class PiggyInventoryConfig extends is.pig.minecraft.lib.config.PiggyClien
     // --- SORTING GETTERS/SETTERS ---
     // Lock Hotbar methods removed
 
-    public SortingAlgorithm getDefaultAlgorithm() {
-        return defaultAlgorithm;
-    }
-
-    public void setDefaultAlgorithm(SortingAlgorithm val) {
-        this.defaultAlgorithm = val;
-    }
-
-    public SortingLayout getDefaultLayout() {
-        return defaultLayout;
-    }
-
-    public void setDefaultLayout(SortingLayout val) {
-        this.defaultLayout = val;
-    }
-
     public int getTickDelay() {
         return tickDelay;
     }
 
     public void setTickDelay(int val) {
         this.tickDelay = val;
-    }
-
-    public List<String> getBlacklistedInventories() {
-        return blacklistedInventories;
-    }
-
-    public void setBlacklistedInventories(List<String> val) {
-        this.blacklistedInventories = val;
-    }
-
-    public List<String> getBlacklistedItems() {
-        return blacklistedItems;
-    }
-
-    public void setBlacklistedItems(List<String> val) {
-        this.blacklistedItems = val;
     }
 
     // --- FEATURES TOGGLES ---

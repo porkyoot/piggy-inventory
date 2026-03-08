@@ -1,7 +1,5 @@
 
 package is.pig.minecraft.inventory.mixin.client;
-
-import is.pig.minecraft.inventory.PiggyInventoryClient;
 import is.pig.minecraft.inventory.config.PiggyInventoryConfig;
 import is.pig.minecraft.inventory.locking.SlotLockingManager;
 import net.fabricmc.api.EnvType;
@@ -39,12 +37,6 @@ public abstract class MixinHandledScreen implements is.pig.minecraft.inventory.d
 
         if (!altHeld)
             return;
-
-        // Skip Blacklisted Items
-        if (((PiggyInventoryConfig) PiggyInventoryConfig.getInstance()).getBlacklistedItems()
-                .contains(slot.getItem().getItem().getDescriptionId())) {
-            return;
-        }
 
         // Only allow locking for player inventory slots (Storage + Hotbar)
         if (slot.container != Minecraft.getInstance().player.getInventory()) {
@@ -159,8 +151,13 @@ public abstract class MixinHandledScreen implements is.pig.minecraft.inventory.d
 
     @Inject(method = "keyPressed", at = @At("HEAD"), cancellable = true)
     private void onKeyPressed(int keyCode, int scanCode, int modifiers, CallbackInfoReturnable<Boolean> cir) {
-        if (PiggyInventoryClient.sortKey.matches(keyCode, scanCode)) {
-            PiggyInventoryClient.handleSort(Minecraft.getInstance());
+        if (is.pig.minecraft.inventory.PiggyInventoryClient.sortKey.matches(keyCode, scanCode)) {
+            Minecraft client = Minecraft.getInstance();
+            double mouseX = client.mouseHandler.xpos() * (double) client.getWindow().getGuiScaledWidth() / (double) client.getWindow().getScreenWidth();
+            double mouseY = client.mouseHandler.ypos() * (double) client.getWindow().getGuiScaledHeight() / (double) client.getWindow().getScreenHeight();
+            Slot hovered = piggy_getSlotUnderMouse(mouseX, mouseY);
+            
+            is.pig.minecraft.inventory.handler.SortHandler.getInstance().handleSort(client, hovered);
             cir.setReturnValue(true);
         }
     }
