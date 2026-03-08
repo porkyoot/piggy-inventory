@@ -8,14 +8,11 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
 
 public class SortHandler {
-    private static final Logger LOGGER = LoggerFactory.getLogger("piggy-inventory-sort");
     private static final SortHandler INSTANCE = new SortHandler();
 
     private SortHandler() {
@@ -29,8 +26,6 @@ public class SortHandler {
         if (!(client.screen instanceof AbstractContainerScreen<?> screen)) {
             return;
         }
-
-        LOGGER.info("Starting hierarchical sort...");
 
         // Determine the target container. Default to player inventory if nothing is hovered.
         net.minecraft.world.Container targetContainer = client.player.getInventory();
@@ -91,7 +86,6 @@ public class SortHandler {
         items.sort(Comparators.buildHierarchy(comparatorOrder));
 
         // 3. Layout the grid with empty spaces separating groups
-        LOGGER.debug("Applying sort layout mode: {}", cfg.getSortLayout());
         List<java.util.Comparator<ItemStack>> layoutComparators = Comparators.buildComparatorList(comparatorOrder);
         ISortingLayout layout = cfg.getSortLayout() == is.pig.minecraft.inventory.config.PiggyInventoryConfig.SortLayout.COLUMN
                 ? new is.pig.minecraft.inventory.sorting.layout.ColumnLayout(layoutComparators)
@@ -99,7 +93,6 @@ public class SortHandler {
         List<ItemStack> finalPositions = layout.layout(items, slotsToSort);
 
         // 4. Write back to slots using packets/actions via the Executor
-        LOGGER.info("Layout completed. Final simulated sequence size: {}. Handing off to SortExecutor...", finalPositions.size());
         SortExecutor.getInstance().startSort(slotsToSort, finalPositions);
     }
 }

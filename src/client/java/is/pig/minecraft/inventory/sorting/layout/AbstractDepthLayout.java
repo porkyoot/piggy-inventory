@@ -62,11 +62,13 @@ public abstract class AbstractDepthLayout implements ISortingLayout {
 
         // Find the maximum padding we can squeeze in!
         int padding = 0;
-        while (fitsLayout(groups, availableSlots, padding)) {
-            padding++;
+        if (groups.size() > 1) {
+            while (fitsLayout(groups, availableSlots, padding)) {
+                padding++;
+            }
+            // padding overflowed by 1, so step back
+            padding = Math.max(0, padding - 1);
         }
-        // padding overflowed by 1, so step back
-        padding = Math.max(0, padding - 1);
 
         return emitGroups(groups, availableSlots, padding);
     }

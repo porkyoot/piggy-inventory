@@ -48,7 +48,7 @@ public class PiggyInventoryConfig extends is.pig.minecraft.lib.config.PiggyClien
 
     // --- SORTING CONFIG ---
     // private boolean lockHotbar = true; // Removed per user request
-    private int tickDelay = 1;
+    private Integer tickDelay = 1;
 
     public enum SortLayout {
         ROW, COLUMN;
@@ -62,13 +62,11 @@ public class PiggyInventoryConfig extends is.pig.minecraft.lib.config.PiggyClien
     private SortLayout sortLayout = SortLayout.ROW;
 
     public SortLayout getSortLayout() {
+        if (sortLayout == null) sortLayout = SortLayout.ROW;
         return sortLayout;
     }
 
     public void setSortLayout(SortLayout val) {
-        if (this.sortLayout != val) {
-            is.pig.minecraft.inventory.PiggyInventory.LOGGER.debug("Sort layout mode changed to: {}", val);
-        }
         this.sortLayout = val;
     }
 
@@ -194,6 +192,8 @@ public class PiggyInventoryConfig extends is.pig.minecraft.lib.config.PiggyClien
     }
 
     public WeaponPreference getGuiWeaponPreference() {
+        if (weaponPreference == null) weaponPreference = WeaponPreference.NONE;
+        if (lastActiveWeaponPreference == null) lastActiveWeaponPreference = WeaponPreference.DAMAGE;
         if (weaponPreference == WeaponPreference.NONE) {
             return lastActiveWeaponPreference;
         }
@@ -346,13 +346,12 @@ public class PiggyInventoryConfig extends is.pig.minecraft.lib.config.PiggyClien
     }
 
     public OrePreference getGuiOrePreference() {
-        OrePreference ret;
+        if (orePreference == null) orePreference = OrePreference.FORTUNE_PREFERRED;
+        if (lastActivePreference == null) lastActivePreference = OrePreference.FORTUNE_PREFERRED;
         if (orePreference == OrePreference.NONE) {
-            ret = lastActivePreference;
-        } else {
-            ret = orePreference;
+            return lastActivePreference;
         }
-        return ret;
+        return orePreference;
     }
 
     public List<Integer> getSwapHotbarSlots() {
@@ -430,11 +429,12 @@ public class PiggyInventoryConfig extends is.pig.minecraft.lib.config.PiggyClien
     // --- SORTING GETTERS/SETTERS ---
     // Lock Hotbar methods removed
 
-    public int getTickDelay() {
+    public Integer getTickDelay() {
+        if (tickDelay == null) tickDelay = 1;
         return tickDelay;
     }
 
-    public void setTickDelay(int val) {
+    public void setTickDelay(Integer val) {
         this.tickDelay = val;
     }
 

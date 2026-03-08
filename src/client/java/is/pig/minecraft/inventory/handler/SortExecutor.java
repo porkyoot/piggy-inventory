@@ -61,7 +61,6 @@ public class SortExecutor {
     public void stopSort() {
         this.isExecuting = false;
         this.actionQueue.clear();
-        LOGGER.info("Sorting execution stopped.");
     }
 
     private void buildQueue() {
@@ -103,10 +102,8 @@ public class SortExecutor {
                     int tarAmt = targetItems.get(tSlot).getCount();
                     
                     if (curAmt != -1 && cursor.stack.getCount() + curAmt > tarAmt) {
-                        LOGGER.info("Cursor routing {} to {}. Diff too large, Right Clicking.", cursor.stack, tSlot);
                         click(tSlot, 1, current, cursor);
                     } else {
-                        LOGGER.info("Cursor routing {} to {}. Left Clicking.", cursor.stack, tSlot);
                         click(tSlot, 0, current, cursor);
                         pickupSlot = tSlot; // Track where we might have swapped from
                     }
@@ -117,7 +114,6 @@ public class SortExecutor {
                 // Cursor item doesn't belong anywhere (excess). Safely stash it.
                 int safe = findSafeDropAny(current, cursor, pickupSlot);
                 if (safe != -1) {
-                    LOGGER.info("Cursor has excess {}. Stashing safely at {} (ignoring pickup slot {}).", cursor.stack, safe, pickupSlot);
                     click(safe, 0, current, cursor);
                     pickupSlot = -1; // Ready to fetch a new target
                     changed = true;
@@ -127,14 +123,12 @@ public class SortExecutor {
                 // Inventory 100% full of wrong items. Force swap to keep unjumbling.
                 int wrong = findFirstWrongSlot(current, pickupSlot);
                 if (wrong != -1) {
-                    LOGGER.info("Inventory full, forced swap at wrong slot {}.", wrong);
                     click(wrong, 0, current, cursor);
                     pickupSlot = wrong;
                     changed = true;
                     continue;
                 }
                 
-                LOGGER.info("Fallback click 0.");
                 click(0, 0, current, cursor);
                 pickupSlot = 0;
                 changed = true;
@@ -151,7 +145,6 @@ public class SortExecutor {
                 // Mismatch Type A: Slot shouldn't have this item, or has too much of it -> Pick it up!
                 if (!current[i].isEmpty()) {
                     if (!ItemStack.isSameItemSameComponents(current[i], targetItems.get(i)) || curAmt > tarAmt) {
-                        LOGGER.info("Slot {} holds wrong item or excess ({}). Picking up.", i, current[i]);
                         click(i, 0, current, cursor);
                         pickupSlot = i;
                         changed = true;
@@ -163,7 +156,6 @@ public class SortExecutor {
                 if (current[i].isEmpty() || (ItemStack.isSameItemSameComponents(current[i], targetItems.get(i)) && curAmt < tarAmt)) {
                     int src = findSource(current, targetItems.get(i));
                     if (src != -1) {
-                        LOGGER.info("Slot {} missing {}. Fetching from {}.", i, targetItems.get(i), src);
                         click(src, 0, current, cursor);
                         pickupSlot = src;
                         changed = true;
@@ -173,7 +165,6 @@ public class SortExecutor {
             }
         } // end while loop
         
-        LOGGER.info("Queued {} exact inventory clicks for sorting globally optimized.", actionQueue.size());
     }
 
     private boolean isSameAndEqual(ItemStack a, ItemStack b) {
@@ -230,15 +221,13 @@ public class SortExecutor {
         for (int i = 0; i < current.length; i++) {
             if (i == pickupSlot) continue;
             if (current[i].isEmpty() && targetItems.get(i).isEmpty()) {
-                LOGGER.debug("findSafeDropAny: Found truly blank space at {}", i);
                 return i;
             }
         }
         // Fallback: ANY empty slot
         for (int i = 0; i < current.length; i++) {
-            if (i == pickupSlot) continue; // Don't drop it right back where we just panicked and picked it up!
+            if (i == pickupSlot) continue;
             if (current[i].isEmpty()) {
-                LOGGER.debug("findSafeDropAny: Found any empty slot at {}", i);
                 return i;
             }
         }
@@ -333,7 +322,6 @@ public class SortExecutor {
                 );
                 currentActionIndex++;
             }
-            LOGGER.info("Sorting execution completed instantly.");
             stopSort();
             return;
         }
@@ -346,7 +334,6 @@ public class SortExecutor {
         }
 
         if (currentActionIndex >= actionQueue.size()) {
-            LOGGER.info("Sorting execution completed.");
             stopSort();
             return;
         }
