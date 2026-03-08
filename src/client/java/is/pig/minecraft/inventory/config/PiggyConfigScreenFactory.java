@@ -389,7 +389,7 @@ public class PiggyConfigScreenFactory {
                                                 .group(ListOption.<String>createBuilder()
                                                                 .name(Component.literal("Comparator Order"))
                                                                 .description(OptionDescription.of(Component.literal(
-                                                                                "Ordered list of sort comparators applied left-to-right.\nValid values: CATEGORY, MOD, COLOR, LETTER, RARITY, NAME, ID, AMOUNT.\nDrag entries to reorder. Remove to disable a comparator.")))
+                                                                                "Ordered list of sort comparators applied left-to-right.\nValid values: CATEGORY, TAG, MATERIAL, MOD, COLOR, RARITY, NAME, ID, AMOUNT.\nDrag entries to reorder. Remove to disable a comparator.")))
                                                                 .binding(config.getSortComparatorOrder(),
                                                                                 config::getSortComparatorOrder,
                                                                                 config::setSortComparatorOrder)

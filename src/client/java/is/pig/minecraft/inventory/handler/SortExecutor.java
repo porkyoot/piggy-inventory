@@ -80,6 +80,7 @@ public class SortExecutor {
         int pickupSlot = -1;
         while (changed) {
             changed = false;
+            
             if (safetyGlobal++ > 2000) { // Failsafe
                 LOGGER.error("SortExecutor: Algorithm stuck globally. Sorting aborted.");
                 return;
@@ -124,7 +125,7 @@ public class SortExecutor {
                 }
                 
                 // Inventory 100% full of wrong items. Force swap to keep unjumbling.
-                int wrong = findFirstWrongSlot(current);
+                int wrong = findFirstWrongSlot(current, pickupSlot);
                 if (wrong != -1) {
                     LOGGER.info("Inventory full, forced swap at wrong slot {}.", wrong);
                     click(wrong, 0, current, cursor);
@@ -184,7 +185,7 @@ public class SortExecutor {
     private int findTargetSlotForCursor(ItemStack[] current, ItemStack cursorStack) {
         int bestSlot = -1;
         int largestNeed = -1;
-        
+
         for (int i = 0; i < current.length; i++) {
             ItemStack target = targetItems.get(i);
             if (!target.isEmpty() && ItemStack.isSameItemSameComponents(target, cursorStack)) {
@@ -207,10 +208,21 @@ public class SortExecutor {
                         }
                     }
                 }
-                if (largestNeed == cursorStack.getCount()) return i; // Perfect match
+                if (largestNeed == cursorStack.getCount())
+                    return i; // Perfect match
             }
         }
         return bestSlot;
+    }
+    
+    private int findFirstWrongSlot(ItemStack[] current, int ignoreSlot) {
+        for (int i = 0; i < current.length; i++) {
+            if (i == ignoreSlot) continue; // FIX: Don't swap back to where we just picked up from
+            if (!isSameAndEqual(current[i], targetItems.get(i))) {
+                return i;
+            }
+        }
+        return -1;
     }
 
     private int findSafeDropAny(ItemStack[] current, CursorState cs, int pickupSlot) {
@@ -227,15 +239,6 @@ public class SortExecutor {
             if (i == pickupSlot) continue; // Don't drop it right back where we just panicked and picked it up!
             if (current[i].isEmpty()) {
                 LOGGER.debug("findSafeDropAny: Found any empty slot at {}", i);
-                return i;
-            }
-        }
-        return -1;
-    }
-
-    private int findFirstWrongSlot(ItemStack[] current) {
-        for (int i = 0; i < current.length; i++) {
-            if (!isSameAndEqual(current[i], targetItems.get(i))) {
                 return i;
             }
         }

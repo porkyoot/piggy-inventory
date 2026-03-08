@@ -87,13 +87,15 @@ public class SortHandler {
 
         // 2. Sort using the user-configured comparator hierarchy
         is.pig.minecraft.inventory.config.PiggyInventoryConfig cfg = is.pig.minecraft.inventory.config.PiggyInventoryConfig.getInstance();
-        items.sort(Comparators.buildHierarchy(cfg.getSortComparatorOrder()));
+        List<String> comparatorOrder = cfg.getSortComparatorOrder();
+        items.sort(Comparators.buildHierarchy(comparatorOrder));
 
         // 3. Layout the grid with empty spaces separating groups
         LOGGER.debug("Applying sort layout mode: {}", cfg.getSortLayout());
+        List<java.util.Comparator<ItemStack>> layoutComparators = Comparators.buildComparatorList(comparatorOrder);
         ISortingLayout layout = cfg.getSortLayout() == is.pig.minecraft.inventory.config.PiggyInventoryConfig.SortLayout.COLUMN
-                ? new is.pig.minecraft.inventory.sorting.layout.ColumnLayout()
-                : new RowLayout();
+                ? new is.pig.minecraft.inventory.sorting.layout.ColumnLayout(layoutComparators)
+                : new RowLayout(layoutComparators);
         List<ItemStack> finalPositions = layout.layout(items, slotsToSort);
 
         // 4. Write back to slots using packets/actions via the Executor

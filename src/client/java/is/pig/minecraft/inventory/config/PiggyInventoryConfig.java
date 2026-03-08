@@ -73,7 +73,7 @@ public class PiggyInventoryConfig extends is.pig.minecraft.lib.config.PiggyClien
     }
 
     private List<String> sortComparatorOrder = new ArrayList<>(Arrays.asList(
-            "CATEGORY", "MOD", "COLOR", "LETTER", "RARITY", "NAME", "ID", "AMOUNT"));
+            "CATEGORY", "TAG", "MATERIAL", "MOD", "COLOR", "RARITY", "NAME", "ID", "AMOUNT"));
 
     public List<String> getSortComparatorOrder() {
         return sortComparatorOrder;
