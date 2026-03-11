@@ -283,8 +283,9 @@ public class SortExecutor {
                 } else if (!ItemStack.isSameItemSameComponents(current[i], target)) {
                     int slotLimit = targetSlots.get(i).getMaxStackSize();
                     if (slotLimit <= 0) slotLimit = 64;
-                    int safeTransferMax = Math.min(getVanillaStackLimit(cursorStack), getVanillaStackLimit(current[i]));
-                    if (current[i].getCount() > safeTransferMax || cursorStack.getCount() > slotLimit) {
+                    int itemCursorCapacity = getVanillaStackLimit(current[i]);
+                    // Only check if slot contents fit in the cursor and cursor contents fit in the slot
+                    if (current[i].getCount() > itemCursorCapacity || cursorStack.getCount() > slotLimit) {
                         continue; // Cannot swap! Skip.
                     }
 
@@ -370,11 +371,7 @@ public class SortExecutor {
         int slotLimit = checkStack.isEmpty() ? targetSlots.get(idx).getMaxStackSize() : targetSlots.get(idx).getMaxStackSize(checkStack);
         if (slotLimit <= 0) slotLimit = 64; // Fallback
         
-        int cursorLimit = getVanillaStackLimit(cursor);
         int itemCursorLimit = getVanillaStackLimit(slot);
-        
-        // Ensure cursor behaves strictly to vanilla size limits for held items (usually 64)
-        int safeTransferMax = Math.min(cursorLimit, itemCursorLimit);
 
         if (button == 0) {
             if (cursor.isEmpty()) {
@@ -401,7 +398,7 @@ public class SortExecutor {
             } else {
                 // Swapping (Only valid if BOTH stacks can fit in their respective destinations)
                 // If the slot has 4000 items, we CANNOT swap it into the cursor.
-                if (slot.getCount() > safeTransferMax || cursor.getCount() > slotLimit) {
+                if (slot.getCount() > itemCursorLimit || cursor.getCount() > slotLimit) {
                     // Invalid Swap -> Abort or fallback to incremental behavior
                     LOGGER.debug("SortExecutor: Prevented invalid swap at idx {} due to custom stack limits. Slot {}, Cursor {}", idx, slot.getCount(), cursor.getCount());
                     return false;
@@ -431,7 +428,7 @@ public class SortExecutor {
                 if (cursor.isEmpty()) cs.stack = ItemStack.EMPTY;
             } else {
                 // Right click swap behaves identically to left click if items differ.
-                if (slot.getCount() > safeTransferMax || cursor.getCount() > slotLimit) {
+                if (slot.getCount() > itemCursorLimit || cursor.getCount() > slotLimit) {
                     LOGGER.debug("SortExecutor: Prevented invalid right-click swap at idx {} due to custom stack caps. Slot {}, Cursor {}", idx, slot.getCount(), cursor.getCount());
                     return false;
                 } else {
