@@ -78,7 +78,7 @@ public class SortHandler {
         }
 
         // 1. Merge
-        StackMerger.merge(items);
+        StackMerger.merge(items, slotsToSort);
 
         // 2. Sort using the user-configured comparator hierarchy
         is.pig.minecraft.inventory.config.PiggyInventoryConfig cfg = is.pig.minecraft.inventory.config.PiggyInventoryConfig.getInstance();

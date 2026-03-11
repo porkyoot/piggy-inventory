@@ -1,14 +1,22 @@
 package is.pig.minecraft.inventory.sorting;
 
+import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
 import java.util.List;
 
 public class StackMerger {
 
-    public static void merge(List<ItemStack> items) {
+    public static void merge(List<ItemStack> items, List<Slot> slots) {
         for (int i = 0; i < items.size(); i++) {
             ItemStack stack = items.get(i);
-            if (stack.isEmpty() || stack.getCount() >= stack.getMaxStackSize()) {
+            
+            int stackLimit = 0;
+            for (Slot slot : slots) {
+                stackLimit = Math.max(stackLimit, slot.getMaxStackSize(stack));
+            }
+            if (stackLimit <= 0) stackLimit = stack.getMaxStackSize();
+            
+            if (stack.isEmpty() || stack.getCount() >= stackLimit) {
                 continue;
             }
 
@@ -17,11 +25,11 @@ public class StackMerger {
                 if (other.isEmpty()) continue;
 
                 if (ItemStack.isSameItemSameComponents(stack, other)) {
-                    int transfer = Math.min(other.getCount(), stack.getMaxStackSize() - stack.getCount());
+                    int transfer = Math.min(other.getCount(), stackLimit - stack.getCount());
                     if (transfer > 0) {
                         stack.grow(transfer);
                         other.shrink(transfer);
-                        if (stack.getCount() >= stack.getMaxStackSize()) {
+                        if (stack.getCount() >= stackLimit) {
                             break;
                         }
                     }

@@ -80,14 +80,22 @@ public class SortExecutor {
         while (changed) {
             changed = false;
             
-            if (safetyGlobal++ > 2000) { // Failsafe
+            if (safetyGlobal++ > 50000) { // Failsafe augmented for massive custom stacks (64x transfers)
                 LOGGER.error("SortExecutor: Algorithm stuck globally. Sorting aborted.");
                 return;
+            }
+            
+            boolean logDiag = safetyGlobal > 49980;
+            if (logDiag) {
+                LOGGER.error("--- Diagnostic Iteration {} ---", safetyGlobal);
+                LOGGER.error("Cursor holds: {}", cursor.stack);
             }
 
             // 1. If Cursor holds an item, its top priority is finding where it belongs and dropping it!
             if (!cursor.stack.isEmpty()) {
                 int tSlot = findTargetSlotForCursor(current, cursor.stack);
+                if (logDiag) LOGGER.error("Target slot for cursor: {}", tSlot);
+                
                 if (tSlot != -1) {
                     int curAmt = 0;
                     if (!current[tSlot].isEmpty()) {
@@ -101,41 +109,60 @@ public class SortExecutor {
 
                     int tarAmt = targetItems.get(tSlot).getCount();
                     
+                    if (logDiag) LOGGER.error("tSlot={}, curAmt={}, tarAmt={}, cursor={}", tSlot, curAmt, tarAmt, cursor.stack.getCount());
+
                     if (curAmt != -1 && cursor.stack.getCount() + curAmt > tarAmt) {
-                        click(tSlot, 1, current, cursor);
+                        if (logDiag) LOGGER.error("Attempting RIGHT CLICK on tSlot {}", tSlot);
+                        if (click(tSlot, 1, current, cursor, logDiag)) changed = true;
                     } else {
-                        click(tSlot, 0, current, cursor);
-                        pickupSlot = tSlot; // Track where we might have swapped from
+                        if (logDiag) LOGGER.error("Attempting LEFT CLICK on tSlot {}", tSlot);
+                        if (click(tSlot, 0, current, cursor, logDiag)) {
+                            pickupSlot = tSlot; // Track where we might have swapped from
+                            changed = true;
+                        }
                     }
-                    changed = true;
-                    continue;
+                    if (changed) continue;
                 }
                 
                 // Cursor item doesn't belong anywhere (excess). Safely stash it.
                 int safe = findSafeDropAny(current, cursor, pickupSlot);
+                if (logDiag) LOGGER.error("Safe drop slot: {}", safe);
                 if (safe != -1) {
-                    click(safe, 0, current, cursor);
-                    pickupSlot = -1; // Ready to fetch a new target
-                    changed = true;
-                    continue;
+                    if (click(safe, 0, current, cursor, logDiag)) {
+                        pickupSlot = -1; // Ready to fetch a new target
+                        changed = true;
+                        continue;
+                    }
                 }
                 
                 // Inventory 100% full of wrong items. Force swap to keep unjumbling.
                 int wrong = findFirstWrongSlot(current, pickupSlot);
+                if (logDiag) LOGGER.error("First wrong slot: {}", wrong);
                 if (wrong != -1) {
-                    click(wrong, 0, current, cursor);
-                    pickupSlot = wrong;
+                    if (click(wrong, 0, current, cursor, logDiag)) {
+                        pickupSlot = wrong;
+                        changed = true;
+                        continue;
+                    }
+                }
+                
+                if (logDiag) LOGGER.error("Attempting fallback click on slot 0");
+                if (click(0, 0, current, cursor, logDiag)) {
+                    pickupSlot = 0;
                     changed = true;
                     continue;
                 }
-                
-                click(0, 0, current, cursor);
-                pickupSlot = 0;
-                changed = true;
-                continue;
+
+                LOGGER.debug("SortExecutor: Cursor is trapped holding {}. No valid drops or swaps. Aborting logic.", cursor.stack);
+                break; // Break cleanly if absolutely no operations are valid
+            }
+            
+            // 2. Cursor is empty. Check if fully sorted. If so, break explicitly to guarantee no infinite ping-pong.
+            if (isFullySorted(current, targetItems)) {
+                break;
             }
 
-            // 2. Cursor is empty. Look for the first mismatch to kick off a chain!
+            // 3. Cursor is empty. Look for the first mismatch to kick off a chain!
             for (int i = 0; i < targetSlots.size(); i++) {
                 if (isSameAndEqual(current[i], targetItems.get(i))) continue;
 
@@ -145,23 +172,32 @@ public class SortExecutor {
                 // Mismatch Type A: Slot shouldn't have this item, or has too much of it -> Pick it up!
                 if (!current[i].isEmpty()) {
                     if (!ItemStack.isSameItemSameComponents(current[i], targetItems.get(i)) || curAmt > tarAmt) {
-                        click(i, 0, current, cursor);
-                        pickupSlot = i;
-                        changed = true;
-                        break; // break the for loop to process the new cursor!
+                        if (logDiag) LOGGER.error("EmptyCursor: Picking up Mismatch Type A from slot {}, curAmt {}, tarAmt {}", i, curAmt, tarAmt);
+                        if (click(i, 0, current, cursor, logDiag)) {
+                            pickupSlot = i;
+                            changed = true;
+                            // If we didn't pick up everything (due to limits), don't immediately loop back on the same slot
+                            // We MUST process the cursor first before looping here.
+                            break; 
+                        }
                     }
                 }
                 
                 // Mismatch Type B: Slot is empty or missing items -> Fetch them!
                 if (current[i].isEmpty() || (ItemStack.isSameItemSameComponents(current[i], targetItems.get(i)) && curAmt < tarAmt)) {
                     int src = findSource(current, targetItems.get(i));
+                    if (logDiag) LOGGER.error("EmptyCursor: Mismatch Type B for slot {}. Looking for source... found at {}", i, src);
                     if (src != -1) {
-                        click(src, 0, current, cursor);
-                        pickupSlot = src;
-                        changed = true;
-                        break; // break the for loop to process the new cursor!
+                        if (click(src, 0, current, cursor, logDiag)) {
+                            pickupSlot = src;
+                            changed = true;
+                            break; // break the for loop to process the new cursor!
+                        }
                     }
                 }
+            }
+            if (logDiag && !changed) {
+                LOGGER.error("EmptyCursor: No changes made in this iteration!");
             }
         } // end while loop
         
@@ -171,6 +207,13 @@ public class SortExecutor {
         if (a.isEmpty() && b.isEmpty()) return true;
         if (a.isEmpty() || b.isEmpty()) return false;
         return ItemStack.isSameItemSameComponents(a, b) && a.getCount() == b.getCount();
+    }
+    
+    private boolean isFullySorted(ItemStack[] current, List<ItemStack> target) {
+        for (int i = 0; i < current.length; i++) {
+            if (!isSameAndEqual(current[i], target.get(i))) return false;
+        }
+        return true;
     }
 
     private int findTargetSlotForCursor(ItemStack[] current, ItemStack cursorStack) {
@@ -253,49 +296,95 @@ public class SortExecutor {
         return -1;
     }
 
-    private void click(int idx, int button, ItemStack[] current, CursorState cs) {
+    private int getVanillaStackLimit(ItemStack stack) {
+        if (stack.isEmpty()) return 64;
+        return stack.getMaxStackSize();
+    }
+
+    private boolean click(int idx, int button, ItemStack[] current, CursorState cs, boolean logDiag) {
         ItemStack slot = current[idx];
         ItemStack cursor = cs.stack;
+        
+        if (logDiag) LOGGER.error(" -> click(idx={}, button={}, slot={}, cursor={})", idx, button, slot, cursor);
+        
+        ItemStack checkStack = cursor.isEmpty() ? slot : cursor;
+        int slotLimit = checkStack.isEmpty() ? targetSlots.get(idx).getMaxStackSize() : targetSlots.get(idx).getMaxStackSize(checkStack);
+        if (slotLimit <= 0) slotLimit = 64; // Fallback
+        
+        int cursorLimit = getVanillaStackLimit(cursor);
+        int itemCursorLimit = getVanillaStackLimit(slot);
+        
+        // Ensure cursor behaves strictly to vanilla size limits for held items (usually 64)
+        int safeTransferMax = Math.min(cursorLimit, itemCursorLimit);
 
         if (button == 0) {
             if (cursor.isEmpty()) {
-                cs.stack = slot;
-                current[idx] = ItemStack.EMPTY;
+                // Taking entire stack, but limited by what the cursor can hold!
+                int take = Math.min(slot.getCount(), itemCursorLimit);
+                if (take <= 0) return false; // Prevent empty loops
+                cs.stack = slot.copyWithCount(take);
+                slot.shrink(take);
+                if (slot.isEmpty()) current[idx] = ItemStack.EMPTY;
             } else if (slot.isEmpty()) {
-                current[idx] = cursor;
-                cs.stack = ItemStack.EMPTY;
+                // Putting down entire cursor stack (already limited)
+                int put = Math.min(cursor.getCount(), slotLimit);
+                if (put <= 0) return false;
+                current[idx] = cursor.copyWithCount(put);
+                cursor.shrink(put);
+                if (cursor.isEmpty()) cs.stack = ItemStack.EMPTY;
             } else if (ItemStack.isSameItemSameComponents(cursor, slot)) {
-                int trans = Math.min(cursor.getCount(), slot.getMaxStackSize() - slot.getCount());
+                // Merging
+                int trans = Math.min(cursor.getCount(), slotLimit - slot.getCount());
+                if (trans <= 0) return false; // Full
                 slot.grow(trans);
                 cursor.shrink(trans);
                 if (cursor.isEmpty()) cs.stack = ItemStack.EMPTY;
             } else {
-                current[idx] = cursor;
-                cs.stack = slot;
+                // Swapping (Only valid if BOTH stacks can fit in their respective destinations)
+                // If the slot has 4000 items, we CANNOT swap it into the cursor.
+                if (slot.getCount() > safeTransferMax || cursor.getCount() > slotLimit) {
+                    // Invalid Swap -> Abort or fallback to incremental behavior
+                    LOGGER.debug("SortExecutor: Prevented invalid swap at idx {} due to custom stack limits. Slot {}, Cursor {}", idx, slot.getCount(), cursor.getCount());
+                    return false;
+                } else {
+                    current[idx] = cursor;
+                    cs.stack = slot;
+                }
             }
         } else if (button == 1) {
             if (cursor.isEmpty()) {
                 if (!slot.isEmpty()) {
-                    int take = (slot.getCount() + 1) / 2;
+                    int take = Math.min((slot.getCount() + 1) / 2, itemCursorLimit);
+                    if (take <= 0) return false;
                     cs.stack = slot.copyWithCount(take);
                     slot.shrink(take);
                     if (slot.isEmpty()) current[idx] = ItemStack.EMPTY;
                 }
             } else if (slot.isEmpty() || ItemStack.isSameItemSameComponents(cursor, slot)) {
+                if (slotLimit <= slot.getCount()) return false;
+                
                 if (slot.isEmpty()) {
                     current[idx] = cursor.copyWithCount(1);
-                } else if (slot.getCount() < slot.getMaxStackSize()) {
+                } else if (slot.getCount() < slotLimit) {
                     slot.grow(1);
                 }
                 cursor.shrink(1);
                 if (cursor.isEmpty()) cs.stack = ItemStack.EMPTY;
             } else {
-                current[idx] = cursor;
-                cs.stack = slot;
+                // Right click swap behaves identically to left click if items differ.
+                if (slot.getCount() > safeTransferMax || cursor.getCount() > slotLimit) {
+                    LOGGER.debug("SortExecutor: Prevented invalid right-click swap at idx {} due to custom stack caps. Slot {}, Cursor {}", idx, slot.getCount(), cursor.getCount());
+                    return false;
+                } else {
+                    current[idx] = cursor;
+                    cs.stack = slot;
+                }
             }
         }
 
+        if (logDiag) LOGGER.error(" -> action added. Slot after: {}, Cursor after: {}", current[idx], cs.stack);
         actionQueue.add(new Action(targetSlots.get(idx).index, button));
+        return true;
     }
 
     private void onTick(Minecraft client) {
