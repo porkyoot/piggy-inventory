@@ -82,6 +82,15 @@ public class ToolSwapHandler {
 
             PiggyInventoryConfig.OrePreference mode = config.getOrePreference();
 
+            if (mode == PiggyInventoryConfig.OrePreference.SILK_TOUCH_STRICT) {
+                if (isNonSilktouchable(state)) {
+                    //client.player.displayClientMessage(Component.literal("§c[Piggy] Block protected: Cannot be Silk Touched!"), true);
+                    this.ticksWantingToSwap = 0;
+                    this.targetSwapSlot = -1;
+                    return true; // Cancel attack
+                }
+            }
+
             // 1. Gather all valid tools from inventory (including main hand)
             List<Integer> validSlots = new ArrayList<>();
             boolean currentBreakingSoon = isToolBreakingSoon(currentStack, config);
@@ -263,6 +272,18 @@ public class ToolSwapHandler {
 
     private boolean requiresShears(BlockState state, PiggyInventoryConfig config) {
         return matchesConfigList(config.getShearsBlocks(), state);
+    }
+
+    private boolean isNonSilktouchable(BlockState state) {
+        if (state == null) return false;
+        ResourceKey<Block> key = state.getBlockHolder().unwrapKey().orElse(null);
+        if (key == null) return false;
+        String id = key.location().toString();
+        return id.equals("minecraft:budding_amethyst") || 
+               id.equals("minecraft:suspicious_sand") || 
+               id.equals("minecraft:suspicious_gravel") ||
+               id.equals("minecraft:spawner") ||
+               id.equals("minecraft:trial_spawner");
     }
 
     private boolean isOreOrValuable(BlockState state, PiggyInventoryConfig config) {
