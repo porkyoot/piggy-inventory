@@ -92,6 +92,40 @@ public class SortHandler {
                 : new RowLayout(layoutComparators);
         List<ItemStack> finalPositions = layout.layout(items, slotsToSort);
 
+        // Verification: Ensure no items were dropped by layout padding running out of bounds
+        List<ItemStack> trackingList = new ArrayList<>(items);
+        for (ItemStack positioned : finalPositions) {
+            if (!positioned.isEmpty()) {
+                for (int i = 0; i < trackingList.size(); i++) {
+                    if (trackingList.get(i) == positioned) {
+                        trackingList.remove(i);
+                        break;
+                    }
+                }
+            }
+        }
+        
+        // Recover any dropped items into available empty slots
+        for (ItemStack missing : trackingList) {
+            boolean placed = false;
+            for (int i = 0; i < finalPositions.size(); i++) {
+                if (finalPositions.get(i).isEmpty()) {
+                    finalPositions.set(i, missing);
+                    placed = true;
+                    break;
+                }
+            }
+            // Fallback (should be mathematically impossible as total items <= slots)
+            if (!placed && !finalPositions.isEmpty()) {
+                for (int i = finalPositions.size() - 1; i >= 0; i--) {
+                    if (finalPositions.get(i).isEmpty() || i == 0) {
+                        finalPositions.set(i, missing);
+                        break;
+                    }
+                }
+            }
+        }
+
         // 4. Write back to slots using packets/actions via the Executor
         SortExecutor.getInstance().startSort(slotsToSort, finalPositions);
     }
