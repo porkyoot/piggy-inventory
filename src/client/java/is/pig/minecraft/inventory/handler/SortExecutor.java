@@ -163,26 +163,78 @@ public class SortExecutor {
             }
 
             // 3. Cursor is empty. Look for the first mismatch to kick off a chain!
+            
+            // 3a. Prioritize picking up from "Mega Stacks" that are blocking spots because they can't be swapped:
+            boolean megaStackPicked = false;
             for (int i = 0; i < targetSlots.size(); i++) {
+                if (isSameAndEqual(current[i], targetItems.get(i))) continue;
+                int curAmt = current[i].getCount();
+                int tarAmt = targetItems.get(i).isEmpty() ? 0 : targetItems.get(i).getCount();
+                
+                int safeTransferMax = getVanillaStackLimit(current[i]);
+                if (!current[i].isEmpty() && (!ItemStack.isSameItemSameComponents(current[i], targetItems.get(i)) || curAmt > tarAmt)) {
+                    if (curAmt > safeTransferMax && curAmt > tarAmt) {
+                        if (logDiag) LOGGER.error("EmptyCursor: Prioritizing Mega Stack Type A from slot {}, curAmt {}, tarAmt {}", i, curAmt, tarAmt);
+                        if (click(i, 0, current, cursor, logDiag)) {
+                            pickupSlot = i;
+                            changed = true;
+                            megaStackPicked = true;
+                            break;
+                        }
+                    }
+                }
+            }
+            if (megaStackPicked) continue;
+
+            // 3b. Normal Type A and Type B
+            boolean typeAPicked = false;
+            // Pass 1: Ignore pickupSlot to avoid immediate ping-pong
+            for (int i = 0; i < targetSlots.size(); i++) {
+                if (i == pickupSlot) continue;
                 if (isSameAndEqual(current[i], targetItems.get(i))) continue;
 
                 int curAmt = current[i].getCount();
                 int tarAmt = targetItems.get(i).isEmpty() ? 0 : targetItems.get(i).getCount();
 
-                // Mismatch Type A: Slot shouldn't have this item, or has too much of it -> Pick it up!
                 if (!current[i].isEmpty()) {
                     if (!ItemStack.isSameItemSameComponents(current[i], targetItems.get(i)) || curAmt > tarAmt) {
                         if (logDiag) LOGGER.error("EmptyCursor: Picking up Mismatch Type A from slot {}, curAmt {}, tarAmt {}", i, curAmt, tarAmt);
                         if (click(i, 0, current, cursor, logDiag)) {
                             pickupSlot = i;
                             changed = true;
-                            // If we didn't pick up everything (due to limits), don't immediately loop back on the same slot
-                            // We MUST process the cursor first before looping here.
+                            typeAPicked = true;
                             break; 
                         }
                     }
                 }
+            }
+            if (typeAPicked) continue;
+
+            // Pass 2: Fallback to pickupSlot if it's the only Type A left
+            if (pickupSlot != -1 && pickupSlot < targetSlots.size()) {
+                int i = pickupSlot;
+                if (!isSameAndEqual(current[i], targetItems.get(i))) {
+                    int curAmt = current[i].getCount();
+                    int tarAmt = targetItems.get(i).isEmpty() ? 0 : targetItems.get(i).getCount();
+                    if (!current[i].isEmpty() && (!ItemStack.isSameItemSameComponents(current[i], targetItems.get(i)) || curAmt > tarAmt)) {
+                        if (logDiag) LOGGER.error("EmptyCursor: Fallback Picking up Mismatch Type A from pickupSlot {}, curAmt {}, tarAmt {}", i, curAmt, tarAmt);
+                        if (click(i, 0, current, cursor, logDiag)) {
+                            changed = true;
+                            // don't change pickupSlot
+                            typeAPicked = true;
+                        }
+                    }
+                }
+            }
+            if (typeAPicked) continue;
+
+            // Pass 3: Mismatch Type B
+            for (int i = 0; i < targetSlots.size(); i++) {
+                if (isSameAndEqual(current[i], targetItems.get(i))) continue;
                 
+                int curAmt = current[i].getCount();
+                int tarAmt = targetItems.get(i).isEmpty() ? 0 : targetItems.get(i).getCount();
+
                 // Mismatch Type B: Slot is empty or missing items -> Fetch them!
                 if (current[i].isEmpty() || (ItemStack.isSameItemSameComponents(current[i], targetItems.get(i)) && curAmt < tarAmt)) {
                     int src = findSource(current, targetItems.get(i));
@@ -229,6 +281,13 @@ public class SortExecutor {
                         bestSlot = i;
                     }
                 } else if (!ItemStack.isSameItemSameComponents(current[i], target)) {
+                    int slotLimit = targetSlots.get(i).getMaxStackSize();
+                    if (slotLimit <= 0) slotLimit = 64;
+                    int safeTransferMax = Math.min(getVanillaStackLimit(cursorStack), getVanillaStackLimit(current[i]));
+                    if (current[i].getCount() > safeTransferMax || cursorStack.getCount() > slotLimit) {
+                        continue; // Cannot swap! Skip.
+                    }
+
                     if (target.getCount() > largestNeed) {
                         largestNeed = target.getCount();
                         bestSlot = i;

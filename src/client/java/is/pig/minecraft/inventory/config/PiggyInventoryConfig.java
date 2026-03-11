@@ -441,6 +441,8 @@ public class PiggyInventoryConfig extends is.pig.minecraft.lib.config.PiggyClien
     // --- FEATURES TOGGLES ---
     private boolean mouseTwicks = true;
     private boolean continuousCrafting = true;
+    private boolean fastTrade = true;
+    private boolean continuousOperations = true;
 
     // --- AUTO-REFILL CONFIG ---
     private boolean autoRefill = true;
@@ -471,6 +473,22 @@ public class PiggyInventoryConfig extends is.pig.minecraft.lib.config.PiggyClien
 
     public void setContinuousCrafting(boolean v) {
         this.continuousCrafting = v;
+    }
+
+    public boolean isFastTrade() {
+        return fastTrade;
+    }
+
+    public void setFastTrade(boolean v) {
+        this.fastTrade = v;
+    }
+
+    public boolean isContinuousOperations() {
+        return continuousOperations;
+    }
+
+    public void setContinuousOperations(boolean v) {
+        this.continuousOperations = v;
     }
 
     public boolean isAutoRefill() {

@@ -93,11 +93,18 @@ public abstract class MixinHandledScreen implements is.pig.minecraft.inventory.d
             Slot slot = this.piggy_getSlotUnderMouse(mouseX, mouseY);
             if (slot != null) {
                 this.piggy_lastShiftClickedSlot = slot;
-                // Hook for Continuous Crafting
-                if (((is.pig.minecraft.inventory.config.PiggyInventoryConfig) is.pig.minecraft.inventory.config.PiggyInventoryConfig
-                        .getInstance()).isContinuousCrafting()) {
+                PiggyInventoryConfig config = (PiggyInventoryConfig) PiggyInventoryConfig.getInstance();
+                
+                // Hook for Continuous Crafting / Operations
+                if (config.isContinuousCrafting() || config.isContinuousOperations()) {
                     is.pig.minecraft.inventory.handler.CraftingHandler.getInstance()
                             .onCraftingClick(slot, Minecraft.getInstance().player);
+                }
+                
+                // Hook for Trade
+                if (config.isFastTrade()) {
+                    is.pig.minecraft.inventory.handler.TradeHandler.getInstance()
+                            .onTradeClick(slot, Minecraft.getInstance().player);
                 }
             }
         }
@@ -107,8 +114,10 @@ public abstract class MixinHandledScreen implements is.pig.minecraft.inventory.d
     private void onMouseReleased(double mouseX, double mouseY, int button, CallbackInfoReturnable<Boolean> cir) {
         if (button == 0) {
             this.piggy_lastShiftClickedSlot = null;
-            // Hook for Continuous Crafting
+            
+            // Revert to stopping on release as requested
             is.pig.minecraft.inventory.handler.CraftingHandler.getInstance().onCraftingRelease();
+            is.pig.minecraft.inventory.handler.TradeHandler.getInstance().onTradeRelease();
         }
     }
 
@@ -124,9 +133,12 @@ public abstract class MixinHandledScreen implements is.pig.minecraft.inventory.d
         if (shiftHeld && button == 0) {
             // Check throttling
             long now = System.currentTimeMillis();
-            long delayMs = config.getTickDelay() * 50L;
-            if (now - piggy_lastDragTime < delayMs) {
-                return;
+            int cps = config.getTickDelay();
+            if (cps > 0) {
+                long delayMs = 1000L / cps;
+                if (now - piggy_lastDragTime < delayMs) {
+                    return;
+                }
             }
 
             Slot slot = this.piggy_getSlotUnderMouse(mouseX, mouseY);
