@@ -33,7 +33,7 @@ public class ToolSwapHandler {
     public boolean onTick(Minecraft client) {
         PiggyInventoryConfig config = (PiggyInventoryConfig) PiggyInventoryConfig.getInstance();
 
-        if (!config.isToolSwapEnabled() || client.player == null || client.level == null || client.screen != null) {
+        if (client.player == null || client.level == null || client.screen != null) {
             this.lastTargetedBlock = null;
             this.ticksWantingToSwap = 0;
             this.targetSwapSlot = -1;
@@ -41,6 +41,25 @@ public class ToolSwapHandler {
         }
 
         if (!client.options.keyAttack.isDown()) {
+            this.lastTargetedBlock = null;
+            this.ticksWantingToSwap = 0;
+            this.targetSwapSlot = -1;
+            return false;
+        }
+        
+        ItemStack currentStackOriginal = client.player.getMainHandItem();
+        boolean breakProtectionActive = isToolBreakingSoon(currentStackOriginal, config);
+
+        if (!config.isToolSwapEnabled()) {
+            // Tool swap disabled, but we might still need break protection
+            if (breakProtectionActive) {
+                // Break protection triggered!
+                client.player.displayClientMessage(Component.literal("§c[Piggy] Break Protection: Your tool is about to break!"), true);
+                this.lastTargetedBlock = null;
+                this.ticksWantingToSwap = 0;
+                this.targetSwapSlot = -1;
+                return true; // Cancel attack
+            }
             this.lastTargetedBlock = null;
             this.ticksWantingToSwap = 0;
             this.targetSwapSlot = -1;
@@ -103,7 +122,7 @@ public class ToolSwapHandler {
 
             if (validSlots.isEmpty()) {
                 if (currentBreakingSoon) {
-                    client.player.displayClientMessage(Component.literal("§c[Piggy] Tool breaking soon! Mining prevented."), true);
+                    client.player.displayClientMessage(Component.literal("§c[Piggy] Break Protection: Your tool is about to break!"), true);
                     this.ticksWantingToSwap = 0;
                     this.targetSwapSlot = -1;
                     return true;
@@ -139,7 +158,7 @@ public class ToolSwapHandler {
             if (bestSlot != currentSlot) {
                 if (currentBreakingSoon) {
                     swapToSlot(client, currentSlot, bestSlot, config.getSwapHotbarSlots());
-                    client.player.displayClientMessage(Component.literal("§c[Piggy] Tool swap: Saved your tool!"), true);
+                    client.player.displayClientMessage(Component.literal("§c[Piggy] Break Protection: Saved your tool by swapping!"), true);
                     this.ticksWantingToSwap = 0;
                     this.targetSwapSlot = -1;
                 } else {
