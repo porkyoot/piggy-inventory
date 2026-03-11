@@ -124,6 +124,11 @@ public class QuickLootHandler {
             return false;
 
         if (screen instanceof AbstractContainerScreen) {
+            if (screen instanceof net.minecraft.client.gui.screens.inventory.InventoryScreen) {
+                awaitingContainer = false;
+                return false; // Don't intercept the local player inventory!
+            }
+
             // Safety Check: If too much time passed, maybe it's a legitimate opening
             if (System.currentTimeMillis() - requestTime > 2000) {
                 awaitingContainer = false;
@@ -149,6 +154,10 @@ public class QuickLootHandler {
         return false;
     }
 
+    private boolean transferInProgress = false;
+    private final java.util.Queue<Integer> transferQueue = new java.util.LinkedList<>();
+    private long lastTransferTime = 0;
+
     public void onTick(Minecraft client) {
         // Handle Delayed Sneak Restoration
         if (sneakingSuppressed) {
@@ -167,47 +176,82 @@ public class QuickLootHandler {
         }
 
         // Timeout
-        if (awaitingContainer && System.currentTimeMillis() - requestTime > 2000) {
-            awaitingContainer = false;
-            hiddenScreen = null;
+        if (awaitingContainer && !transferInProgress && System.currentTimeMillis() - requestTime > 2000) {
+            cleanup();
         }
 
         if (hiddenScreen != null) {
             if (client.player == null) {
-                hiddenScreen = null;
-                awaitingContainer = false;
+                cleanup();
                 return;
             }
 
-            // Perform Transfer logic
-            // We can reuse the logic from MixinMouseHandler technically, but method is
-            // private.
-            // Copy logic here or make public?
-            // Making `piggy_handleScrollTransfer` public is cleaner.
-            // Assume we made it public (I will modify MixinMouseHandler to be public).
-
-            // Invoke transfer with appropriate delta direction
-            double delta = lastTransferWasUp ? 1.0 : -1.0;
-
-            if (hiddenScreen instanceof AbstractContainerScreen) {
-                boolean result = is.pig.minecraft.inventory.util.InventoryUtils.handleScrollTransfer(
-                        (AbstractContainerScreen<?>) hiddenScreen, delta,
-                        lastTransferWasAll);
-
-                if (result) {
-                    lastActionTime = System.currentTimeMillis();
+            if (!transferInProgress) {
+                // Feature Check
+                if (!PiggyInventoryConfig.getInstance().isFeatureQuickLootEnabled()) {
+                    is.pig.minecraft.lib.ui.AntiCheatFeedbackManager.getInstance().onFeatureBlocked("quick_loot", is.pig.minecraft.lib.ui.BlockReason.SERVER_ENFORCEMENT);
+                    client.player.closeContainer();
+                    cleanup();
+                    return;
                 }
+
+                double delta = lastTransferWasUp ? 1.0 : -1.0;
+                if (hiddenScreen instanceof AbstractContainerScreen) {
+                    java.util.List<Integer> slots = InventoryUtils.getSlotsToTransfer(
+                            (AbstractContainerScreen<?>) hiddenScreen, delta, lastTransferWasAll);
+                    transferQueue.addAll(slots);
+                }
+                transferInProgress = true;
+                lastTransferTime = System.currentTimeMillis();
             }
 
-            // Close screen
-            client.player.closeContainer();
-            // Also set client.screen to null if it was set (but we suppressed it, so it
-            // should be null)
+            if (transferInProgress) {
+                int cps = PiggyInventoryConfig.getInstance().getTickDelay();
+                long minDelay = cps > 0 ? 1000L / cps : 0;
+                long currentTime = System.currentTimeMillis();
 
-            // Cleanup
-            hiddenScreen = null;
-            awaitingContainer = false;
+                if (minDelay == 0) {
+                    // Uncapped
+                    while (!transferQueue.isEmpty()) {
+                        int slotIndex = transferQueue.poll();
+                        client.gameMode.handleInventoryMouseClick(((AbstractContainerScreen<?>) hiddenScreen).getMenu().containerId, slotIndex, 0,
+                                net.minecraft.world.inventory.ClickType.QUICK_MOVE, client.player);
+                        lastActionTime = currentTime;
+                    }
+                    lastTransferTime = currentTime;
+                } else {
+                    // Rate Limited
+                    if (currentTime - lastTransferTime >= minDelay) {
+                        int actions = (int) ((currentTime - lastTransferTime) / minDelay);
+                        if (actions > transferQueue.size()) {
+                            actions = transferQueue.size();
+                        }
+                        for (int i = 0; i < actions; i++) {
+                            int slotIndex = transferQueue.poll();
+                            client.gameMode.handleInventoryMouseClick(((AbstractContainerScreen<?>) hiddenScreen).getMenu().containerId, slotIndex, 0,
+                                    net.minecraft.world.inventory.ClickType.QUICK_MOVE, client.player);
+                            lastActionTime = currentTime;
+                        }
+                        lastTransferTime += actions * minDelay;
+                        if (lastTransferTime > currentTime) {
+                            lastTransferTime = currentTime;
+                        }
+                    }
+                }
+
+                if (transferQueue.isEmpty()) {
+                    client.player.closeContainer();
+                    cleanup();
+                }
+            }
         }
+    }
+
+    private void cleanup() {
+        hiddenScreen = null;
+        awaitingContainer = false;
+        transferInProgress = false;
+        transferQueue.clear();
     }
 
     public void renderOverlay(GuiGraphics context) {

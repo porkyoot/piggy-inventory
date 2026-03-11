@@ -67,6 +67,16 @@ public class PiggyInventoryClient implements ClientModInitializer {
                                         new is.pig.minecraft.lib.features.CheatFeature("weapon_switch", "Weapon Switch",
                                                         "Auto-swap weapon", true));
                 }
+                if (!is.pig.minecraft.lib.features.CheatFeatureRegistry.hasFeature("auto_refill")) {
+                        is.pig.minecraft.lib.features.CheatFeatureRegistry.register(
+                                        new is.pig.minecraft.lib.features.CheatFeature("auto_refill", "Auto Refill",
+                                                        "Automatically refills hotbar slots with identical items", true));
+                }
+                if (!is.pig.minecraft.lib.features.CheatFeatureRegistry.hasFeature("quick_loot")) {
+                        is.pig.minecraft.lib.features.CheatFeatureRegistry.register(
+                                        new is.pig.minecraft.lib.features.CheatFeature("quick_loot", "Quick Loot",
+                                                        "Instantly transfers matching items to/from containers", true));
+                }
 
                 ConfigPersistence.load();
                 controller.initialize();

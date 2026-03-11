@@ -15,6 +15,8 @@ public class AutoRefillHandler {
         return INSTANCE;
     }
 
+    private long lastActionTime = 0;
+
     public void onTick(Minecraft client) {
         Player player = client.player;
         if (player == null || client.gameMode == null)
@@ -42,26 +44,41 @@ public class AutoRefillHandler {
             return;
         }
 
+        int cps = is.pig.minecraft.inventory.config.PiggyInventoryConfig.getInstance().getTickDelay();
+        long minDelay = cps > 0 ? 1000L / cps : 0;
+        long currentTime = System.currentTimeMillis();
+
+        if (currentTime - lastActionTime < minDelay) {
+            return; // Wait for cooldown. Tracker state remains frozen at the moment of depletion.
+        }
+
         boolean actionTaken = false;
 
         // Check Main Hand
         if (shouldTriggerRefill(lastMainHandStack, currentMainStack)) {
-            if (this.attemptRefill(client, player, lastMainHandStack, currentSlot)) { // Hotbar slot 0-8
+            if (!is.pig.minecraft.inventory.config.PiggyInventoryConfig.getInstance().isFeatureAutoRefillEnabled()) {
+                is.pig.minecraft.lib.ui.AntiCheatFeedbackManager.getInstance().onFeatureBlocked("auto_refill", is.pig.minecraft.lib.ui.BlockReason.SERVER_ENFORCEMENT);
+                lastMainHandStack = currentMainStack.copy(); // Acknowledge depletion without refill
+            } else if (this.attemptRefill(client, player, lastMainHandStack, currentSlot)) { // Hotbar slot 0-8
                 // We swapped 'lastMainHandStack' back into the slot.
                 // To prevent the next tick from seeing (SwappedItem -> OriginalItem) as a
                 // transition,
                 // we FORCE the lastState to match what we just put there.
                 lastMainHandStack = lastMainHandStack.copy(); // It is what we wanted
                 actionTaken = true;
+                lastActionTime = currentTime;
             }
         }
 
         // Check Off Hand
         if (!actionTaken && shouldTriggerRefill(lastOffHandStack, currentOffStack)) {
-            // Offhand target slot ID is 45 in inventory menu
-            if (this.attemptRefill(client, player, lastOffHandStack, 45)) { // Special ID for Offhand
+            if (!is.pig.minecraft.inventory.config.PiggyInventoryConfig.getInstance().isFeatureAutoRefillEnabled()) {
+                is.pig.minecraft.lib.ui.AntiCheatFeedbackManager.getInstance().onFeatureBlocked("auto_refill", is.pig.minecraft.lib.ui.BlockReason.SERVER_ENFORCEMENT);
+                lastOffHandStack = currentOffStack.copy(); // Acknowledge depletion without refill
+            } else if (this.attemptRefill(client, player, lastOffHandStack, 45)) { // Special ID for Offhand
                 lastOffHandStack = lastOffHandStack.copy();
                 actionTaken = true;
+                lastActionTime = currentTime;
             }
         }
 

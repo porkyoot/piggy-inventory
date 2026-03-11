@@ -30,6 +30,11 @@ public class PiggyInventoryConfig extends is.pig.minecraft.lib.config.PiggyClien
     }
 
     @Override
+    public void save() {
+        ConfigPersistence.save();
+    }
+
+    @Override
     public void onServerSync(boolean allowCheats, java.util.Map<String, Boolean> features) {
         super.onServerSync(allowCheats, features);
         if (!allowCheats) {
@@ -48,7 +53,6 @@ public class PiggyInventoryConfig extends is.pig.minecraft.lib.config.PiggyClien
 
     // --- SORTING CONFIG ---
     // private boolean lockHotbar = true; // Removed per user request
-    private Integer tickDelay = 1;
 
     public enum SortLayout {
         ROW, COLUMN;
@@ -429,15 +433,6 @@ public class PiggyInventoryConfig extends is.pig.minecraft.lib.config.PiggyClien
     // --- SORTING GETTERS/SETTERS ---
     // Lock Hotbar methods removed
 
-    public Integer getTickDelay() {
-        if (tickDelay == null) tickDelay = 1;
-        return tickDelay;
-    }
-
-    public void setTickDelay(Integer val) {
-        this.tickDelay = val;
-    }
-
     // --- FEATURES TOGGLES ---
     private boolean mouseTwicks = true;
     private boolean continuousCrafting = true;
@@ -494,6 +489,15 @@ public class PiggyInventoryConfig extends is.pig.minecraft.lib.config.PiggyClien
     public boolean isAutoRefill() {
         return autoRefill;
     }
+    
+    public boolean isFeatureAutoRefillEnabled() {
+        return is.pig.minecraft.lib.features.CheatFeatureRegistry.isFeatureEnabled(
+                "auto_refill",
+                serverAllowCheats,
+                serverFeatures,
+                isNoCheatingMode(),
+                autoRefill);
+    }
 
     public void setAutoRefill(boolean v) {
         this.autoRefill = v;
@@ -541,6 +545,15 @@ public class PiggyInventoryConfig extends is.pig.minecraft.lib.config.PiggyClien
 
     public boolean isFastLoot() {
         return fastLoot;
+    }
+
+    public boolean isFeatureQuickLootEnabled() {
+        return is.pig.minecraft.lib.features.CheatFeatureRegistry.isFeatureEnabled(
+                "quick_loot",
+                serverAllowCheats,
+                serverFeatures,
+                isNoCheatingMode(),
+                fastLoot);
     }
 
     public void setFastLoot(boolean v) {

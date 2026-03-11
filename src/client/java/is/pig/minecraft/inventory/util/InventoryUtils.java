@@ -148,4 +148,84 @@ public class InventoryUtils {
 
         return actionTaken;
     }
+
+    public static java.util.List<Integer> getSlotsToTransfer(AbstractContainerScreen<?> screen, double scrollDelta,
+            boolean forceMoveAll) {
+        java.util.List<Integer> slotsToMove = new java.util.ArrayList<>();
+        Minecraft client = Minecraft.getInstance();
+        if (client.player == null || client.gameMode == null)
+            return slotsToMove;
+
+        net.minecraft.world.inventory.AbstractContainerMenu menu = screen.getMenu();
+        net.minecraft.world.entity.player.Inventory playerInventory = client.player.getInventory();
+
+        java.util.List<Slot> storageSlots = new java.util.ArrayList<>();
+        java.util.List<Slot> playerSlots = new java.util.ArrayList<>();
+        boolean foundPlayerSlots = false;
+
+        for (Slot slot : menu.slots) {
+            if (slot.container == playerInventory) {
+                playerSlots.add(slot);
+                foundPlayerSlots = true;
+            }
+        }
+
+        if (foundPlayerSlots) {
+            for (Slot slot : menu.slots) {
+                if (slot.container != playerInventory) {
+                    storageSlots.add(slot);
+                }
+            }
+        } else {
+            int totalSlots = menu.slots.size();
+            for (int i = 0; i < totalSlots; i++) {
+                Slot slot = menu.slots.get(i);
+                if (totalSlots >= 36 && i >= totalSlots - 36) {
+                    playerSlots.add(slot);
+                } else {
+                    storageSlots.add(slot);
+                }
+            }
+        }
+
+        if (storageSlots.isEmpty())
+            return slotsToMove;
+
+        boolean moveUp = scrollDelta > 0;
+
+        java.util.List<Slot> sourceSlots = moveUp ? playerSlots : storageSlots;
+        java.util.List<Slot> targetSlots = moveUp ? storageSlots : playerSlots;
+
+        for (Slot sourceSlot : sourceSlots) {
+            if (!sourceSlot.hasItem())
+                continue;
+
+            if (SlotLockingManager.getInstance().isLocked(sourceSlot)) {
+                continue;
+            }
+
+            net.minecraft.world.item.ItemStack sourceStack = sourceSlot.getItem();
+            boolean performTransfer = false;
+
+            if (forceMoveAll) {
+                performTransfer = true;
+            } else {
+                for (Slot targetSlot : targetSlots) {
+                    if (targetSlot.hasItem()) {
+                        net.minecraft.world.item.ItemStack targetStack = targetSlot.getItem();
+                        if (net.minecraft.world.item.ItemStack.isSameItemSameComponents(sourceStack, targetStack)) {
+                            performTransfer = true;
+                            break;
+                        }
+                    }
+                }
+            }
+
+            if (performTransfer) {
+                slotsToMove.add(sourceSlot.index);
+            }
+        }
+
+        return slotsToMove;
+    }
 }

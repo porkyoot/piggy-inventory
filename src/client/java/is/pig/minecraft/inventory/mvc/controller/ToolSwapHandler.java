@@ -26,6 +26,7 @@ public class ToolSwapHandler {
     private net.minecraft.core.BlockPos lastTargetedBlock = null;
     private int ticksWantingToSwap = 0;
     private int targetSwapSlot = -1;
+    private long lastSwapTime = 0;
 
     /**
      * @return true if the attack should be CANCELLED (protected block).
@@ -50,7 +51,7 @@ public class ToolSwapHandler {
         ItemStack currentStackOriginal = client.player.getMainHandItem();
         boolean breakProtectionActive = isToolBreakingSoon(currentStackOriginal, config);
 
-        if (!config.isToolSwapEnabled()) {
+        if (!config.isFeatureToolSwapEnabled()) {
             // Tool swap disabled, but we might still need break protection
             if (breakProtectionActive) {
                 // Break protection triggered!
@@ -165,11 +166,18 @@ public class ToolSwapHandler {
 
             // 3. Swap logic
             if (bestSlot != currentSlot) {
+                int cps = config.getTickDelay();
+                long minDelay = cps > 0 ? 1000L / cps : 0;
+                long currentTime = System.currentTimeMillis();
+
                 if (currentBreakingSoon) {
-                    swapToSlot(client, currentSlot, bestSlot, config.getSwapHotbarSlots());
-                    client.player.displayClientMessage(Component.literal("§c[Piggy] Break Protection: Saved your tool by swapping!"), true);
-                    this.ticksWantingToSwap = 0;
-                    this.targetSwapSlot = -1;
+                    if (currentTime - lastSwapTime >= minDelay) {
+                        swapToSlot(client, currentSlot, bestSlot, config.getSwapHotbarSlots());
+                        client.player.displayClientMessage(Component.literal("§c[Piggy] Break Protection: Saved your tool by swapping!"), true);
+                        this.ticksWantingToSwap = 0;
+                        this.targetSwapSlot = -1;
+                        lastSwapTime = currentTime;
+                    }
                 } else {
                     if (this.targetSwapSlot == bestSlot) {
                         this.ticksWantingToSwap++;
@@ -181,9 +189,12 @@ public class ToolSwapHandler {
                     int requiredTicks = state.getDestroySpeed(client.level, currentPos) == 0.0F ? 0 : 2;
 
                     if (this.ticksWantingToSwap >= requiredTicks) {
-                        swapToSlot(client, currentSlot, bestSlot, config.getSwapHotbarSlots());
-                        this.ticksWantingToSwap = 0;
-                        this.targetSwapSlot = -1;
+                        if (currentTime - lastSwapTime >= minDelay) {
+                            swapToSlot(client, currentSlot, bestSlot, config.getSwapHotbarSlots());
+                            this.ticksWantingToSwap = 0;
+                            this.targetSwapSlot = -1;
+                            lastSwapTime = currentTime;
+                        }
                     }
                 }
             } else {

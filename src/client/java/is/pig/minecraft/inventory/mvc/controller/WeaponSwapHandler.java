@@ -17,6 +17,8 @@ import net.minecraft.world.item.enchantment.Enchantments;
 
 public class WeaponSwapHandler {
 
+    private long lastSwapTime = 0;
+
     /**
      * Called when the player is about to attack an entity.
      */
@@ -52,7 +54,14 @@ public class WeaponSwapHandler {
         }
 
         if (bestSlot != currentSlot) {
-            swapToSlot(client, currentSlot, bestSlot, config.getWeaponSwapHotbarSlots());
+            int cps = config.getTickDelay();
+            long minDelay = cps > 0 ? 1000L / cps : 0;
+            long currentTime = System.currentTimeMillis();
+
+            if (currentTime - lastSwapTime >= minDelay) {
+                swapToSlot(client, currentSlot, bestSlot, config.getWeaponSwapHotbarSlots());
+                lastSwapTime = currentTime;
+            }
         }
     }
 
