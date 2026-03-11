@@ -64,6 +64,14 @@ public class QuickLootHandler {
         // effectively Container or EnderChest (which is special)
         boolean isContainer = blockEntity instanceof Container || blockEntity instanceof EnderChestBlockEntity;
 
+        // Fallback for modded storages that don't implement Container
+        if (!isContainer && blockEntity != null) {
+            String className = blockEntity.getClass().getName().toLowerCase();
+            if (className.contains("sophisticatedstorage") || className.contains("sophisticatedbackpacks")) {
+                isContainer = true;
+            }
+        }
+
         if (!isContainer) {
             return false; // Not a container, let vanilla handle it (Sneak, etc)
         }

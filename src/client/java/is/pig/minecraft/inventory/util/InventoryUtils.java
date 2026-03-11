@@ -69,12 +69,32 @@ public class InventoryUtils {
         // Separate slots
         java.util.List<Slot> storageSlots = new java.util.ArrayList<>();
         java.util.List<Slot> playerSlots = new java.util.ArrayList<>();
+        boolean foundPlayerSlots = false;
 
         for (Slot slot : menu.slots) {
             if (slot.container == playerInventory) {
                 playerSlots.add(slot);
-            } else {
-                storageSlots.add(slot);
+                foundPlayerSlots = true;
+            }
+        }
+
+        if (foundPlayerSlots) {
+            for (Slot slot : menu.slots) {
+                if (slot.container != playerInventory) {
+                    storageSlots.add(slot);
+                }
+            }
+        } else {
+            // Fallback for modded screens (like Sophisticated Storage) that wrap the player inventory.
+            // In typical chest GUIs, the last 36 slots (27 main inventory + 9 hotbar) belong to the player.
+            int totalSlots = menu.slots.size();
+            for (int i = 0; i < totalSlots; i++) {
+                Slot slot = menu.slots.get(i);
+                if (totalSlots >= 36 && i >= totalSlots - 36) {
+                    playerSlots.add(slot);
+                } else {
+                    storageSlots.add(slot);
+                }
             }
         }
 
