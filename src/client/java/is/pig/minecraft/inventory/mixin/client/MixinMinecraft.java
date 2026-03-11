@@ -20,4 +20,11 @@ public class MixinMinecraft {
             ci.cancel();
         }
     }
+
+    @Inject(method = "startUseItem", at = @At("RETURN"))
+    private void onStartUseItemReturn(CallbackInfo ci) {
+        if (((Minecraft)(Object)this).player != null) {
+            is.pig.minecraft.inventory.handler.AutoRefillHandler.getInstance().onTick((Minecraft)(Object)this);
+        }
+    }
 }
