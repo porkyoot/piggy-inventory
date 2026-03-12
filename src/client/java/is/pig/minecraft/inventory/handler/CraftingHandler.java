@@ -33,7 +33,7 @@ public class CraftingHandler {
 
     public void onCraftingClick(Slot slot, Player player) {
         if (isResultSlot(slot)) {
-            LOGGER.info("Continuous Crafting START on slot {}", slot.index);
+            LOGGER.debug("Continuous Crafting START on slot {}", slot.index);
             this.isActive = true;
             this.currentResultSlot = slot;
             this.expectedResult = slot.getItem().copy();
@@ -45,8 +45,9 @@ public class CraftingHandler {
             if (player.containerMenu instanceof StonecutterMenu menu) {
                 try {
                     this.lastStonecutterSelection = menu.getSelectedRecipeIndex();
-                    LOGGER.info("Stonecutter recipe: {}", lastStonecutterSelection);
+                    LOGGER.debug("Stonecutter recipe: {}", lastStonecutterSelection);
                 } catch (Throwable t) {
+                    LOGGER.error("Failed to get stonecutter recipe index", t);
                     this.lastStonecutterSelection = -1;
                 }
             } else {
@@ -84,7 +85,7 @@ public class CraftingHandler {
     }
 
     public void onCraftingRelease() {
-        if (isActive) LOGGER.info("Continuous Crafting STOP");
+        if (isActive) LOGGER.debug("Continuous Crafting STOP");
         this.isActive = false;
         this.currentResultSlot = null;
         // lastRecipe is NOT cleared here so shift-refill can work after craft
@@ -104,7 +105,7 @@ public class CraftingHandler {
         if (!newRecipe.isEmpty()) {
             this.lastRecipe = newRecipe;
             for (Map.Entry<Integer, ItemStack> entry : lastRecipe.entrySet()) {
-                LOGGER.info("Snapshot: slot {} -> {}", entry.getKey(), entry.getValue());
+                LOGGER.debug("Snapshot: slot {} -> {}", entry.getKey(), entry.getValue());
             }
         }
     }
@@ -173,12 +174,14 @@ public class CraftingHandler {
                 if (client.player.containerMenu instanceof StonecutterMenu menu && lastStonecutterSelection != -1) {
                     try {
                         if (menu.getSelectedRecipeIndex() == -1) {
-                            LOGGER.info("Inactive re-selecting recipe: {}", lastStonecutterSelection);
+                            LOGGER.debug("Inactive re-selecting recipe: {}", lastStonecutterSelection);
                             client.gameMode.handleInventoryButtonClick(menu.containerId, lastStonecutterSelection);
                             lastActionTime = System.currentTimeMillis();
                             return;
                         }
-                    } catch (Throwable t) {}
+                    } catch (Throwable t) {
+                        LOGGER.error("Failed to re-select stonecutter recipe (inactive)", t);
+                    }
                 }
             }
         }
@@ -204,7 +207,9 @@ public class CraftingHandler {
             try {
                 int selected = ((StonecutterMenu)client.player.containerMenu).getSelectedRecipeIndex();
                 if (selected != -1) lastStonecutterSelection = selected;
-            } catch (Exception e) {}
+            } catch (Exception e) {
+                LOGGER.error("Failed to recover stonecutter recipe index", e);
+            }
         }
 
         // Unlimited logic: if CPS <= 0, loop up to 64 times in one tick
@@ -232,20 +237,22 @@ public class CraftingHandler {
                     StonecutterMenu menu = (StonecutterMenu) client.player.containerMenu;
                     try {
                         if (menu.getSelectedRecipeIndex() == -1) {
-                            LOGGER.info("Re-selecting recipe: {}", lastStonecutterSelection);
+                            LOGGER.debug("Re-selecting recipe: {}", lastStonecutterSelection);
                             client.gameMode.handleInventoryButtonClick(menu.containerId, lastStonecutterSelection);
                             lastActionTime = System.currentTimeMillis();
                             return true;
                         }
-                    } catch (Throwable t) {}
+                    } catch (Throwable t) {
+                        LOGGER.error("Failed to re-select stonecutter recipe", t);
+                    }
                 }
                 return false;
             } else if (refillResult == 1) {
-                LOGGER.info("Refilled grid.");
+                LOGGER.debug("Refilled grid.");
                 lastActionTime = System.currentTimeMillis();
                 return true;
             } else {
-                LOGGER.info("Out of items, stopping.");
+                LOGGER.debug("Out of items, stopping.");
                 this.onCraftingRelease();
                 return false;
             }
@@ -254,7 +261,7 @@ public class CraftingHandler {
         if (currentResultSlot.hasItem()) {
             if (!isStonecutter && !expectedResult.isEmpty()) {
                 if (!ItemStack.isSameItemSameComponents(currentResultSlot.getItem(), expectedResult)) {
-                    LOGGER.info("Bad recipe detected! Slot: {}, Expected: {}", currentResultSlot.getItem(), expectedResult);
+                    LOGGER.warn("Bad recipe detected! Slot: {}, Expected: {}", currentResultSlot.getItem(), expectedResult);
                     this.onCraftingRelease();
                     return false;
                 }
@@ -264,7 +271,7 @@ public class CraftingHandler {
             this.snapshotRecipe(client.player);
             this.expectedResult = currentResultSlot.getItem().copy();
 
-            LOGGER.info("Clicking result slot {}", currentResultSlot.index);
+            LOGGER.debug("Clicking result slot {}", currentResultSlot.index);
             client.gameMode.handleInventoryMouseClick(
                     client.player.containerMenu.containerId,
                     currentResultSlot.index,
@@ -386,7 +393,7 @@ public class CraftingHandler {
             List<Integer> sourceSlots = findItemSlotsInInventory(player, key.stack);
 
             if (sourceSlots.isEmpty()) {
-                LOGGER.info("Missing ingredient: {}", key.stack.getItem());
+                LOGGER.debug("Missing ingredient: {}", key.stack.getItem());
                 return -1;
             }
 

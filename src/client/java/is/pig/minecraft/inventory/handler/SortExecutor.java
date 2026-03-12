@@ -153,7 +153,6 @@ public class SortExecutor {
                     continue;
                 }
 
-                LOGGER.debug("SortExecutor: Cursor is trapped holding {}. No valid drops or swaps. Aborting logic.", cursor.stack);
                 break; // Break cleanly if absolutely no operations are valid
             }
             
@@ -396,11 +395,7 @@ public class SortExecutor {
                 cursor.shrink(trans);
                 if (cursor.isEmpty()) cs.stack = ItemStack.EMPTY;
             } else {
-                // Swapping (Only valid if BOTH stacks can fit in their respective destinations)
-                // If the slot has 4000 items, we CANNOT swap it into the cursor.
                 if (slot.getCount() > itemCursorLimit || cursor.getCount() > slotLimit) {
-                    // Invalid Swap -> Abort or fallback to incremental behavior
-                    LOGGER.debug("SortExecutor: Prevented invalid swap at idx {} due to custom stack limits. Slot {}, Cursor {}", idx, slot.getCount(), cursor.getCount());
                     return false;
                 } else {
                     current[idx] = cursor;
@@ -427,9 +422,7 @@ public class SortExecutor {
                 cursor.shrink(1);
                 if (cursor.isEmpty()) cs.stack = ItemStack.EMPTY;
             } else {
-                // Right click swap behaves identically to left click if items differ.
                 if (slot.getCount() > itemCursorLimit || cursor.getCount() > slotLimit) {
-                    LOGGER.debug("SortExecutor: Prevented invalid right-click swap at idx {} due to custom stack caps. Slot {}, Cursor {}", idx, slot.getCount(), cursor.getCount());
                     return false;
                 } else {
                     current[idx] = cursor;
