@@ -42,9 +42,13 @@ Feel free to fork the project or submit a Pull Request if you want to contribute
 
 ### 🎒 Inventory Management
 *   **Inventory Sorting**: Sort your inventory or containers instantly with **R** or **Middle Click**.
-    *   Multiple sorting algorithms: Smart Category, Alphabetical, Creative Order, Rarity, Type, Material, Color, Tag
-    *   Customizable via JSON lists
+    *   **Advanced Sorting Engine**: A robust, prioritized algorithm that clears mega-stacks and avoids infinite loops.
+    *   **Smart Categorization**: Groups items logically (Tools, Weapons, Resources, Food) before applying secondary sorting (Material, Alphabetical).
+    *   **Anti-Glitch Logic**: Gracefully handles unswappable items and network latency to prevent the "sorting dance" (ping-ponging items).
+    *   Multiple algorithms: Smart Category, Alphabetical, Creative Order, Rarity, Type, Material, Color, Tag.
+    *   Customizable via JSON lists.
 *   **Fast Loot / Deposit**:
+    *   **Refined QuickLoot**: Improved stability when interacting with large containers or during rapid scrolling.
     *   **Shift + Scroll**: Move matching items between inventories.
     *   **Ctrl + Scroll**: Move ALL items between inventories.
     *   **Note**: This only works when looking at a **Container** (Chest, Barrel, etc.) to preserve vanilla crouching!
