@@ -254,6 +254,9 @@ public class QuickLootHandler {
         transferQueue.clear();
     }
 
+    private static final net.minecraft.resources.ResourceLocation LOOT_ICON = net.minecraft.resources.ResourceLocation.fromNamespaceAndPath("piggy-inventory", "textures/gui/loot.png");
+    private static final net.minecraft.resources.ResourceLocation DEPO_ICON = net.minecraft.resources.ResourceLocation.fromNamespaceAndPath("piggy-inventory", "textures/gui/depo.png");
+
     public void renderOverlay(GuiGraphics context) {
         if (System.currentTimeMillis() - lastActionTime > 1000)
             return;
@@ -267,35 +270,19 @@ public class QuickLootHandler {
         int alpha = (int) ((1.0f - age) * 255);
         if (alpha < 0)
             alpha = 0;
-        if (alpha < 0)
-            alpha = 0;
-        // int color = (alpha << 24) | 0xFFFFFF; // Unused
 
-        // Render Icon below crosshair
-        // ResourceLocation icon = lastTransferWasUp ? ICON_DEPO : ICON_LOOT; // Depo
-        // (Up) vs Loot (Down)
-
-        // Draw (Icon rendering is tricky with standard blit if texture not 256x256,
-        // simplified rect?)
-        // Just draw a colored box for now or item?
-        // Using item icon is better.
-        // Chest for Loot, Hopper for Depo?
-
-        net.minecraft.world.item.Item itemIcon = lastTransferWasUp ? net.minecraft.world.item.Items.HOPPER
-                : net.minecraft.world.item.Items.CHEST_MINECART;
+        net.minecraft.resources.ResourceLocation icon = lastTransferWasUp ? DEPO_ICON : LOOT_ICON;
 
         context.pose().pushPose();
         context.pose().translate(cx - 8, cy + 10, 0); // Below crosshair
-        // context.blit(...) requires binding texture.
-        // renderItem is easier.
 
-        // Render item does not support alpha easily.
-        // We can render item then render a semi-transparent box over it to simulate
-        // fade?
-        // Or just disappear.
-
-        // Render item icon (alpha transparency not easily supported)
-        context.renderItem(new net.minecraft.world.item.ItemStack(itemIcon), 0, 0);
+        // Render custom texture icon
+        com.mojang.blaze3d.systems.RenderSystem.enableBlend();
+        com.mojang.blaze3d.systems.RenderSystem.defaultBlendFunc();
+        context.setColor(1.0f, 1.0f, 1.0f, alpha / 255.0f);
+        context.blit(icon, 0, 0, 0, 0, 16, 16, 16, 16);
+        context.setColor(1.0f, 1.0f, 1.0f, 1.0f);
+        com.mojang.blaze3d.systems.RenderSystem.disableBlend();
 
         context.pose().popPose();
     }
