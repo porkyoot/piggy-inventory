@@ -12,7 +12,11 @@ import net.minecraft.world.item.ItemStack;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 public class SortHandler {
+    private static final Logger LOGGER = LoggerFactory.getLogger("piggy-inventory-handler");
     private static final SortHandler INSTANCE = new SortHandler();
 
     private SortHandler() {
@@ -78,7 +82,9 @@ public class SortHandler {
         }
 
         // 1. Merge
+        LOGGER.info("SortHandler: {} slots to sort, {} items extracted", slotsToSort.size(), items.size());
         StackMerger.merge(items, slotsToSort);
+        LOGGER.info("SortHandler: Items after merge: {}", items.size());
 
         // 2. Sort using the user-configured comparator hierarchy
         is.pig.minecraft.inventory.config.PiggyInventoryConfig cfg = is.pig.minecraft.inventory.config.PiggyInventoryConfig.getInstance();
@@ -127,6 +133,12 @@ public class SortHandler {
         }
 
         // 4. Write back to slots using packets/actions via the Executor
+        LOGGER.info("SortHandler: Final Target layout computed:");
+        for(int i = 0; i < finalPositions.size(); i++) {
+            if(!finalPositions.get(i).isEmpty()) {
+                LOGGER.info("  Slot {}: {} x{}", i, finalPositions.get(i).getItem(), finalPositions.get(i).getCount());
+            }
+        }
         SortExecutor.getInstance().startSort(slotsToSort, finalPositions);
     }
 }
