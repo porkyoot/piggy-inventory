@@ -128,16 +128,9 @@ public class SortExecutor {
                 return;
             }
             
-            boolean logDiag = true; // ALWAYS log for debugging
-            if (logDiag) {
-                LOGGER.info("--- SortExecutor Iteration {} ---", safetyGlobal);
-                LOGGER.info("Cursor holds: {}", cursor.stack);
-            }
-
             // 1. If Cursor holds an item, its top priority is finding where it belongs and dropping it!
             if (!cursor.stack.isEmpty()) {
                 int tSlot = findTargetSlotForCursor(current, cursor.stack);
-                if (logDiag) LOGGER.info("Target slot for cursor: {}", tSlot);
                 
                 if (tSlot != -1) {
                     int curAmt = 0;
@@ -151,15 +144,11 @@ public class SortExecutor {
                     }
 
                     int tarAmt = targetItems.get(tSlot).getCount();
-                    
-                    if (logDiag) LOGGER.info("tSlot={}, curAmt={}, tarAmt={}, cursor={}", tSlot, curAmt, tarAmt, cursor.stack.getCount());
 
                     if (curAmt != -1 && cursor.stack.getCount() + curAmt > tarAmt) {
-                        if (logDiag) LOGGER.info("Attempting RIGHT CLICK on tSlot {}", tSlot);
-                        if (click(tSlot, 1, current, cursor, logDiag)) changed = true;
+                        if (click(tSlot, 1, current, cursor)) changed = true;
                     } else {
-                        if (logDiag) LOGGER.info("Attempting LEFT CLICK on tSlot {}", tSlot);
-                        if (click(tSlot, 0, current, cursor, logDiag)) {
+                        if (click(tSlot, 0, current, cursor)) {
                             pickupSlot = tSlot; // Track where we might have swapped from
                             changed = true;
                         }
@@ -169,9 +158,8 @@ public class SortExecutor {
                 
                 // Cursor item doesn't belong anywhere (excess). Safely stash it.
                 int safe = findSafeDropAny(current, cursor, pickupSlot);
-                if (logDiag) LOGGER.info("Safe drop slot: {}", safe);
                 if (safe != -1) {
-                    if (click(safe, 0, current, cursor, logDiag)) {
+                    if (click(safe, 0, current, cursor)) {
                         pickupSlot = -1; // Ready to fetch a new target
                         changed = true;
                         continue;
@@ -180,22 +168,17 @@ public class SortExecutor {
                 
                 // Inventory 100% full of wrong items. Force swap to keep unjumbling.
                 int wrong = findFirstWrongSlot(current, pickupSlot, cursor.stack);
-                if (logDiag) LOGGER.info("First wrong slot: {}", wrong);
                 if (wrong != -1) {
-                    if (click(wrong, 0, current, cursor, logDiag)) {
+                    if (click(wrong, 0, current, cursor)) {
                         pickupSlot = wrong;
                         changed = true;
                         continue;
                     }
                 }
                 
-                if (logDiag) LOGGER.info("Attempting fallback click on slot 0");
-                if (click(0, 0, current, cursor, logDiag)) {
-                    pickupSlot = 0;
-                    changed = true;
-                    continue;
-                }
-
+                // If wrong is -1 and all safe drops are -1, the algorithm is mathematically deadlocked
+                // by full slots containing blocking megastacks. It will break and cleanly execute whatever
+                // progress was made before halting with a verification mismatch.
                 break; // Break cleanly if absolutely no operations are valid
             }
             
@@ -221,8 +204,7 @@ public class SortExecutor {
                     ItemStack simCursor = current[i].copyWithCount(take);
                     int tSlot = findTargetSlotForCursor(current, simCursor);
                     if (tSlot != -1) {
-                         if (logDiag) LOGGER.info("EmptyCursor: Priority 'Perfect Match' pickup from slot {}, will go directly to {}", i, tSlot);
-                         if (click(i, 0, current, cursor, logDiag)) {
+                         if (click(i, 0, current, cursor)) {
                              pickupSlot = i;
                              changed = true;
                              perfectPicked = true;
@@ -244,8 +226,7 @@ public class SortExecutor {
                         ItemStack simCursor = current[i].copyWithCount(take);
                         int tSlot = findTargetSlotForCursor(current, simCursor);
                         if (tSlot != -1) {
-                             if (logDiag) LOGGER.info("EmptyCursor: Fallback Priority 'Perfect Match' pickup from slot {}", i);
-                             if (click(i, 0, current, cursor, logDiag)) {
+                             if (click(i, 0, current, cursor)) {
                                  changed = true;
                                  perfectPicked = true;
                              }
@@ -266,8 +247,7 @@ public class SortExecutor {
                 
                 int safeTransferMax = getVanillaStackLimit(current[i]);
                 if (curAmt > tarAmt && curAmt > safeTransferMax) {
-                    if (logDiag) LOGGER.info("EmptyCursor: Prioritizing Mega Stack Type A from slot {}, curAmt {}, tarAmt {}", i, curAmt, tarAmt);
-                    if (click(i, 0, current, cursor, logDiag)) {
+                    if (click(i, 0, current, cursor)) {
                         pickupSlot = i;
                         changed = true;
                         megaStackPicked = true;
@@ -288,8 +268,7 @@ public class SortExecutor {
                 int tarAmt = ItemStack.isSameItemSameComponents(current[i], targetItems.get(i)) ? targetItems.get(i).getCount() : 0;
 
                 if (curAmt > tarAmt) {
-                    if (logDiag) LOGGER.info("EmptyCursor: Picking up Mismatch Type A from slot {}, curAmt {}, tarAmt {}", i, curAmt, tarAmt);
-                    if (click(i, 0, current, cursor, logDiag)) {
+                    if (click(i, 0, current, cursor)) {
                         pickupSlot = i;
                         changed = true;
                         typeAPicked = true;
@@ -306,8 +285,7 @@ public class SortExecutor {
                     int curAmt = current[i].getCount();
                     int tarAmt = ItemStack.isSameItemSameComponents(current[i], targetItems.get(i)) ? targetItems.get(i).getCount() : 0;
                     if (curAmt > tarAmt) {
-                        if (logDiag) LOGGER.info("EmptyCursor: Fallback Picking up Mismatch Type A from pickupSlot {}, curAmt {}, tarAmt {}", i, curAmt, tarAmt);
-                        if (click(i, 0, current, cursor, logDiag)) {
+                        if (click(i, 0, current, cursor)) {
                             changed = true;
                             typeAPicked = true;
                         }
@@ -326,9 +304,8 @@ public class SortExecutor {
                 // Slot needs items!
                 if (current[i].isEmpty() || (ItemStack.isSameItemSameComponents(current[i], targetItems.get(i)) && curAmt < tarAmt)) {
                     int src = findSource(current, targetItems.get(i));
-                    if (logDiag) LOGGER.info("EmptyCursor: Mismatch Type B for slot {}. Looking for source... found at {}", i, src);
                     if (src != -1) {
-                        if (click(src, 0, current, cursor, logDiag)) {
+                        if (click(src, 0, current, cursor)) {
                             pickupSlot = src;
                             changed = true;
                             break;
@@ -336,9 +313,7 @@ public class SortExecutor {
                     }
                 }
             }
-            if (logDiag && !changed) {
-                LOGGER.info("EmptyCursor: No changes made in this iteration!");
-            }        } // end while loop
+        } // end while loop
         
     }
 
@@ -398,23 +373,68 @@ public class SortExecutor {
     }
     
     private int findFirstWrongSlot(ItemStack[] current, int ignoreSlot, ItemStack cursorStack) {
+        int bestSlot = -1;
+        int bestScore = -1;
+
         for (int i = 0; i < current.length; i++) {
-            if (i == ignoreSlot) continue; // FIX: Don't swap back to where we just picked up from
-            if (!isSameAndEqual(current[i], targetItems.get(i))) {
-                // If the slot is empty, it's a safe drop - we shouldn't be here in forceSwap!
-                if (current[i].isEmpty()) return i;
+            if (i == ignoreSlot) continue; 
+            
+            // Empty slots must be used by findSafeDropAny. ForceSwap is only for occupied slots.
+            if (current[i].isEmpty()) continue;
+            
+            // Do not disturb an item that is already exactly what the target needs!
+            if (!targetItems.get(i).isEmpty() && ItemStack.isSameItemSameComponents(current[i], targetItems.get(i))) {
+                continue; 
+            }
+            
+            // Do not swap if it's the identical item we are holding (endless 64 dirt <-> 64 dirt trade)
+            if (ItemStack.isSameItemSameComponents(current[i], cursorStack)) continue;
+            
+            // We can only swap if the slot's contents fit into our vanilla cursor!
+            if (current[i].getCount() > getVanillaStackLimit(current[i])) continue;
+            
+            // This is a VALID stash point. Now score what we pick up!
+            int score = 0;
+            
+            // Priority 1: Can the item we pick up be IMMEDIATELY placed in its target slot?
+            int testTarget = findTargetSlotForCursor(current, current[i]);
+            if (testTarget != -1 && testTarget != i) {
+                score += 100; // Unblocked path to target!
                 
-                // CRUCIAL: Do not force swap if the item is exactly what we are already holding!
-                // Otherwise we just trade 64 dirt for 64 dirt and ping-pong endlessly.
-                if (ItemStack.isSameItemSameComponents(current[i], cursorStack)) continue;
-                
-                // ALSO: We can only force swap if the target slot's contents fit in our cursor!
-                if (current[i].getCount() > getVanillaStackLimit(current[i])) continue;
-                
-                return i;
+                // Will putting it there COMPLETELY empty our cursor?
+                int slotLimit = targetSlots.get(testTarget).getMaxStackSize(current[i]);
+                if (slotLimit <= 0) slotLimit = Math.max(64, targetSlots.get(testTarget).getMaxStackSize());
+                if (current[testTarget].isEmpty() || (current[testTarget].getCount() + current[i].getCount() <= slotLimit)) {
+                    score += 50; // Guaranteed to empty cursor, allowing us to pick up Mega Stacks!
+                }
+            } else {
+                // Priority 2: If we can't put it in its target, can we at least cleanly MERGE it into another slot?
+                for (int j = 0; j < current.length; j++) {
+                    if (j == i || j == ignoreSlot) continue;
+                    if (!current[j].isEmpty() && ItemStack.isSameItemSameComponents(current[j], current[i])) {
+                        int mergedAmt = current[j].getCount() + current[i].getCount();
+                        int slotLimit = targetSlots.get(j).getMaxStackSize(current[i]);
+                        if (slotLimit <= 0) slotLimit = Math.max(64, targetSlots.get(j).getMaxStackSize());
+                        if (mergedAmt <= slotLimit) {
+                            score += 10; // Can cleanly disappear!
+                            break;
+                        }
+                    }
+                }
+            }
+            
+            if (score > bestScore) {
+                bestScore = score;
+                bestSlot = i;
             }
         }
-        return -1;
+        
+        if (bestScore <= 0) {
+            // No swap will lead to progress. Prevent infinite juggling.
+            return -1; 
+        }
+        
+        return bestSlot;
     }
 
     private int findSafeDropAny(ItemStack[] current, CursorState cs, int pickupSlot) {
@@ -459,11 +479,9 @@ public class SortExecutor {
         return stack.getMaxStackSize();
     }
 
-    private boolean click(int idx, int button, ItemStack[] current, CursorState cs, boolean logDiag) {
+    private boolean click(int idx, int button, ItemStack[] current, CursorState cs) {
         ItemStack slot = current[idx];
         ItemStack cursor = cs.stack;
-        
-        if (logDiag) LOGGER.info(" -> click(idx={}, button={}, slot={}, cursor={})", idx, button, slot, cursor);
         
         ItemStack checkStack = cursor.isEmpty() ? slot : cursor;
         int slotLimit = checkStack.isEmpty() ? targetSlots.get(idx).getMaxStackSize() : targetSlots.get(idx).getMaxStackSize(checkStack);
@@ -530,7 +548,6 @@ public class SortExecutor {
             }
         }
 
-        if (logDiag) LOGGER.info(" -> action added. Slot after: {}, Cursor after: {}", current[idx], cs.stack);
         actionQueue.add(new Action(targetSlots.get(idx).index, button));
         return true;
     }
