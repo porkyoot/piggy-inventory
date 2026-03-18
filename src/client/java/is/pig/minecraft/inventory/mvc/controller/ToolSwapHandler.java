@@ -6,6 +6,7 @@ import java.util.List;
 import is.pig.minecraft.inventory.config.PiggyInventoryConfig;
 import net.minecraft.client.Minecraft;
 import net.minecraft.network.chat.Component;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.network.protocol.game.ServerboundSetCarriedItemPacket;
 import net.minecraft.resources.ResourceKey;
@@ -61,6 +62,16 @@ public class ToolSwapHandler {
                 this.targetSwapSlot = -1;
                 return true; // Cancel attack
             }
+            
+            boolean currentIsHammer = isHammer(currentStackOriginal);
+            PiggyInventoryConfig.OrePreference currentMode = config.getOrePreference();
+            if (currentIsHammer && currentMode != PiggyInventoryConfig.OrePreference.FORTUNE_STRICT) {
+                this.lastTargetedBlock = null;
+                this.ticksWantingToSwap = 0;
+                this.targetSwapSlot = -1;
+                return true;
+            }
+            
             this.lastTargetedBlock = null;
             this.ticksWantingToSwap = 0;
             this.targetSwapSlot = -1;
@@ -95,12 +106,17 @@ public class ToolSwapHandler {
             // 1. Gather all valid tools from inventory (including main hand)
             List<Integer> validSlots = new ArrayList<>();
             boolean currentBreakingSoon = isToolBreakingSoon(currentStack, config);
+            boolean currentIsHammer = isHammer(currentStack);
+            boolean isHammerAllowed = mode == PiggyInventoryConfig.OrePreference.FORTUNE_STRICT;
             
             for (int i = 0; i < 36; i++) {
                 ItemStack stack = client.player.getInventory().getItem(i);
                 
                 // FILTER: Don't use a tool that is about to break
                 if (isToolBreakingSoon(stack, config)) continue;
+
+                // FILTER: Don't swap to a hammer unless in Fortune+ mode
+                if (isHammer(stack) && !isHammerAllowed) continue;
 
                 // FILTER: Strict modes prevent selecting tools that don't have the required enchant
                 if (isOreOrValuable(state, config)) {
@@ -137,6 +153,11 @@ public class ToolSwapHandler {
                     this.targetSwapSlot = -1;
                     return true;
                 }
+                if (currentIsHammer && !isHammerAllowed) {
+                    this.ticksWantingToSwap = 0;
+                    this.targetSwapSlot = -1;
+                    return true;
+                }
                 return false;
             }
 
@@ -150,6 +171,9 @@ public class ToolSwapHandler {
                 
                 // Tier 2: Does it meet our preferred enchantment mode?
                 .thenComparing(slot -> matchesPreference(client, client.player.getInventory().getItem(slot), state, mode, config))
+                
+                // Tier 2.5: In Fortune+ mode, prefer hammers over regular tools
+                .thenComparing(slot -> mode == PiggyInventoryConfig.OrePreference.FORTUNE_STRICT && isHammer(client.player.getInventory().getItem(slot)))
                 
                 // Tier 3: Is it Shears for a shearable block?
                 .thenComparing(slot -> requiresShears(state, config) && client.player.getInventory().getItem(slot).is(Items.SHEARS))
@@ -170,13 +194,21 @@ public class ToolSwapHandler {
                 long minDelay = cps > 0 ? 1000L / cps : 0;
                 long currentTime = System.currentTimeMillis();
 
-                if (currentBreakingSoon) {
+                if (currentBreakingSoon || (currentIsHammer && !isHammerAllowed)) {
                     if (currentTime - lastSwapTime >= minDelay) {
                         swapToSlot(client, currentSlot, bestSlot, config.getSwapHotbarSlots());
-                        client.player.displayClientMessage(Component.literal("§c[Piggy] Break Protection: Saved your tool by swapping!"), true);
+                        if (currentBreakingSoon) {
+                            client.player.displayClientMessage(Component.literal("§c[Piggy] Break Protection: Saved your tool by swapping!"), true);
+                        }
                         this.ticksWantingToSwap = 0;
                         this.targetSwapSlot = -1;
                         lastSwapTime = currentTime;
+                        return true; // Cancel attack immediately after swapping to prevent using the wrong tool for one tick
+                    } else {
+                        // Cancel attack during swap cooldown to prevent breaking with protected/banned tools
+                        this.ticksWantingToSwap = 0;
+                        this.targetSwapSlot = -1;
+                        return true;
                     }
                 } else {
                     if (this.targetSwapSlot == bestSlot) {
@@ -361,6 +393,15 @@ public class ToolSwapHandler {
         try {
             var enchantments = stack.get(net.minecraft.core.component.DataComponents.ENCHANTMENTS);
             return enchantments != null && !enchantments.isEmpty();
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    private boolean isHammer(ItemStack stack) {
+        if (stack == null || stack.isEmpty()) return false;
+        try {
+            return BuiltInRegistries.ITEM.getKey(stack.getItem()).getPath().contains("hammer");
         } catch (Exception e) {
             return false;
         }
