@@ -24,6 +24,8 @@ public class SortExecutor {
     private List<ItemStack> targetItems;
     private int currentActionIndex = 0;
 
+    private static final net.minecraft.resources.ResourceLocation SORT_ICON = net.minecraft.resources.ResourceLocation.fromNamespaceAndPath("piggy", "textures/gui/icons/quick_sort.png");
+
     // Helper to abstract slot IDs
     private record Action(int slotId, int button) {}
     private List<Action> actionQueue = new ArrayList<>();
@@ -590,6 +592,7 @@ public class SortExecutor {
                         ClickType.PICKUP,
                         client.player
                 );
+                is.pig.minecraft.lib.ui.IconQueueOverlay.queueIcon(SORT_ICON, 1000, false);
                 currentActionIndex++;
             }
             stopSort(true);
@@ -619,6 +622,7 @@ public class SortExecutor {
                 ClickType.PICKUP,
                 client.player
         );
+        is.pig.minecraft.lib.ui.IconQueueOverlay.queueIcon(SORT_ICON, 1000, false);
 
         currentActionIndex++;
         tickCounter = 0; // Reset delay for next action
