@@ -49,6 +49,8 @@ public class WeaponPreferenceHandler {
                     ConfigPersistence.save();
                 },
                 () -> {
+                    WeaponSwitchMode finalSelection = WeaponSwitchMode.fromConfig(config.getWeaponPreference());
+                    is.pig.minecraft.lib.ui.IconQueueOverlay.queueIcon(finalSelection.getIconLocation(false), 2000, false);
                 },
                 (item) -> null,
                 null,

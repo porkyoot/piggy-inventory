@@ -10,11 +10,11 @@ import net.minecraft.resources.ResourceLocation;
  * adapted for the Radial Menu.
  */
 public enum ToolPreference implements RadialMenuItem {
-    NONE(ResourceLocation.fromNamespaceAndPath("piggy-lib", "textures/gui/blocked_icon.png"), "Disabled", PiggyInventoryConfig.OrePreference.NONE),
-    SILK_TOUCH_PREFERRED(ResourceLocation.fromNamespaceAndPath("piggy-inventory", "textures/gui/silk_touch.png"), "Silk Touch", PiggyInventoryConfig.OrePreference.SILK_TOUCH_PREFERRED),
-    SILK_TOUCH_STRICT(ResourceLocation.fromNamespaceAndPath("piggy-inventory", "textures/gui/silk_touch_plus.png"), "Silk Touch (Strict)", PiggyInventoryConfig.OrePreference.SILK_TOUCH_STRICT),
-    FORTUNE_PREFERRED(ResourceLocation.fromNamespaceAndPath("piggy-inventory", "textures/gui/fortune.png"), "Fortune", PiggyInventoryConfig.OrePreference.FORTUNE_PREFERRED),
-    FORTUNE_STRICT(ResourceLocation.fromNamespaceAndPath("piggy-inventory", "textures/gui/fortune_plus.png"), "Fortune (Strict)", PiggyInventoryConfig.OrePreference.FORTUNE_STRICT);
+    NONE(ResourceLocation.fromNamespaceAndPath("piggy", "textures/gui/icons/cheating_cancel.png"), "Disabled", PiggyInventoryConfig.OrePreference.NONE),
+    SILK_TOUCH_PREFERRED(ResourceLocation.fromNamespaceAndPath("piggy", "textures/gui/icons/mode_silk_touch.png"), "Silk Touch", PiggyInventoryConfig.OrePreference.SILK_TOUCH_PREFERRED),
+    SILK_TOUCH_STRICT(ResourceLocation.fromNamespaceAndPath("piggy", "textures/gui/icons/mode_preservation.png"), "Silk Touch (Strict)", PiggyInventoryConfig.OrePreference.SILK_TOUCH_STRICT),
+    FORTUNE_PREFERRED(ResourceLocation.fromNamespaceAndPath("piggy", "textures/gui/icons/mode_fortune.png"), "Fortune", PiggyInventoryConfig.OrePreference.FORTUNE_PREFERRED),
+    FORTUNE_STRICT(ResourceLocation.fromNamespaceAndPath("piggy", "textures/gui/icons/mode_destruction.png"), "Fortune (Strict)", PiggyInventoryConfig.OrePreference.FORTUNE_STRICT);
 
     private final ResourceLocation icon;
     private final Component displayName;

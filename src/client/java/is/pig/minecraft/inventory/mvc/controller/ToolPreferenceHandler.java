@@ -45,7 +45,10 @@ public class ToolPreferenceHandler {
                 config.setOrePreference(newSelection.getConfigValue());
                 ConfigPersistence.save();
             },
-            () -> {}, 
+            () -> {
+                ToolPreference finalSelection = ToolPreference.fromConfig(config.getOrePreference());
+                is.pig.minecraft.lib.ui.IconQueueOverlay.queueIcon(finalSelection.getIconLocation(false), 2000, false);
+            }, 
             (item) -> null, 
             null,
             

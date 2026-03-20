@@ -2,7 +2,6 @@ package is.pig.minecraft.inventory.handler;
 
 import is.pig.minecraft.inventory.config.PiggyInventoryConfig;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.world.phys.BlockHitResult;
@@ -24,11 +23,9 @@ public class QuickLootHandler {
     private long suppressSneakUntil = 0;
 
     // Transfer settings
+    // Transfer settings
     private boolean lastTransferWasUp = false; // Move to Player?
     private boolean lastTransferWasAll = false; // Ctrl?
-
-    // Feedback
-    private long lastActionTime = 0;
 
     public static QuickLootHandler getInstance() {
         return INSTANCE;
@@ -216,7 +213,7 @@ public class QuickLootHandler {
                         int slotIndex = transferQueue.poll();
                         client.gameMode.handleInventoryMouseClick(((AbstractContainerScreen<?>) hiddenScreen).getMenu().containerId, slotIndex, 0,
                                 net.minecraft.world.inventory.ClickType.QUICK_MOVE, client.player);
-                        lastActionTime = currentTime;
+                        is.pig.minecraft.lib.ui.IconQueueOverlay.queueIcon(lastTransferWasUp ? DEPO_ICON : LOOT_ICON, 1000, false);
                     }
                     lastTransferTime = currentTime;
                 } else {
@@ -230,7 +227,7 @@ public class QuickLootHandler {
                             int slotIndex = transferQueue.poll();
                             client.gameMode.handleInventoryMouseClick(((AbstractContainerScreen<?>) hiddenScreen).getMenu().containerId, slotIndex, 0,
                                     net.minecraft.world.inventory.ClickType.QUICK_MOVE, client.player);
-                            lastActionTime = currentTime;
+                            is.pig.minecraft.lib.ui.IconQueueOverlay.queueIcon(lastTransferWasUp ? DEPO_ICON : LOOT_ICON, 1000, false);
                         }
                         lastTransferTime += actions * minDelay;
                         if (lastTransferTime > currentTime) {
@@ -254,67 +251,6 @@ public class QuickLootHandler {
         transferQueue.clear();
     }
 
-    private static final net.minecraft.resources.ResourceLocation LOOT_ICON = net.minecraft.resources.ResourceLocation.fromNamespaceAndPath("piggy-inventory", "textures/gui/loot.png");
-    private static final net.minecraft.resources.ResourceLocation DEPO_ICON = net.minecraft.resources.ResourceLocation.fromNamespaceAndPath("piggy-inventory", "textures/gui/depo.png");
-
-    public void renderOverlay(GuiGraphics context) {
-        if (System.currentTimeMillis() - lastActionTime > 1000)
-            return;
-
-        Minecraft client = Minecraft.getInstance();
-        int cx = client.getWindow().getGuiScaledWidth() / 2;
-        int cy = client.getWindow().getGuiScaledHeight() / 2;
-
-        // Fade out
-        float age = (System.currentTimeMillis() - lastActionTime) / 1000f;
-        float alphaFloat = 1.0f - age;
-        if (alphaFloat < 0)
-            alphaFloat = 0;
-
-        net.minecraft.resources.ResourceLocation icon = lastTransferWasUp ? DEPO_ICON : LOOT_ICON;
-
-        int indicatorX = cx - 8;
-        int indicatorY = cy + 10;
-        int ICON_SIZE = 16;
-
-        net.minecraft.client.renderer.RenderType invertedType = net.minecraft.client.renderer.RenderType.create(
-            "piggy_gui_inverted",
-            com.mojang.blaze3d.vertex.DefaultVertexFormat.POSITION_TEX_COLOR,
-            com.mojang.blaze3d.vertex.VertexFormat.Mode.QUADS,
-            1536,
-            false,
-            false,
-            net.minecraft.client.renderer.RenderType.CompositeState.builder()
-                .setShaderState(new net.minecraft.client.renderer.RenderStateShard.ShaderStateShard(net.minecraft.client.renderer.GameRenderer::getPositionTexColorShader))
-                .setTextureState(new net.minecraft.client.renderer.RenderStateShard.TextureStateShard(icon, false, false))
-                .setTransparencyState(new net.minecraft.client.renderer.RenderStateShard.TransparencyStateShard("gui_inverted_transparency", () -> {
-                    com.mojang.blaze3d.systems.RenderSystem.enableBlend();
-                    com.mojang.blaze3d.systems.RenderSystem.blendFuncSeparate(
-                        com.mojang.blaze3d.platform.GlStateManager.SourceFactor.ONE_MINUS_DST_COLOR,
-                        com.mojang.blaze3d.platform.GlStateManager.DestFactor.ONE_MINUS_SRC_COLOR,
-                        com.mojang.blaze3d.platform.GlStateManager.SourceFactor.ONE,
-                        com.mojang.blaze3d.platform.GlStateManager.DestFactor.ZERO);
-                }, () -> {
-                    com.mojang.blaze3d.systems.RenderSystem.disableBlend();
-                    com.mojang.blaze3d.systems.RenderSystem.defaultBlendFunc();
-                }))
-                .createCompositeState(false)
-        );
-
-        com.mojang.blaze3d.vertex.VertexConsumer buffer = context.bufferSource().getBuffer(invertedType);
-        org.joml.Matrix4f matrix = context.pose().last().pose();
-
-        float x1 = (float) indicatorX;
-        float y1 = (float) indicatorY;
-        float x2 = (float) (indicatorX + ICON_SIZE);
-        float y2 = (float) (indicatorY + ICON_SIZE);
-
-        buffer.addVertex(matrix, x1, y1, 0).setUv(0, 0).setColor(1.0f, 1.0f, 1.0f, alphaFloat);
-        buffer.addVertex(matrix, x1, y2, 0).setUv(0, 1).setColor(1.0f, 1.0f, 1.0f, alphaFloat);
-        buffer.addVertex(matrix, x2, y2, 0).setUv(1, 1).setColor(1.0f, 1.0f, 1.0f, alphaFloat);
-        buffer.addVertex(matrix, x2, y1, 0).setUv(1, 0).setColor(1.0f, 1.0f, 1.0f, alphaFloat);
-
-        // Force the buffer to draw immediately to ensure correct layering in GUI
-        context.flush();
-    }
+    private static final net.minecraft.resources.ResourceLocation LOOT_ICON = net.minecraft.resources.ResourceLocation.fromNamespaceAndPath("piggy", "textures/gui/icons/quick_loot.png");
+    private static final net.minecraft.resources.ResourceLocation DEPO_ICON = net.minecraft.resources.ResourceLocation.fromNamespaceAndPath("piggy", "textures/gui/icons/quick_depo.png");
 }

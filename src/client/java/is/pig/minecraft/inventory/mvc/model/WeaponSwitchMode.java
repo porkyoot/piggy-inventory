@@ -6,13 +6,13 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 
 public enum WeaponSwitchMode implements RadialMenuItem {
-    NONE(ResourceLocation.fromNamespaceAndPath("piggy-lib", "textures/gui/blocked_icon.png"), "Disabled",
+    NONE(ResourceLocation.fromNamespaceAndPath("piggy", "textures/gui/icons/cheating_cancel.png"), "Disabled",
             PiggyInventoryConfig.WeaponPreference.NONE),
-    SPEED(ResourceLocation.fromNamespaceAndPath("piggy-inventory", "textures/gui/sword.png"), "Prioritize Speed",
+    SPEED(ResourceLocation.fromNamespaceAndPath("piggy", "textures/gui/icons/mode_speed.png"), "Prioritize Speed",
             PiggyInventoryConfig.WeaponPreference.SPEED),
-    DAMAGE(ResourceLocation.fromNamespaceAndPath("piggy-inventory", "textures/gui/axe.png"), "Prioritize Damage",
+    DAMAGE(ResourceLocation.fromNamespaceAndPath("piggy", "textures/gui/icons/mode_damage.png"), "Prioritize Damage",
             PiggyInventoryConfig.WeaponPreference.DAMAGE),
-    RANGE(ResourceLocation.fromNamespaceAndPath("piggy-inventory", "textures/gui/trident.png"), "Prioritize Range",
+    RANGE(ResourceLocation.fromNamespaceAndPath("piggy", "textures/gui/icons/mode_range.png"), "Prioritize Range",
             PiggyInventoryConfig.WeaponPreference.RANGE);
 
     private final ResourceLocation icon;
