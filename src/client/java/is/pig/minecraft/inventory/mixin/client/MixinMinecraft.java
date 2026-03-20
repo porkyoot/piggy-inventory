@@ -18,6 +18,11 @@ public class MixinMinecraft {
     private void onSetScreen(Screen screen, CallbackInfo ci) {
         if (QuickLootHandler.getInstance().interceptSetScreen(screen)) {
             ci.cancel();
+            return;
+        }
+        if (is.pig.minecraft.inventory.handler.SortHandler.getInstance().interceptSetScreen(screen)) {
+            ci.cancel();
+            return;
         }
     }
 

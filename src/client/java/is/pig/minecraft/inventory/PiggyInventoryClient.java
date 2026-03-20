@@ -87,8 +87,13 @@ public class PiggyInventoryClient implements ClientModInitializer {
                 // Input Handling (Backup/Global)
                 ClientTickEvents.END_CLIENT_TICK.register(client -> {
                         if (sortKey.consumeClick()) {
-                                is.pig.minecraft.inventory.handler.SortHandler.getInstance().handleSort(client, null);
+                                if (client.screen == null) {
+                                        is.pig.minecraft.inventory.handler.SortHandler.getInstance().triggerRemoteSort(client);
+                                } else {
+                                        is.pig.minecraft.inventory.handler.SortHandler.getInstance().handleSort(client, null);
+                                }
                         }
+                        is.pig.minecraft.inventory.handler.SortHandler.getInstance().onTick(client);
                         is.pig.minecraft.inventory.handler.AutoRefillHandler.getInstance().onTick(client);
                         is.pig.minecraft.inventory.handler.CraftingHandler.getInstance().onTick(client);
                         is.pig.minecraft.inventory.handler.TradeHandler.getInstance().onTick(client);

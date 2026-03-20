@@ -18,19 +18,130 @@ public class SortHandler {
     private SortHandler() {
     }
 
+    private boolean awaitingContainer = false;
+    private long requestTime = 0;
+    private net.minecraft.client.gui.screens.Screen hiddenScreen = null;
+    
+    private enum State { IDLE, WAITING_FOR_ITEMS, SORTING }
+    private State state = State.IDLE;
+    private int waitTicks = 0;
+
+    public void onTick(Minecraft client) {
+        if (state == State.WAITING_FOR_ITEMS && this.hiddenScreen instanceof AbstractContainerScreen<?> s) {
+            waitTicks++;
+            boolean hasItems = false;
+            
+            for (Slot slot : s.getMenu().slots) {
+                if (slot.container != client.player.getInventory() && !slot.getItem().isEmpty()) {
+                    hasItems = true;
+                    break;
+                }
+            }
+
+            if (hasItems || waitTicks > 20) {
+                state = State.SORTING;
+                handleSort(client, null, s);
+            }
+        }
+    }
+
     public static SortHandler getInstance() {
         return INSTANCE;
+    }
+
+    public net.minecraft.client.gui.screens.Screen getHiddenScreen() {
+        return hiddenScreen;
+    }
+
+    public void triggerRemoteSort(Minecraft client) {
+        if (client.player == null || client.level == null) return;
+
+        net.minecraft.world.phys.HitResult hit = client.hitResult;
+        if (hit == null || hit.getType() != net.minecraft.world.phys.HitResult.Type.BLOCK) return;
+
+        net.minecraft.world.phys.BlockHitResult blockHit = (net.minecraft.world.phys.BlockHitResult) hit;
+        net.minecraft.world.level.block.entity.BlockEntity blockEntity = client.level.getBlockEntity(blockHit.getBlockPos());
+
+        boolean isContainer = blockEntity instanceof net.minecraft.world.Container || blockEntity instanceof net.minecraft.world.level.block.entity.EnderChestBlockEntity;
+        if (!isContainer && blockEntity != null) {
+            String className = blockEntity.getClass().getName().toLowerCase();
+            if (className.contains("sophisticatedstorage") || className.contains("sophisticatedbackpacks")) {
+                isContainer = true;
+            }
+        }
+
+        if (!isContainer) return;
+
+        if (awaitingContainer && System.currentTimeMillis() - requestTime < 1000) return;
+
+        awaitingContainer = true;
+        requestTime = System.currentTimeMillis();
+
+        client.player.connection.send(new net.minecraft.network.protocol.game.ServerboundUseItemOnPacket(
+                net.minecraft.world.InteractionHand.MAIN_HAND, blockHit, 0));
+        client.player.swing(net.minecraft.world.InteractionHand.MAIN_HAND);
+    }
+
+    public boolean interceptSetScreen(net.minecraft.client.gui.screens.Screen screen) {
+        if (!awaitingContainer) return false;
+
+        if (screen instanceof AbstractContainerScreen) {
+            if (screen instanceof net.minecraft.client.gui.screens.inventory.InventoryScreen) {
+                awaitingContainer = false;
+                return false;
+            }
+
+            if (System.currentTimeMillis() - requestTime > 2000) {
+                awaitingContainer = false;
+                return false;
+            }
+
+            this.hiddenScreen = screen;
+            this.state = State.WAITING_FOR_ITEMS;
+            this.waitTicks = 0;
+            Minecraft client = Minecraft.getInstance();
+            screen.init(client, client.getWindow().getGuiScaledWidth(), client.getWindow().getGuiScaledHeight());
+
+            return true;
+        }
+
+        awaitingContainer = false;
+        return false;
+    }
+
+    public void cleanup() {
+        if (this.hiddenScreen instanceof AbstractContainerScreen<?> containerScreen) {
+            Minecraft client = Minecraft.getInstance();
+            if (client.player != null && client.player.connection != null) {
+                client.player.connection.send(new net.minecraft.network.protocol.game.ServerboundContainerClosePacket(containerScreen.getMenu().containerId));
+            }
+            containerScreen.removed();
+        }
+        this.hiddenScreen = null;
+        this.awaitingContainer = false;
+        this.state = State.IDLE;
     }
 
     public void handleSort(Minecraft client, Slot hoveredSlot) {
         if (!(client.screen instanceof AbstractContainerScreen<?> screen)) {
             return;
         }
+        handleSort(client, hoveredSlot, screen);
+    }
+
+    public void handleSort(Minecraft client, Slot hoveredSlot, AbstractContainerScreen<?> screen) {
 
         // Determine the target container. Default to player inventory if nothing is hovered.
         net.minecraft.world.Container targetContainer = client.player.getInventory();
         if (hoveredSlot != null && hoveredSlot.container != null) {
             targetContainer = hoveredSlot.container;
+        } else if (this.hiddenScreen == screen) {
+            for (Slot slot : screen.getMenu().slots) {
+                if (slot.container != client.player.getInventory()) {
+                    targetContainer = slot.container;
+                    break;
+                }
+            }
         }
         boolean isPlayerInv = (targetContainer == client.player.getInventory());
 
@@ -63,7 +174,20 @@ public class SortHandler {
             }
         }
 
-        if (items.isEmpty()) return;
+        boolean isEmpty = true;
+        for (ItemStack stack : items) {
+            if (!stack.isEmpty()) {
+                isEmpty = false;
+                break;
+            }
+        }
+
+        if (isEmpty) {
+            if (this.hiddenScreen != null) {
+                cleanup();
+            }
+            return;
+        }
 
         // Calculate approximate Grid Dimensions
         // A standard slot is 18x18 pixels usually.

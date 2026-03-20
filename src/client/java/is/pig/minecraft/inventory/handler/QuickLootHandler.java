@@ -18,6 +18,10 @@ public class QuickLootHandler {
     private long requestTime = 0;
     private Screen hiddenScreen = null;
 
+    private enum State { IDLE, WAITING_FOR_ITEMS, TRANSFERRING }
+    private State state = State.IDLE;
+    private int waitTicks = 0;
+
     // Sneak suppression
     private boolean sneakingSuppressed = false;
     private long suppressSneakUntil = 0;
@@ -106,8 +110,10 @@ public class QuickLootHandler {
             suppressSneakUntil = System.currentTimeMillis() + 60; // 60ms delay (approx 1-3 ticks)
         }
 
-        // 4. Trigger interaction
-        client.gameMode.useItemOn(client.player, InteractionHand.MAIN_HAND, (BlockHitResult) hit);
+        // 4. Trigger interaction via direct packet to prevent local ghost block placement
+        client.player.connection.send(new net.minecraft.network.protocol.game.ServerboundUseItemOnPacket(
+                InteractionHand.MAIN_HAND, (BlockHitResult) hit, 0));
+        client.player.swing(InteractionHand.MAIN_HAND);
 
         return true;
     }
@@ -132,13 +138,9 @@ public class QuickLootHandler {
                 return false;
             }
 
-            // Capture and Hide
             this.hiddenScreen = screen;
-            // Initialize the screen so it has a menu etc?
-            // Screen.init(client, width, height) needs to be called normally.
-            // setScreen usually calls init.
-            // If we cancel setScreen, init is NOT called.
-            // We must manually init it to ensure container mappings are set up.
+            this.state = State.WAITING_FOR_ITEMS;
+            this.waitTicks = 0;
             Minecraft client = Minecraft.getInstance();
             screen.init(client, client.getWindow().getGuiScaledWidth(), client.getWindow().getGuiScaledHeight());
 
@@ -173,7 +175,7 @@ public class QuickLootHandler {
         }
 
         // Timeout
-        if (awaitingContainer && !transferInProgress && System.currentTimeMillis() - requestTime > 2000) {
+        if (awaitingContainer && state != State.TRANSFERRING && System.currentTimeMillis() - requestTime > 2000) {
             cleanup();
         }
 
@@ -183,7 +185,35 @@ public class QuickLootHandler {
                 return;
             }
 
-            if (!transferInProgress) {
+            if (state == State.WAITING_FOR_ITEMS) {
+                waitTicks++;
+                boolean hasItems = false;
+                
+                if (hiddenScreen instanceof AbstractContainerScreen<?> s) {
+                    net.minecraft.world.Container targetContainer = client.player.getInventory();
+                    for (net.minecraft.world.inventory.Slot slot : s.getMenu().slots) {
+                        if (slot.container != client.player.getInventory()) {
+                            targetContainer = slot.container;
+                            break;
+                        }
+                    }
+                    
+                    for (net.minecraft.world.inventory.Slot slot : s.getMenu().slots) {
+                        if (slot.container == targetContainer && !slot.getItem().isEmpty()) {
+                            hasItems = true;
+                            break;
+                        }
+                    }
+                }
+
+                if (hasItems || waitTicks > 20) {
+                    state = State.TRANSFERRING;
+                } else {
+                    return; // Wait for items
+                }
+            }
+
+            if (state == State.TRANSFERRING && !transferInProgress) {
                 // Feature Check
                 if (!PiggyInventoryConfig.getInstance().isFeatureQuickLootEnabled()) {
                     is.pig.minecraft.lib.ui.AntiCheatFeedbackManager.getInstance().onFeatureBlocked("quick_loot", is.pig.minecraft.lib.ui.BlockReason.SERVER_ENFORCEMENT);
@@ -245,9 +275,17 @@ public class QuickLootHandler {
     }
 
     private void cleanup() {
+        if (this.hiddenScreen instanceof AbstractContainerScreen<?> containerScreen) {
+            Minecraft client = Minecraft.getInstance();
+            if (client.player != null && client.player.connection != null) {
+                client.player.connection.send(new net.minecraft.network.protocol.game.ServerboundContainerClosePacket(containerScreen.getMenu().containerId));
+            }
+            containerScreen.removed();
+        }
         hiddenScreen = null;
         awaitingContainer = false;
         transferInProgress = false;
+        state = State.IDLE;
         transferQueue.clear();
     }
 

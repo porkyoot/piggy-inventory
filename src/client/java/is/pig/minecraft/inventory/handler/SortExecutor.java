@@ -75,6 +75,8 @@ public class SortExecutor {
                     new java.io.File(client.gameDirectory, "logs/debug.log").getAbsolutePath());
             }
         }
+        
+        is.pig.minecraft.inventory.handler.SortHandler.getInstance().cleanup();
     }
     
     public void abortSort(String reason) {
@@ -89,7 +91,7 @@ public class SortExecutor {
     }
 
     private boolean verifySortState(Minecraft client) {
-        if (client.screen instanceof net.minecraft.client.gui.screens.inventory.AbstractContainerScreen<?>) {
+        if (client.screen instanceof net.minecraft.client.gui.screens.inventory.AbstractContainerScreen<?> || is.pig.minecraft.inventory.handler.SortHandler.getInstance().getHiddenScreen() != null) {
             boolean success = true;
             for (int i = 0; i < targetSlots.size(); i++) {
                 ItemStack current = targetSlots.get(i).getItem();
@@ -563,13 +565,15 @@ public class SortExecutor {
 
         int cps = PiggyInventoryConfig.getInstance().getTickDelay(); // This value is Clicks-Per-Second
         
-        if (client.screen == null || client.player == null || client.gameMode == null) {
+        if (client.player == null || client.gameMode == null) {
             abortSort("Screen closed or player disconnected");
             return;
         }
+
+        boolean hasVisibleScreen = client.screen instanceof net.minecraft.client.gui.screens.inventory.AbstractContainerScreen<?>;
+        boolean hasHiddenScreen = is.pig.minecraft.inventory.handler.SortHandler.getInstance().getHiddenScreen() != null;
         
-        // Also verify the screen hasn't changed unexpectedly during sorting
-        if (!(client.screen instanceof net.minecraft.client.gui.screens.inventory.AbstractContainerScreen<?>)) {
+        if (!hasVisibleScreen && !hasHiddenScreen) {
             abortSort("Unexpected screen type");
             return;
         }

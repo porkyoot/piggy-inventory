@@ -84,6 +84,39 @@ public class ToolSwapHandler {
             net.minecraft.core.BlockPos currentPos = blockHit.getBlockPos();
             BlockState state = client.level.getBlockState(currentPos);
 
+            if (isTargetingLimitedBarrelFront(state, blockHit)) {
+                ItemStack currentHandStack = client.player.getMainHandItem();
+                if (isAxe(currentHandStack)) {
+                    int currentHandSlot = client.player.getInventory().selected;
+                    int safeSlot = -1;
+                    for (int i = 0; i < 9; i++) {
+                        if (!isAxe(client.player.getInventory().getItem(i))) {
+                            safeSlot = i;
+                            break;
+                        }
+                    }
+                    if (safeSlot != -1) {
+                        int cps = config.getTickDelay();
+                        long minDelay = cps > 0 ? 1000L / cps : 0;
+                        long currentTime = System.currentTimeMillis();
+                        if (currentTime - lastSwapTime >= minDelay) {
+                            swapToSlot(client, currentHandSlot, safeSlot, config.getSwapHotbarSlots());
+                            this.ticksWantingToSwap = 0;
+                            this.targetSwapSlot = -1;
+                            lastSwapTime = currentTime;
+                            return true;
+                        }
+                        return true;
+                    }
+                    return true;
+                } else {
+                    this.lastTargetedBlock = null;
+                    this.ticksWantingToSwap = 0;
+                    this.targetSwapSlot = -1;
+                    return false; // Skip tool swap to allow native punching
+                }
+            }
+
             if (currentPos.equals(this.lastTargetedBlock)) {
                 // Keep swapping progress
             } else {
@@ -413,5 +446,31 @@ public class ToolSwapHandler {
         } catch (Exception e) {
             return false;
         }
+    }
+
+    private boolean isTargetingLimitedBarrelFront(BlockState state, BlockHitResult blockHit) {
+        if (state == null || blockHit == null) return false;
+        ResourceKey<Block> key = state.getBlockHolder().unwrapKey().orElse(null);
+        if (key == null) return false;
+        String id = key.location().toString();
+        
+        if (id.startsWith("sophisticatedstorage:") && id.contains("limited_barrel")) {
+            for (net.minecraft.world.level.block.state.properties.Property<?> property : state.getProperties()) {
+                if (property.getName().equals("facing")) {
+                    Object val = state.getValue(property);
+                    if (val instanceof net.minecraft.core.Direction dir) {
+                        if (dir == blockHit.getDirection()) {
+                            return true;
+                        }
+                    }
+                }
+            }
+        }
+        return false;
+    }
+
+    private boolean isAxe(ItemStack stack) {
+        if (stack == null || stack.isEmpty()) return false;
+        return stack.getItem() instanceof net.minecraft.world.item.AxeItem;
     }
 }
