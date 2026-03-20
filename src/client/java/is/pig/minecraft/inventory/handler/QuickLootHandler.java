@@ -267,23 +267,54 @@ public class QuickLootHandler {
 
         // Fade out
         float age = (System.currentTimeMillis() - lastActionTime) / 1000f;
-        int alpha = (int) ((1.0f - age) * 255);
-        if (alpha < 0)
-            alpha = 0;
+        float alphaFloat = 1.0f - age;
+        if (alphaFloat < 0)
+            alphaFloat = 0;
 
         net.minecraft.resources.ResourceLocation icon = lastTransferWasUp ? DEPO_ICON : LOOT_ICON;
 
-        context.pose().pushPose();
-        context.pose().translate(cx - 8, cy + 10, 0); // Below crosshair
+        int indicatorX = cx - 8;
+        int indicatorY = cy + 10;
+        int ICON_SIZE = 16;
 
-        // Render custom texture icon
-        com.mojang.blaze3d.systems.RenderSystem.enableBlend();
-        com.mojang.blaze3d.systems.RenderSystem.defaultBlendFunc();
-        context.setColor(1.0f, 1.0f, 1.0f, alpha / 255.0f);
-        context.blit(icon, 0, 0, 0, 0, 16, 16, 16, 16);
-        context.setColor(1.0f, 1.0f, 1.0f, 1.0f);
-        com.mojang.blaze3d.systems.RenderSystem.disableBlend();
+        net.minecraft.client.renderer.RenderType invertedType = net.minecraft.client.renderer.RenderType.create(
+            "piggy_gui_inverted",
+            com.mojang.blaze3d.vertex.DefaultVertexFormat.POSITION_TEX_COLOR,
+            com.mojang.blaze3d.vertex.VertexFormat.Mode.QUADS,
+            1536,
+            false,
+            false,
+            net.minecraft.client.renderer.RenderType.CompositeState.builder()
+                .setShaderState(new net.minecraft.client.renderer.RenderStateShard.ShaderStateShard(net.minecraft.client.renderer.GameRenderer::getPositionTexColorShader))
+                .setTextureState(new net.minecraft.client.renderer.RenderStateShard.TextureStateShard(icon, false, false))
+                .setTransparencyState(new net.minecraft.client.renderer.RenderStateShard.TransparencyStateShard("gui_inverted_transparency", () -> {
+                    com.mojang.blaze3d.systems.RenderSystem.enableBlend();
+                    com.mojang.blaze3d.systems.RenderSystem.blendFuncSeparate(
+                        com.mojang.blaze3d.platform.GlStateManager.SourceFactor.ONE_MINUS_DST_COLOR,
+                        com.mojang.blaze3d.platform.GlStateManager.DestFactor.ONE_MINUS_SRC_COLOR,
+                        com.mojang.blaze3d.platform.GlStateManager.SourceFactor.ONE,
+                        com.mojang.blaze3d.platform.GlStateManager.DestFactor.ZERO);
+                }, () -> {
+                    com.mojang.blaze3d.systems.RenderSystem.disableBlend();
+                    com.mojang.blaze3d.systems.RenderSystem.defaultBlendFunc();
+                }))
+                .createCompositeState(false)
+        );
 
-        context.pose().popPose();
+        com.mojang.blaze3d.vertex.VertexConsumer buffer = context.bufferSource().getBuffer(invertedType);
+        org.joml.Matrix4f matrix = context.pose().last().pose();
+
+        float x1 = (float) indicatorX;
+        float y1 = (float) indicatorY;
+        float x2 = (float) (indicatorX + ICON_SIZE);
+        float y2 = (float) (indicatorY + ICON_SIZE);
+
+        buffer.addVertex(matrix, x1, y1, 0).setUv(0, 0).setColor(1.0f, 1.0f, 1.0f, alphaFloat);
+        buffer.addVertex(matrix, x1, y2, 0).setUv(0, 1).setColor(1.0f, 1.0f, 1.0f, alphaFloat);
+        buffer.addVertex(matrix, x2, y2, 0).setUv(1, 1).setColor(1.0f, 1.0f, 1.0f, alphaFloat);
+        buffer.addVertex(matrix, x2, y1, 0).setUv(1, 0).setColor(1.0f, 1.0f, 1.0f, alphaFloat);
+
+        // Force the buffer to draw immediately to ensure correct layering in GUI
+        context.flush();
     }
 }
