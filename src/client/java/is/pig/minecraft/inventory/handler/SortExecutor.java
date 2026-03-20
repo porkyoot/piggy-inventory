@@ -68,9 +68,11 @@ public class SortExecutor {
         if (notifySuccess) {
             // Validate if sorting actually succeeded
             if (verifySortState(client)) {
-                // client.player.displayClientMessage(net.minecraft.network.chat.Component.literal("§aSorting complete."), true);
+                // is.pig.minecraft.lib.util.PiggyMessenger.sendSuccess(client.player, "piggy.inventory.sort.success");
             } else {
-                client.player.displayClientMessage(net.minecraft.network.chat.Component.literal("§cSort failed: Result does not match planned layout!").withStyle(net.minecraft.ChatFormatting.RED), false);
+                is.pig.minecraft.lib.util.PiggyMessenger.sendClientErrorWithLog(
+                    client.player, "piggy.inventory.sort.failed", 
+                    new java.io.File(client.gameDirectory, "logs/debug.log").getAbsolutePath());
             }
         }
     }
@@ -79,7 +81,9 @@ public class SortExecutor {
         LOGGER.error("Sort aborted -> {}", reason);
         Minecraft client = Minecraft.getInstance();
         if (client.player != null) {
-            client.player.displayClientMessage(net.minecraft.network.chat.Component.literal("§cSort interrupted: " + reason).withStyle(net.minecraft.ChatFormatting.RED), false);
+            is.pig.minecraft.lib.util.PiggyMessenger.sendClientErrorWithLog(
+                client.player, "piggy.inventory.sort.interrupted", 
+                new java.io.File(client.gameDirectory, "logs/debug.log").getAbsolutePath(), reason);
         }
         stopSort(false);
     }
@@ -122,7 +126,9 @@ public class SortExecutor {
                 LOGGER.error("SortExecutor: Algorithm stuck globally. Sorting aborted.");
                 Minecraft client = Minecraft.getInstance();
                 if (client.player != null) {
-                   client.player.displayClientMessage(net.minecraft.network.chat.Component.literal("§cSort failed: Algorithm got stuck looping!").withStyle(net.minecraft.ChatFormatting.RED), false);
+                   is.pig.minecraft.lib.util.PiggyMessenger.sendClientErrorWithLog(
+                       client.player, "piggy.inventory.sort.stuck", 
+                       new java.io.File(client.gameDirectory, "logs/debug.log").getAbsolutePath());
                 }
                 actionQueue.clear();
                 return;

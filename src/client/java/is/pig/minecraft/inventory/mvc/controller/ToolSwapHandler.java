@@ -5,7 +5,6 @@ import java.util.Comparator;
 import java.util.List;
 import is.pig.minecraft.inventory.config.PiggyInventoryConfig;
 import net.minecraft.client.Minecraft;
-import net.minecraft.network.chat.Component;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.network.protocol.game.ServerboundSetCarriedItemPacket;
@@ -56,7 +55,10 @@ public class ToolSwapHandler {
             // Tool swap disabled, but we might still need break protection
             if (breakProtectionActive) {
                 // Break protection triggered!
-                client.player.displayClientMessage(Component.literal("§c[Piggy] Break Protection: Your tool is about to break!"), true);
+                is.pig.minecraft.lib.ui.IconQueueOverlay.queueIcon(
+                    net.minecraft.resources.ResourceLocation.fromNamespaceAndPath("piggy", "textures/gui/icons/tool_break.png"),
+                    2000, true
+                );
                 this.lastTargetedBlock = null;
                 this.ticksWantingToSwap = 0;
                 this.targetSwapSlot = -1;
@@ -96,7 +98,7 @@ public class ToolSwapHandler {
 
             if (mode == PiggyInventoryConfig.OrePreference.SILK_TOUCH_STRICT) {
                 if (isNonSilktouchable(state)) {
-                    //client.player.displayClientMessage(Component.literal("§c[Piggy] Block protected: Cannot be Silk Touched!"), true);
+                    // is.pig.minecraft.lib.util.PiggyMessenger.sendClientError(client.player, "piggy.inventory.tool_swap.protected_block_silk");
                     this.ticksWantingToSwap = 0;
                     this.targetSwapSlot = -1;
                     return true; // Cancel attack
@@ -130,7 +132,7 @@ public class ToolSwapHandler {
             // Safety Check for protected blocks / strict mode exclusions
             if (isOreOrValuable(state, config)) {
                 if (validSlots.isEmpty() && (mode == PiggyInventoryConfig.OrePreference.FORTUNE_STRICT || mode == PiggyInventoryConfig.OrePreference.SILK_TOUCH_STRICT)) {
-                    client.player.displayClientMessage(Component.literal("§c[Piggy] Block protected: No valid tool found!"), true);
+                    is.pig.minecraft.lib.util.PiggyMessenger.sendClientError(client.player, "piggy.inventory.tool_swap.protected_block_no_tools");
                     this.ticksWantingToSwap = 0;
                     this.targetSwapSlot = -1;
                     return true; // Cancel attack
@@ -148,7 +150,10 @@ public class ToolSwapHandler {
 
             if (validSlots.isEmpty()) {
                 if (currentBreakingSoon) {
-                    client.player.displayClientMessage(Component.literal("§c[Piggy] Break Protection: Your tool is about to break!"), true);
+                    is.pig.minecraft.lib.ui.IconQueueOverlay.queueIcon(
+                        net.minecraft.resources.ResourceLocation.fromNamespaceAndPath("piggy", "textures/gui/icons/tool_break.png"),
+                        2000, true
+                    );
                     this.ticksWantingToSwap = 0;
                     this.targetSwapSlot = -1;
                     return true;
@@ -198,7 +203,10 @@ public class ToolSwapHandler {
                     if (currentTime - lastSwapTime >= minDelay) {
                         swapToSlot(client, currentSlot, bestSlot, config.getSwapHotbarSlots());
                         if (currentBreakingSoon) {
-                            client.player.displayClientMessage(Component.literal("§c[Piggy] Break Protection: Saved your tool by swapping!"), true);
+                            is.pig.minecraft.lib.ui.IconQueueOverlay.queueIcon(
+                                net.minecraft.resources.ResourceLocation.fromNamespaceAndPath("piggy", "textures/gui/icons/tool_break.png"),
+                                2000, true
+                            );
                         }
                         this.ticksWantingToSwap = 0;
                         this.targetSwapSlot = -1;

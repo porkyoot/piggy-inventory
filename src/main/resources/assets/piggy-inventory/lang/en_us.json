@@ -1,0 +1,9 @@
+{
+  "piggy.inventory.sort.failed": "Sorting failed: Result does not match planned layout!",
+  "piggy.inventory.sort.interrupted": "Sort interrupted: %s",
+  "piggy.inventory.sort.stuck": "Sort failed: Algorithm got stuck looping!",
+  "piggy.inventory.tool_swap.break_protection": "Break Protection: Your tool is about to break!",
+  "piggy.inventory.tool_swap.break_protection_saved": "Break Protection: Saved your tool by swapping!",
+  "piggy.inventory.tool_swap.protected_block_no_tools": "Block protected: No valid tool found!",
+  "piggy.inventory.tool_swap.protected_block_silk": "Block protected: Cannot be Silk Touched!"
+}
