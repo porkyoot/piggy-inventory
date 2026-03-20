@@ -11,6 +11,7 @@ import net.minecraft.world.item.ItemStack;
 
 import java.util.ArrayList;
 import java.util.List;
+import net.minecraft.world.level.block.state.BlockState;
 
 public class SortHandler {
     private static final SortHandler INSTANCE = new SortHandler();
@@ -57,15 +58,32 @@ public class SortHandler {
         if (client.player == null || client.level == null) return;
 
         net.minecraft.world.phys.HitResult hit = client.hitResult;
-        if (hit == null || hit.getType() != net.minecraft.world.phys.HitResult.Type.BLOCK) return;
+        if (hit == null || (hit.getType() != net.minecraft.world.phys.HitResult.Type.BLOCK && hit.getType() != net.minecraft.world.phys.HitResult.Type.ENTITY)) return;
 
-        net.minecraft.world.phys.BlockHitResult blockHit = (net.minecraft.world.phys.BlockHitResult) hit;
-        net.minecraft.world.level.block.entity.BlockEntity blockEntity = client.level.getBlockEntity(blockHit.getBlockPos());
+        boolean isContainer = false;
+        
+        if (hit.getType() == net.minecraft.world.phys.HitResult.Type.BLOCK) {
+            net.minecraft.world.phys.BlockHitResult blockHit = (net.minecraft.world.phys.BlockHitResult) hit;
+            net.minecraft.world.level.block.entity.BlockEntity blockEntity = client.level.getBlockEntity(blockHit.getBlockPos());
 
-        boolean isContainer = blockEntity instanceof net.minecraft.world.Container || blockEntity instanceof net.minecraft.world.level.block.entity.EnderChestBlockEntity;
-        if (!isContainer && blockEntity != null) {
-            String className = blockEntity.getClass().getName().toLowerCase();
-            if (className.contains("sophisticatedstorage") || className.contains("sophisticatedbackpacks")) {
+            BlockState state = client.level.getBlockState(blockHit.getBlockPos());
+            net.minecraft.world.MenuProvider menuProvider = state.getMenuProvider(client.level, blockHit.getBlockPos());
+
+            isContainer = menuProvider != null;
+            if (!isContainer && blockEntity != null) {
+                if (blockEntity instanceof net.minecraft.world.level.block.entity.EnderChestBlockEntity) {
+                    isContainer = true;
+                } else {
+                    String className = blockEntity.getClass().getName().toLowerCase();
+                    if (className.contains("sophisticatedstorage") || className.contains("sophisticatedbackpacks")) {
+                        isContainer = true;
+                    }
+                }
+            }
+        } else if (hit.getType() == net.minecraft.world.phys.HitResult.Type.ENTITY) {
+            net.minecraft.world.phys.EntityHitResult entityHit = (net.minecraft.world.phys.EntityHitResult) hit;
+            net.minecraft.world.entity.Entity entity = entityHit.getEntity();
+            if (entity instanceof net.minecraft.world.MenuProvider || entity instanceof net.minecraft.world.entity.vehicle.ContainerEntity) {
                 isContainer = true;
             }
         }
@@ -77,8 +95,17 @@ public class SortHandler {
         awaitingContainer = true;
         requestTime = System.currentTimeMillis();
 
-        client.player.connection.send(new net.minecraft.network.protocol.game.ServerboundUseItemOnPacket(
-                net.minecraft.world.InteractionHand.MAIN_HAND, blockHit, 0));
+        if (hit.getType() == net.minecraft.world.phys.HitResult.Type.BLOCK) {
+            client.player.connection.send(new net.minecraft.network.protocol.game.ServerboundUseItemOnPacket(
+                    net.minecraft.world.InteractionHand.MAIN_HAND, (net.minecraft.world.phys.BlockHitResult) hit, 0));
+        } else if (hit.getType() == net.minecraft.world.phys.HitResult.Type.ENTITY) {
+            net.minecraft.world.phys.EntityHitResult entityHit = (net.minecraft.world.phys.EntityHitResult) hit;
+            client.player.connection.send(net.minecraft.network.protocol.game.ServerboundInteractPacket.createInteractionPacket(
+                    entityHit.getEntity(),
+                    true, // Force sneak to prevent mounting vehicles like boats
+                    net.minecraft.world.InteractionHand.MAIN_HAND
+            ));
+        }
         client.player.swing(net.minecraft.world.InteractionHand.MAIN_HAND);
     }
 

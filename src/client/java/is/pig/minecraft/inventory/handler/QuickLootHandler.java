@@ -11,6 +11,7 @@ import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.Container;
 import net.minecraft.world.level.block.entity.EnderChestBlockEntity;
 import is.pig.minecraft.inventory.util.InventoryUtils;
+import net.minecraft.world.level.block.state.BlockState;
 
 public class QuickLootHandler {
     private static final QuickLootHandler INSTANCE = new QuickLootHandler();
@@ -55,20 +56,37 @@ public class QuickLootHandler {
 
         // Check Raycast
         HitResult hit = client.hitResult;
-        if (hit == null || hit.getType() != HitResult.Type.BLOCK)
+        if (hit == null || (hit.getType() != HitResult.Type.BLOCK && hit.getType() != HitResult.Type.ENTITY))
             return false;
 
-        BlockHitResult blockHit = (BlockHitResult) hit;
-        BlockEntity blockEntity = client.level.getBlockEntity(blockHit.getBlockPos());
+        boolean isContainer = false;
 
-        // STRICT CONTAINER CHECK
-        // effectively Container or EnderChest (which is special)
-        boolean isContainer = blockEntity instanceof Container || blockEntity instanceof EnderChestBlockEntity;
+        if (hit.getType() == HitResult.Type.BLOCK) {
+            BlockHitResult blockHit = (BlockHitResult) hit;
+            BlockEntity blockEntity = client.level.getBlockEntity(blockHit.getBlockPos());
 
-        // Fallback for modded storages that don't implement Container
-        if (!isContainer && blockEntity != null) {
-            String className = blockEntity.getClass().getName().toLowerCase();
-            if (className.contains("sophisticatedstorage") || className.contains("sophisticatedbackpacks")) {
+            BlockState state = client.level.getBlockState(blockHit.getBlockPos());
+            net.minecraft.world.MenuProvider menuProvider = state.getMenuProvider(client.level, blockHit.getBlockPos());
+            
+            isContainer = menuProvider != null;
+
+            // Fallback for modded storages that don't implement MenuProvider properly on client side
+            // and Ender Chests which hardcode their menu opening
+            if (!isContainer && blockEntity != null) {
+                if (blockEntity instanceof net.minecraft.world.level.block.entity.EnderChestBlockEntity) {
+                    isContainer = true;
+                } else {
+                    String className = blockEntity.getClass().getName().toLowerCase();
+                    if (className.contains("sophisticatedstorage") || className.contains("sophisticatedbackpacks")) {
+                        isContainer = true;
+                    }
+                }
+            }
+        } else if (hit.getType() == HitResult.Type.ENTITY) {
+            net.minecraft.world.phys.EntityHitResult entityHit = (net.minecraft.world.phys.EntityHitResult) hit;
+            net.minecraft.world.entity.Entity entity = entityHit.getEntity();
+            
+            if (entity instanceof net.minecraft.world.MenuProvider || entity instanceof net.minecraft.world.entity.vehicle.ContainerEntity) {
                 isContainer = true;
             }
         }
@@ -111,8 +129,17 @@ public class QuickLootHandler {
         }
 
         // 4. Trigger interaction via direct packet to prevent local ghost block placement
-        client.player.connection.send(new net.minecraft.network.protocol.game.ServerboundUseItemOnPacket(
-                InteractionHand.MAIN_HAND, (BlockHitResult) hit, 0));
+        if (hit.getType() == HitResult.Type.BLOCK) {
+            client.player.connection.send(new net.minecraft.network.protocol.game.ServerboundUseItemOnPacket(
+                    InteractionHand.MAIN_HAND, (BlockHitResult) hit, 0));
+        } else if (hit.getType() == HitResult.Type.ENTITY) {
+            net.minecraft.world.phys.EntityHitResult entityHit = (net.minecraft.world.phys.EntityHitResult) hit;
+            client.player.connection.send(net.minecraft.network.protocol.game.ServerboundInteractPacket.createInteractionPacket(
+                    entityHit.getEntity(),
+                    true, // Force sneak to prevent mounting vehicles like boats
+                    InteractionHand.MAIN_HAND
+            ));
+        }
         client.player.swing(InteractionHand.MAIN_HAND);
 
         return true;
