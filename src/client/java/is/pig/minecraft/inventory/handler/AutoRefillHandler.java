@@ -97,9 +97,20 @@ public class AutoRefillHandler {
         // 1. Search for Exact Match first (Always prioritized)
         for (int i = 9; i < 36; i++) { // Main Inventory (9-35)
             ItemStack candidate = player.getInventory().getItem(i);
-            if (ItemStack.isSameItemSameComponents(previousStack, candidate)) {
+            if (!candidate.isEmpty() && ItemStack.isSameItemSameComponents(previousStack, candidate)) {
                 bestSlot = i;
                 break;
+            }
+        }
+
+        // 1.5 If exact match fails, try lenient item-only match for blocks
+        if (bestSlot == -1 && previousStack.getItem() instanceof net.minecraft.world.item.BlockItem) {
+            for (int i = 9; i < 36; i++) {
+                ItemStack candidate = player.getInventory().getItem(i);
+                if (!candidate.isEmpty() && ItemStack.isSameItem(previousStack, candidate)) {
+                    bestSlot = i;
+                    break;
+                }
             }
         }
 
@@ -142,13 +153,18 @@ public class AutoRefillHandler {
     }
 
     private boolean shouldTriggerRefill(ItemStack oldStack, ItemStack newStack) {
+        if (oldStack.isEmpty() && newStack.isEmpty()) {
+            return false;
+        }
+
         if (oldStack.isEmpty())
             return false;
 
         is.pig.minecraft.inventory.config.PiggyInventoryConfig config = (is.pig.minecraft.inventory.config.PiggyInventoryConfig) is.pig.minecraft.inventory.config.PiggyInventoryConfig
                 .getInstance();
-        if (!config.isAutoRefill())
+        if (!config.isAutoRefill()) {
             return false;
+        }
 
         // Check 1: Stack Depleted (Main case)
         if (newStack.isEmpty() && !oldStack.isEmpty()) {
