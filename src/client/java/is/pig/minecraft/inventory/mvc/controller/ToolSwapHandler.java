@@ -28,6 +28,43 @@ public class ToolSwapHandler {
     private int targetSwapSlot = -1;
     private long lastSwapTime = 0;
 
+    public int getBestToolSlot(Minecraft client, net.minecraft.core.BlockPos currentPos, BlockState state) {
+        PiggyInventoryConfig config = (PiggyInventoryConfig) PiggyInventoryConfig.getInstance();
+        if (client.player == null || client.level == null) return -1;
+        
+        int currentSlot = client.player.getInventory().selected;
+        PiggyInventoryConfig.OrePreference mode = config.getOrePreference();
+        
+        List<Integer> validSlots = new ArrayList<>();
+        boolean isHammerAllowed = mode == PiggyInventoryConfig.OrePreference.FORTUNE_STRICT;
+        
+        for (int i = 0; i < 36; i++) {
+            ItemStack stack = client.player.getInventory().getItem(i);
+            if (isToolBreakingSoon(stack, config)) continue;
+            if (isHammer(stack) && !isHammerAllowed) continue;
+            if (isOreOrValuable(state, config)) {
+                if (mode == PiggyInventoryConfig.OrePreference.FORTUNE_STRICT && getEnchantmentLevel(client, stack, Enchantments.FORTUNE) == 0) continue;
+                if (mode == PiggyInventoryConfig.OrePreference.SILK_TOUCH_STRICT && getEnchantmentLevel(client, stack, Enchantments.SILK_TOUCH) == 0) continue;
+            }
+            validSlots.add(i);
+        }
+        
+        if (validSlots.isEmpty()) return -1;
+
+        return validSlots.stream().max(Comparator
+            .comparing((Integer slot) -> {
+                if (!state.requiresCorrectToolForDrops()) return true;
+                return client.player.getInventory().getItem(slot).isCorrectToolForDrops(state);
+            })
+            .thenComparing(slot -> matchesPreference(client, client.player.getInventory().getItem(slot), state, mode, config))
+            .thenComparing(slot -> mode == PiggyInventoryConfig.OrePreference.FORTUNE_STRICT && isHammer(client.player.getInventory().getItem(slot)))
+            .thenComparing(slot -> requiresShears(state, config) && client.player.getInventory().getItem(slot).is(Items.SHEARS))
+            .thenComparingDouble(slot -> calculateMiningSpeed(client, client.player.getInventory().getItem(slot), state, currentPos))
+            .thenComparing(slot -> slot == currentSlot)
+            .thenComparing(slot -> !client.player.getInventory().getItem(slot).isDamageableItem())
+        ).orElse(-1);
+    }
+
     /**
      * @return true if the attack should be CANCELLED (protected block).
      */

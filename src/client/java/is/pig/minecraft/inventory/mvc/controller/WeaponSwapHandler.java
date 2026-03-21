@@ -19,6 +19,27 @@ public class WeaponSwapHandler {
 
     private long lastSwapTime = 0;
 
+    public int getBestWeaponSlot(Minecraft client, Entity target) {
+        PiggyInventoryConfig config = (PiggyInventoryConfig) PiggyInventoryConfig.getInstance();
+        if (client.player == null || client.level == null) return client.player.getInventory().selected;
+        
+        int currentSlot = client.player.getInventory().selected;
+        ItemStack currentStack = client.player.getMainHandItem();
+        int bestSlot = currentSlot;
+        double bestScore = getWeaponScore(client, currentStack, target, config);
+        
+        for (int i = 0; i < 36; i++) {
+            if (i == currentSlot) continue;
+            ItemStack stack = client.player.getInventory().getItem(i);
+            double score = getWeaponScore(client, stack, target, config);
+            if (score > bestScore) {
+                bestScore = score;
+                bestSlot = i;
+            }
+        }
+        return bestSlot;
+    }
+
     /**
      * Called when the player is about to attack an entity.
      */
@@ -34,24 +55,7 @@ public class WeaponSwapHandler {
         }
 
         int currentSlot = client.player.getInventory().selected;
-        ItemStack currentStack = client.player.getMainHandItem();
-
-        int bestSlot = currentSlot;
-        double bestScore = getWeaponScore(client, currentStack, target, config);
-
-        // Scan full inventory (0-35)
-        for (int i = 0; i < 36; i++) {
-            if (i == currentSlot)
-                continue;
-
-            ItemStack stack = client.player.getInventory().getItem(i);
-            double score = getWeaponScore(client, stack, target, config);
-
-            if (score > bestScore) {
-                bestScore = score;
-                bestSlot = i;
-            }
-        }
+        int bestSlot = getBestWeaponSlot(client, target);
 
         if (bestSlot != currentSlot) {
             int cps = config.getTickDelay();
