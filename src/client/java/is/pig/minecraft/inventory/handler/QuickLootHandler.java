@@ -179,8 +179,6 @@ public class QuickLootHandler {
     }
 
     private boolean transferInProgress = false;
-    private final java.util.Queue<Integer> transferQueue = new java.util.LinkedList<>();
-    private long lastTransferTime = 0;
 
     public void onTick(Minecraft client) {
         // Handle Delayed Sneak Restoration
@@ -251,21 +249,11 @@ public class QuickLootHandler {
                 if (hiddenScreen instanceof AbstractContainerScreen) {
                     java.util.List<Integer> slots = InventoryUtils.getSlotsToTransfer(
                             (AbstractContainerScreen<?>) hiddenScreen, delta, lastTransferWasAll);
-                    transferQueue.addAll(slots);
-                }
-                transferInProgress = true;
-                lastTransferTime = System.currentTimeMillis();
-            }
-
-            if (transferInProgress) {
-                int cps = PiggyInventoryConfig.getInstance().getTickDelay();
-                long minDelay = cps > 0 ? 1000L / cps : 0;
-                long currentTime = System.currentTimeMillis();
-
-                if (minDelay == 0) {
-                    // Uncapped
-                    while (!transferQueue.isEmpty()) {
-                        int slotIndex = transferQueue.poll();
+                    
+                    int cps = PiggyInventoryConfig.getInstance().getTickDelay();
+                    java.util.List<is.pig.minecraft.lib.action.IAction> clicks = new java.util.ArrayList<>();
+                    
+                    for (int slotIndex : slots) {
                         var slotAction = new is.pig.minecraft.lib.action.inventory.ClickWindowSlotAction(
                                 ((AbstractContainerScreen<?>) hiddenScreen).getMenu().containerId,
                                 slotIndex,
@@ -274,45 +262,26 @@ public class QuickLootHandler {
                                 "piggy-inventory-quickloot",
                                 is.pig.minecraft.lib.action.ActionPriority.NORMAL
                         );
-                        slotAction.setIgnoreGlobalCps(true);
-                        is.pig.minecraft.lib.action.PiggyActionQueue.getInstance().enqueue(slotAction);
-                        
+                        if (cps <= 0) slotAction.setIgnoreGlobalCps(true);
+                        clicks.add(slotAction);
                         is.pig.minecraft.lib.ui.IconQueueOverlay.queueIcon(lastTransferWasUp ? DEPO_ICON : LOOT_ICON, 1000, false);
                     }
-                    lastTransferTime = currentTime;
-                } else {
-                    // Rate Limited
-                    if (currentTime - lastTransferTime >= minDelay) {
-                        int actions = (int) ((currentTime - lastTransferTime) / minDelay);
-                        if (actions > transferQueue.size()) {
-                            actions = transferQueue.size();
-                        }
-                        for (int i = 0; i < actions; i++) {
-                            int slotIndex = transferQueue.poll();
-                            is.pig.minecraft.lib.action.PiggyActionQueue.getInstance().enqueue(
-                                new is.pig.minecraft.lib.action.inventory.ClickWindowSlotAction(
-                                    ((AbstractContainerScreen<?>) hiddenScreen).getMenu().containerId,
-                                    slotIndex,
-                                    0, // button
-                                    net.minecraft.world.inventory.ClickType.QUICK_MOVE,
-                                    "piggy-inventory-quickloot",
-                                    is.pig.minecraft.lib.action.ActionPriority.NORMAL
-                                )
-                            );
-                            is.pig.minecraft.lib.ui.IconQueueOverlay.queueIcon(lastTransferWasUp ? DEPO_ICON : LOOT_ICON, 1000, false);
-                        }
-                        lastTransferTime += actions * minDelay;
-                        if (lastTransferTime > currentTime) {
-                            lastTransferTime = currentTime;
-                        }
-                    }
+                    
+                    var bulkAction = new is.pig.minecraft.lib.action.BulkAction(
+                            "piggy-inventory-quickloot",
+                            "Quick Loot Transfer",
+                            clicks
+                    );
+                    if (cps <= 0) bulkAction.setIgnoreGlobalCps(true);
+                    is.pig.minecraft.lib.action.PiggyActionQueue.getInstance().enqueue(bulkAction);
                 }
+                transferInProgress = true;
+            }
 
-                if (transferQueue.isEmpty()) {
-                    if (!is.pig.minecraft.lib.action.PiggyActionQueue.getInstance().hasActions("piggy-inventory-quickloot")) {
-                        client.player.closeContainer();
-                        cleanup();
-                    }
+            if (transferInProgress) {
+                if (!is.pig.minecraft.lib.action.PiggyActionQueue.getInstance().hasActions("piggy-inventory-quickloot")) {
+                    client.player.closeContainer();
+                    cleanup();
                 }
             }
         }
@@ -330,7 +299,6 @@ public class QuickLootHandler {
         awaitingContainer = false;
         transferInProgress = false;
         state = State.IDLE;
-        transferQueue.clear();
     }
 
     private static final net.minecraft.resources.ResourceLocation LOOT_ICON = net.minecraft.resources.ResourceLocation.fromNamespaceAndPath("piggy", "textures/gui/icons/quick_loot.png");

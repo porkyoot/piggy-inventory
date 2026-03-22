@@ -17,11 +17,9 @@ public class SortExecutor {
     private static SortExecutor INSTANCE;
 
     private boolean isExecuting = false;
-    private int tickCounter = 0;
 
     private List<Slot> targetSlots;
     private List<ItemStack> targetItems;
-    private int currentActionIndex = 0;
 
     private static final net.minecraft.resources.ResourceLocation SORT_ICON = net.minecraft.resources.ResourceLocation.fromNamespaceAndPath("piggy", "textures/gui/icons/quick_sort.png");
 
@@ -53,8 +51,6 @@ public class SortExecutor {
         this.targetSlots = slots;
         this.targetItems = target;
         this.isExecuting = true;
-        this.tickCounter = 0;
-        this.currentActionIndex = 0;
 
         buildQueue();
     }
@@ -325,6 +321,36 @@ public class SortExecutor {
             }
         } // end while loop
         
+        // At the end of build queue, push everything into a BulkAction
+        Minecraft client = Minecraft.getInstance();
+        if (client.player == null) return;
+        int containerId = client.player.containerMenu.containerId;
+        int cps = is.pig.minecraft.inventory.config.PiggyInventoryConfig.getInstance().getTickDelay();
+        
+        List<is.pig.minecraft.lib.action.IAction> clicks = new ArrayList<>();
+        for (Action action : actionQueue) {
+            var slotAction = new is.pig.minecraft.lib.action.inventory.ClickWindowSlotAction(
+                    containerId,
+                    action.slotId(),
+                    action.button(),
+                    ClickType.PICKUP,
+                    "piggy-inventory-sort",
+                    is.pig.minecraft.lib.action.ActionPriority.NORMAL
+            );
+            if (cps <= 0) slotAction.setIgnoreGlobalCps(true);
+            clicks.add(slotAction);
+            is.pig.minecraft.lib.ui.IconQueueOverlay.queueIcon(SORT_ICON, 1000, false);
+        }
+        
+        var bulkAction = new is.pig.minecraft.lib.action.BulkAction(
+                "piggy-inventory-sort", 
+                "Sort Inventory", 
+                clicks, 
+                () -> this.verifySortState(Minecraft.getInstance())
+        );
+        if (cps <= 0) bulkAction.setIgnoreGlobalCps(true);
+        
+        is.pig.minecraft.lib.action.PiggyActionQueue.getInstance().enqueue(bulkAction);
     }
 
     private boolean isSameAndEqual(ItemStack a, ItemStack b) {
@@ -577,56 +603,10 @@ public class SortExecutor {
             abortSort("Unexpected screen type");
             return;
         }
-        
-        int cps = is.pig.minecraft.inventory.config.PiggyInventoryConfig.getInstance().getTickDelay();
-        int containerId = client.player.containerMenu.containerId;
 
-        if (cps <= 0) {
-            // Unlimited speed: dump the entire queue immediately in 1 tick
-            while (currentActionIndex < actionQueue.size()) {
-                Action action = actionQueue.get(currentActionIndex);
-                var slotAction = new is.pig.minecraft.lib.action.inventory.ClickWindowSlotAction(
-                        containerId,
-                        action.slotId(),
-                        action.button(),
-                        ClickType.PICKUP,
-                        "piggy-inventory-sort",
-                        is.pig.minecraft.lib.action.ActionPriority.NORMAL
-                );
-                slotAction.setIgnoreGlobalCps(true);
-                is.pig.minecraft.lib.action.PiggyActionQueue.getInstance().enqueue(slotAction);
-                
-                is.pig.minecraft.lib.ui.IconQueueOverlay.queueIcon(SORT_ICON, 1000, false);
-                currentActionIndex++;
-            }
-        } else {
-            // Rate-limited logic: queue ONE per delay cycle
-            int delayTicks = Math.max(1, 20 / cps);
-            
-            if (tickCounter < delayTicks) {
-                tickCounter++;
-            } else if (currentActionIndex < actionQueue.size()) {
-                Action action = actionQueue.get(currentActionIndex);
-                is.pig.minecraft.lib.action.PiggyActionQueue.getInstance().enqueue(
-                    new is.pig.minecraft.lib.action.inventory.ClickWindowSlotAction(
-                        containerId,
-                        action.slotId(),
-                        action.button(),
-                        ClickType.PICKUP,
-                        "piggy-inventory-sort",
-                        is.pig.minecraft.lib.action.ActionPriority.NORMAL
-                    )
-                );
-                is.pig.minecraft.lib.ui.IconQueueOverlay.queueIcon(SORT_ICON, 1000, false);
-                currentActionIndex++;
-                tickCounter = 0;
-            }
-        }
-
-        if (currentActionIndex >= actionQueue.size()) {
-            if (!is.pig.minecraft.lib.action.PiggyActionQueue.getInstance().hasActions("piggy-inventory-sort")) {
-                stopSort(true);
-            }
+        // Just wait for the bulk action to clear
+        if (!is.pig.minecraft.lib.action.PiggyActionQueue.getInstance().hasActions("piggy-inventory-sort")) {
+            stopSort(true);
         }
     }
 }
