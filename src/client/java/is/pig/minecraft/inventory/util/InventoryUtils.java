@@ -127,14 +127,11 @@ public class InventoryUtils {
             } else {
                 // Shift+Scroll: Smart Stack (match only)
                 // Check if target has matching item
+                is.pig.minecraft.lib.inventory.search.ItemCondition condition = stack -> net.minecraft.world.item.ItemStack.isSameItemSameComponents(sourceStack, stack);
                 for (Slot targetSlot : targetSlots) {
-                    if (targetSlot.hasItem()) {
-                        net.minecraft.world.item.ItemStack targetStack = targetSlot.getItem();
-                        // Using ItemStack.isSameItemSameComponents for modern versions
-                        if (net.minecraft.world.item.ItemStack.isSameItemSameComponents(sourceStack, targetStack)) {
-                            performTransfer = true;
-                            break;
-                        }
+                    if (targetSlot.hasItem() && condition.matches(targetSlot.getItem())) {
+                        performTransfer = true;
+                        break;
                     }
                 }
             }
@@ -210,13 +207,11 @@ public class InventoryUtils {
             if (forceMoveAll) {
                 performTransfer = true;
             } else {
+                is.pig.minecraft.lib.inventory.search.ItemCondition condition = stack -> net.minecraft.world.item.ItemStack.isSameItemSameComponents(sourceStack, stack);
                 for (Slot targetSlot : targetSlots) {
-                    if (targetSlot.hasItem()) {
-                        net.minecraft.world.item.ItemStack targetStack = targetSlot.getItem();
-                        if (net.minecraft.world.item.ItemStack.isSameItemSameComponents(sourceStack, targetStack)) {
-                            performTransfer = true;
-                            break;
-                        }
+                    if (targetSlot.hasItem() && condition.matches(targetSlot.getItem())) {
+                        performTransfer = true;
+                        break;
                     }
                 }
             }

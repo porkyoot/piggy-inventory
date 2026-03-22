@@ -2,7 +2,6 @@ package is.pig.minecraft.inventory.mvc.controller;
 
 import is.pig.minecraft.inventory.config.PiggyInventoryConfig;
 import net.minecraft.client.Minecraft;
-import net.minecraft.network.protocol.game.ServerboundSetCarriedItemPacket;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.vehicle.Boat;
@@ -28,8 +27,10 @@ public class WeaponSwapHandler {
         int bestSlot = currentSlot;
         double bestScore = getWeaponScore(client, currentStack, target, config);
         
-        for (int i = 0; i < 36; i++) {
-            if (i == currentSlot) continue;
+        is.pig.minecraft.lib.inventory.search.ItemCondition condition = stack -> !stack.isEmpty();
+        java.util.List<Integer> allSlots = is.pig.minecraft.lib.inventory.search.InventorySearcher.findAllSlots(client.player.getInventory(), condition);
+        for (int i : allSlots) {
+            if (i >= 36 || i == currentSlot) continue;
             ItemStack stack = client.player.getInventory().getItem(i);
             double score = getWeaponScore(client, stack, target, config);
             if (score > bestScore) {
@@ -72,10 +73,9 @@ public class WeaponSwapHandler {
     private void swapToSlot(Minecraft client, int currentSlot, int bestSlot, java.util.List<Integer> allowedSlots) {
         if (bestSlot < 9) {
             // Simple hotbar swap
-            client.player.getInventory().selected = bestSlot;
-            if (client.getConnection() != null) {
-                client.getConnection().send(new ServerboundSetCarriedItemPacket(bestSlot));
-            }
+            is.pig.minecraft.lib.action.PiggyActionQueue.getInstance().enqueue(
+                new is.pig.minecraft.lib.action.inventory.SelectHotbarSlotAction(bestSlot, "piggy-inventory")
+            );
         } else {
             // Inventory swap logic
             if (allowedSlots == null || allowedSlots.isEmpty()) {
@@ -91,18 +91,20 @@ public class WeaponSwapHandler {
                     targetSlot = 0;
             }
 
-            client.gameMode.handleInventoryMouseClick(
-                    client.player.inventoryMenu.containerId,
-                    bestSlot,
-                    targetSlot,
-                    net.minecraft.world.inventory.ClickType.SWAP,
-                    client.player);
+            is.pig.minecraft.lib.action.PiggyActionQueue.getInstance().enqueue(
+                new is.pig.minecraft.lib.action.inventory.ClickWindowSlotAction(
+                        client.player.inventoryMenu.containerId,
+                        bestSlot,
+                        targetSlot,
+                        net.minecraft.world.inventory.ClickType.SWAP,
+                        "piggy-inventory"
+                )
+            );
 
             if (client.player.getInventory().selected != targetSlot) {
-                client.player.getInventory().selected = targetSlot;
-                if (client.getConnection() != null) {
-                    client.getConnection().send(new ServerboundSetCarriedItemPacket(targetSlot));
-                }
+                is.pig.minecraft.lib.action.PiggyActionQueue.getInstance().enqueue(
+                    new is.pig.minecraft.lib.action.inventory.SelectHotbarSlotAction(targetSlot, "piggy-inventory")
+                );
             }
         }
     }

@@ -7,7 +7,6 @@ import is.pig.minecraft.inventory.config.PiggyInventoryConfig;
 import net.minecraft.client.Minecraft;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
-import net.minecraft.network.protocol.game.ServerboundSetCarriedItemPacket;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.inventory.ClickType;
 import net.minecraft.world.item.ItemStack;
@@ -38,15 +37,20 @@ public class ToolSwapHandler {
         List<Integer> validSlots = new ArrayList<>();
         boolean isHammerAllowed = mode == PiggyInventoryConfig.OrePreference.FORTUNE_STRICT;
         
-        for (int i = 0; i < 36; i++) {
-            ItemStack stack = client.player.getInventory().getItem(i);
-            if (isToolBreakingSoon(stack, config)) continue;
-            if (isHammer(stack) && !isHammerAllowed) continue;
+        is.pig.minecraft.lib.inventory.search.ItemCondition condition = stack -> {
+            if (stack == null || stack.isEmpty()) return false;
+            if (isToolBreakingSoon(stack, config)) return false;
+            if (isHammer(stack) && !isHammerAllowed) return false;
             if (isOreOrValuable(state, config)) {
-                if (mode == PiggyInventoryConfig.OrePreference.FORTUNE_STRICT && getEnchantmentLevel(client, stack, Enchantments.FORTUNE) == 0) continue;
-                if (mode == PiggyInventoryConfig.OrePreference.SILK_TOUCH_STRICT && getEnchantmentLevel(client, stack, Enchantments.SILK_TOUCH) == 0) continue;
+                if (mode == PiggyInventoryConfig.OrePreference.FORTUNE_STRICT && getEnchantmentLevel(client, stack, Enchantments.FORTUNE) == 0) return false;
+                if (mode == PiggyInventoryConfig.OrePreference.SILK_TOUCH_STRICT && getEnchantmentLevel(client, stack, Enchantments.SILK_TOUCH) == 0) return false;
             }
-            validSlots.add(i);
+            return true;
+        };
+        
+        List<Integer> allSlots = is.pig.minecraft.lib.inventory.search.InventorySearcher.findAllSlots(client.player.getInventory(), condition);
+        for (int slot : allSlots) {
+            if (slot < 36) validSlots.add(slot);
         }
         
         if (validSlots.isEmpty()) return -1;
@@ -181,22 +185,20 @@ public class ToolSwapHandler {
             boolean currentIsHammer = isHammer(currentStack);
             boolean isHammerAllowed = mode == PiggyInventoryConfig.OrePreference.FORTUNE_STRICT;
             
-            for (int i = 0; i < 36; i++) {
-                ItemStack stack = client.player.getInventory().getItem(i);
-                
-                // FILTER: Don't use a tool that is about to break
-                if (isToolBreakingSoon(stack, config)) continue;
-
-                // FILTER: Don't swap to a hammer unless in Fortune+ mode
-                if (isHammer(stack) && !isHammerAllowed) continue;
-
-                // FILTER: Strict modes prevent selecting tools that don't have the required enchant
+            is.pig.minecraft.lib.inventory.search.ItemCondition condition = stack -> {
+                if (stack == null || stack.isEmpty()) return false;
+                if (isToolBreakingSoon(stack, config)) return false;
+                if (isHammer(stack) && !isHammerAllowed) return false;
                 if (isOreOrValuable(state, config)) {
-                    if (mode == PiggyInventoryConfig.OrePreference.FORTUNE_STRICT && getEnchantmentLevel(client, stack, Enchantments.FORTUNE) == 0) continue;
-                    if (mode == PiggyInventoryConfig.OrePreference.SILK_TOUCH_STRICT && getEnchantmentLevel(client, stack, Enchantments.SILK_TOUCH) == 0) continue;
+                    if (mode == PiggyInventoryConfig.OrePreference.FORTUNE_STRICT && getEnchantmentLevel(client, stack, Enchantments.FORTUNE) == 0) return false;
+                    if (mode == PiggyInventoryConfig.OrePreference.SILK_TOUCH_STRICT && getEnchantmentLevel(client, stack, Enchantments.SILK_TOUCH) == 0) return false;
                 }
-
-                validSlots.add(i);
+                return true;
+            };
+            
+            List<Integer> allSlots = is.pig.minecraft.lib.inventory.search.InventorySearcher.findAllSlots(client.player.getInventory(), condition);
+            for (int slot : allSlots) {
+                if (slot < 36) validSlots.add(slot);
             }
 
             // Safety Check for protected blocks / strict mode exclusions
@@ -345,10 +347,9 @@ public class ToolSwapHandler {
 
     private void swapToSlot(Minecraft client, int currentSlot, int bestSlot, List<Integer> allowedSlots) {
         if (bestSlot < 9) {
-            client.player.getInventory().selected = bestSlot;
-            if (client.getConnection() != null) {
-                client.getConnection().send(new ServerboundSetCarriedItemPacket(bestSlot));
-            }
+            is.pig.minecraft.lib.action.PiggyActionQueue.getInstance().enqueue(
+                new is.pig.minecraft.lib.action.inventory.SelectHotbarSlotAction(bestSlot, "piggy-inventory")
+            );
         } else {
             if (allowedSlots == null || allowedSlots.isEmpty()) {
                 return;
@@ -363,18 +364,20 @@ public class ToolSwapHandler {
                     targetSlot = 0;
             }
 
-            client.gameMode.handleInventoryMouseClick(
+            is.pig.minecraft.lib.action.PiggyActionQueue.getInstance().enqueue(
+                new is.pig.minecraft.lib.action.inventory.ClickWindowSlotAction(
                     client.player.inventoryMenu.containerId,
                     bestSlot,
                     targetSlot,
                     ClickType.SWAP,
-                    client.player);
+                    "piggy-inventory"
+                )
+            );
 
             if (client.player.getInventory().selected != targetSlot) {
-                client.player.getInventory().selected = targetSlot;
-                if (client.getConnection() != null) {
-                    client.getConnection().send(new ServerboundSetCarriedItemPacket(targetSlot));
-                }
+                is.pig.minecraft.lib.action.PiggyActionQueue.getInstance().enqueue(
+                    new is.pig.minecraft.lib.action.inventory.SelectHotbarSlotAction(targetSlot, "piggy-inventory")
+                );
             }
         }
     }
