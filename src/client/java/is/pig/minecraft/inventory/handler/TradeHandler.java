@@ -24,6 +24,7 @@ public class TradeHandler {
             this.isActive = true;
             this.holdStartTime = System.currentTimeMillis();
             this.lastActionTime = this.holdStartTime;
+
             this.currentResultSlot = slot;
             this.lastContainerId = player.containerMenu.containerId;
             
@@ -73,20 +74,24 @@ public class TradeHandler {
 
         if (now - holdStartTime < 300) return;
 
-        // Unlimited logic: if CPS <= 0, loop up to 64 times in one tick
+        if (is.pig.minecraft.lib.action.PiggyActionQueue.getInstance().hasActions("piggy-inventory-trade")) return;
+
+        // Queue operations; the central queue will enforce absolute limits
         int limit = (cps <= 0) ? 64 : 1;
+        boolean unlimited = (cps <= 0);
+        
         for (int i = 0; i < limit; i++) {
-            if (!performOperation(client)) break;
+            if (!performOperation(client, unlimited)) break;
         }
     }
 
-    private boolean performOperation(Minecraft client) {
+    private boolean performOperation(Minecraft client, boolean unlimited) {
         if (!isActive || currentResultSlot == null || client.player == null || client.gameMode == null)
             return false;
 
         if (!currentResultSlot.hasItem()) {
             boolean isShiftDown = net.minecraft.client.gui.screens.Screen.hasShiftDown();
-            if (isShiftDown && performSnapshotRefill(client)) {
+            if (isShiftDown && performSnapshotRefill(client, unlimited)) {
                 lastActionTime = System.currentTimeMillis();
                 return true;
             }
@@ -94,18 +99,21 @@ public class TradeHandler {
             return false;
         }
 
-        client.gameMode.handleInventoryMouseClick(
-                client.player.containerMenu.containerId,
-                currentResultSlot.index,
-                0,
-                net.minecraft.world.inventory.ClickType.QUICK_MOVE,
-                client.player);
-        
+        var slotAction = new is.pig.minecraft.lib.action.inventory.ClickWindowSlotAction(
+                        client.player.containerMenu.containerId,
+                        currentResultSlot.index,
+                        0,
+                        net.minecraft.world.inventory.ClickType.QUICK_MOVE,
+                        "piggy-inventory-trade",
+                        is.pig.minecraft.lib.action.ActionPriority.NORMAL
+        );
+        if (unlimited) slotAction.setIgnoreGlobalCps(true);
+        is.pig.minecraft.lib.action.PiggyActionQueue.getInstance().enqueue(slotAction);
         lastActionTime = System.currentTimeMillis();
         return true;
     }
 
-    private boolean performSnapshotRefill(Minecraft client) {
+    private boolean performSnapshotRefill(Minecraft client, boolean unlimited) {
         if (snapshot[0].isEmpty() && snapshot[1].isEmpty()) return false;
         if (client.player == null || client.player.containerMenu == null) return false;
         
@@ -122,12 +130,16 @@ public class TradeHandler {
             boolean match1 = !snapshot[1].isEmpty() && ItemStack.isSameItemSameComponents(stack, snapshot[1]);
             
             if (match0 || match1) {
-                client.gameMode.handleInventoryMouseClick(
-                        containerId,
-                        i,
-                        0,
-                        net.minecraft.world.inventory.ClickType.QUICK_MOVE,
-                        client.player);
+                var slotAction = new is.pig.minecraft.lib.action.inventory.ClickWindowSlotAction(
+                                containerId,
+                                i,
+                                0,
+                                net.minecraft.world.inventory.ClickType.QUICK_MOVE,
+                                "piggy-inventory-trade",
+                                is.pig.minecraft.lib.action.ActionPriority.NORMAL
+                );
+                if (unlimited) slotAction.setIgnoreGlobalCps(true);
+                is.pig.minecraft.lib.action.PiggyActionQueue.getInstance().enqueue(slotAction);
                 foundAny = true;
                 break; // Just one click per tick to refill safely
             }

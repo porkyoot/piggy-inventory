@@ -7,6 +7,7 @@ import net.minecraft.world.item.ItemStack;
 
 public class AutoRefillHandler {
     private static final AutoRefillHandler INSTANCE = new AutoRefillHandler();
+    private long lastActionTime = 0;
     private ItemStack lastMainHandStack = ItemStack.EMPTY;
     private ItemStack lastOffHandStack = ItemStack.EMPTY;
     private int lastSlot = -1;
@@ -15,7 +16,7 @@ public class AutoRefillHandler {
         return INSTANCE;
     }
 
-    private long lastActionTime = 0;
+
 
     public void onTick(Minecraft client) {
         Player player = client.player;
@@ -44,6 +45,10 @@ public class AutoRefillHandler {
             return;
         }
 
+        if (is.pig.minecraft.lib.action.PiggyActionQueue.getInstance().hasActions("piggy-inventory-refill")) {
+            return; // Wait for the queue to finish refilling
+        }
+
         int cps = is.pig.minecraft.inventory.config.PiggyInventoryConfig.getInstance().getTickDelay();
         long minDelay = cps > 0 ? 1000L / cps : 0;
         long currentTime = System.currentTimeMillis();
@@ -52,6 +57,8 @@ public class AutoRefillHandler {
             return; // Wait for cooldown. Tracker state remains frozen at the moment of depletion.
         }
 
+        boolean unlimited = (cps <= 0);
+
         boolean actionTaken = false;
 
         // Check Main Hand
@@ -59,7 +66,7 @@ public class AutoRefillHandler {
             if (!is.pig.minecraft.inventory.config.PiggyInventoryConfig.getInstance().isFeatureAutoRefillEnabled()) {
                 is.pig.minecraft.lib.ui.AntiCheatFeedbackManager.getInstance().onFeatureBlocked("auto_refill", is.pig.minecraft.lib.ui.BlockReason.SERVER_ENFORCEMENT);
                 lastMainHandStack = currentMainStack.copy(); // Acknowledge depletion without refill
-            } else if (this.attemptRefill(client, player, lastMainHandStack, currentSlot)) { // Hotbar slot 0-8
+            } else if (this.attemptRefill(client, player, lastMainHandStack, currentSlot, unlimited)) { // Hotbar slot 0-8
                 // We swapped 'lastMainHandStack' back into the slot.
                 // To prevent the next tick from seeing (SwappedItem -> OriginalItem) as a
                 // transition,
@@ -75,7 +82,7 @@ public class AutoRefillHandler {
             if (!is.pig.minecraft.inventory.config.PiggyInventoryConfig.getInstance().isFeatureAutoRefillEnabled()) {
                 is.pig.minecraft.lib.ui.AntiCheatFeedbackManager.getInstance().onFeatureBlocked("auto_refill", is.pig.minecraft.lib.ui.BlockReason.SERVER_ENFORCEMENT);
                 lastOffHandStack = currentOffStack.copy(); // Acknowledge depletion without refill
-            } else if (this.attemptRefill(client, player, lastOffHandStack, 45)) { // Special ID for Offhand
+            } else if (this.attemptRefill(client, player, lastOffHandStack, 45, unlimited)) { // Special ID for Offhand
                 lastOffHandStack = lastOffHandStack.copy();
                 actionTaken = true;
                 lastActionTime = currentTime;
@@ -91,7 +98,7 @@ public class AutoRefillHandler {
         lastSlot = currentSlot;
     }
 
-    private boolean attemptRefill(Minecraft client, Player player, ItemStack previousStack, int targetSlotId) {
+    private boolean attemptRefill(Minecraft client, Player player, ItemStack previousStack, int targetSlotId, boolean unlimited) {
         int bestSlot = -1;
 
         // 1. Search for Exact Match first (Always prioritized)
@@ -134,18 +141,29 @@ public class AutoRefillHandler {
             // Check if target is Hotbar (0-8) or Offhand (45)
             if (targetSlotId < 9) {
                 // Hotbar Swap
-                client.gameMode.handleInventoryMouseClick(
-                        0, // Player Inventory ID
-                        bestSlot, // Slot to take from
-                        targetSlotId, // Target Hotbar Slot (0-8)
-                        net.minecraft.world.inventory.ClickType.SWAP,
-                        player);
+                var slotAction = new is.pig.minecraft.lib.action.inventory.ClickWindowSlotAction(
+                                0, // Player Inventory ID
+                                bestSlot, // Slot to take from
+                                targetSlotId, // Target Hotbar Slot (0-8)
+                                net.minecraft.world.inventory.ClickType.SWAP,
+                                "piggy-inventory-refill",
+                                is.pig.minecraft.lib.action.ActionPriority.NORMAL
+                );
+                if (unlimited) slotAction.setIgnoreGlobalCps(true);
+                is.pig.minecraft.lib.action.PiggyActionQueue.getInstance().enqueue(slotAction);
             } else if (targetSlotId == 45) {
                 // Offhand Refill using PICKUP sequence
-                client.gameMode.handleInventoryMouseClick(0, bestSlot, 0,
-                        net.minecraft.world.inventory.ClickType.PICKUP, player);
-                client.gameMode.handleInventoryMouseClick(0, 45, 0, net.minecraft.world.inventory.ClickType.PICKUP,
-                        player);
+                var slotAction1 = new is.pig.minecraft.lib.action.inventory.ClickWindowSlotAction(
+                                0, bestSlot, 0, net.minecraft.world.inventory.ClickType.PICKUP, "piggy-inventory-refill", is.pig.minecraft.lib.action.ActionPriority.NORMAL
+                );
+                if (unlimited) slotAction1.setIgnoreGlobalCps(true);
+                is.pig.minecraft.lib.action.PiggyActionQueue.getInstance().enqueue(slotAction1);
+                
+                var slotAction2 = new is.pig.minecraft.lib.action.inventory.ClickWindowSlotAction(
+                                0, 45, 0, net.minecraft.world.inventory.ClickType.PICKUP, "piggy-inventory-refill", is.pig.minecraft.lib.action.ActionPriority.NORMAL
+                );
+                if (unlimited) slotAction2.setIgnoreGlobalCps(true);
+                is.pig.minecraft.lib.action.PiggyActionQueue.getInstance().enqueue(slotAction2);
             }
             return true;
         }

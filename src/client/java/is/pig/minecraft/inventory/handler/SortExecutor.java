@@ -1,6 +1,5 @@
 package is.pig.minecraft.inventory.handler;
 
-import is.pig.minecraft.inventory.config.PiggyInventoryConfig;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.minecraft.client.Minecraft;
 import net.minecraft.world.inventory.ClickType;
@@ -89,6 +88,7 @@ public class SortExecutor {
                 client.player, "piggy.inventory.sort.interrupted", 
                 new java.io.File(client.gameDirectory, "logs/debug.log").getAbsolutePath(), reason);
         }
+        is.pig.minecraft.lib.action.PiggyActionQueue.getInstance().clear("piggy-inventory-sort");
         stopSort(false);
     }
 
@@ -564,8 +564,6 @@ public class SortExecutor {
 
     private void onTick(Minecraft client) {
         if (!isExecuting) return;
-
-        int cps = PiggyInventoryConfig.getInstance().getTickDelay(); // This value is Clicks-Per-Second
         
         if (client.player == null || client.gameMode == null) {
             abortSort("Screen closed or player disconnected");
@@ -580,51 +578,55 @@ public class SortExecutor {
             return;
         }
         
+        int cps = is.pig.minecraft.inventory.config.PiggyInventoryConfig.getInstance().getTickDelay();
+        int containerId = client.player.containerMenu.containerId;
+
         if (cps <= 0) {
             // Unlimited speed: dump the entire queue immediately in 1 tick
-            int containerId = client.player.containerMenu.containerId;
             while (currentActionIndex < actionQueue.size()) {
                 Action action = actionQueue.get(currentActionIndex);
-                client.gameMode.handleInventoryMouseClick(
+                var slotAction = new is.pig.minecraft.lib.action.inventory.ClickWindowSlotAction(
                         containerId,
                         action.slotId(),
                         action.button(),
                         ClickType.PICKUP,
-                        client.player
+                        "piggy-inventory-sort",
+                        is.pig.minecraft.lib.action.ActionPriority.NORMAL
                 );
+                slotAction.setIgnoreGlobalCps(true);
+                is.pig.minecraft.lib.action.PiggyActionQueue.getInstance().enqueue(slotAction);
+                
                 is.pig.minecraft.lib.ui.IconQueueOverlay.queueIcon(SORT_ICON, 1000, false);
                 currentActionIndex++;
             }
-            stopSort(true);
-            return;
-        }
-
-        int delayTicks = Math.max(1, 20 / cps); // Convert CPS to ticks (20 ticks per second)
-        
-        if (tickCounter < delayTicks) {
-            tickCounter++;
-            return;
+        } else {
+            // Rate-limited logic: queue ONE per delay cycle
+            int delayTicks = Math.max(1, 20 / cps);
+            
+            if (tickCounter < delayTicks) {
+                tickCounter++;
+            } else if (currentActionIndex < actionQueue.size()) {
+                Action action = actionQueue.get(currentActionIndex);
+                is.pig.minecraft.lib.action.PiggyActionQueue.getInstance().enqueue(
+                    new is.pig.minecraft.lib.action.inventory.ClickWindowSlotAction(
+                        containerId,
+                        action.slotId(),
+                        action.button(),
+                        ClickType.PICKUP,
+                        "piggy-inventory-sort",
+                        is.pig.minecraft.lib.action.ActionPriority.NORMAL
+                    )
+                );
+                is.pig.minecraft.lib.ui.IconQueueOverlay.queueIcon(SORT_ICON, 1000, false);
+                currentActionIndex++;
+                tickCounter = 0;
+            }
         }
 
         if (currentActionIndex >= actionQueue.size()) {
-            stopSort(true);
-            return;
+            if (!is.pig.minecraft.lib.action.PiggyActionQueue.getInstance().hasActions("piggy-inventory-sort")) {
+                stopSort(true);
+            }
         }
-
-        Action action = actionQueue.get(currentActionIndex);
-        
-        // Execute the single click
-        int containerId = client.player.containerMenu.containerId;
-        client.gameMode.handleInventoryMouseClick(
-                containerId,
-                action.slotId(),
-                action.button(),
-                ClickType.PICKUP,
-                client.player
-        );
-        is.pig.minecraft.lib.ui.IconQueueOverlay.queueIcon(SORT_ICON, 1000, false);
-
-        currentActionIndex++;
-        tickCounter = 0; // Reset delay for next action
     }
 }

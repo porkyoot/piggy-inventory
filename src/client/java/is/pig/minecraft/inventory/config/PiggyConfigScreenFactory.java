@@ -58,49 +58,72 @@ public class PiggyConfigScreenFactory {
                                                 .name(Component.literal("Features"))
                                                 .tooltip(Component.literal("General feature toggles."))
 
-                                                .option(Option.<Boolean>createBuilder()
-                                                                .name(Component.literal("Mouse + Shift Tweaks"))
-                                                                .description(OptionDescription.of(Component.literal(
-                                                                                "Enable Shift+Scroll/Drag transfer.")))
-                                                                .binding(true, config::isMouseTwicks,
-                                                                                config::setMouseTwicks)
-                                                                .controller(TickBoxControllerBuilder::create)
+                                                .group(OptionGroup.createBuilder()
+                                                                .name(Component.literal("General Tweaks"))
+                                                                .option(Option.<Boolean>createBuilder()
+                                                                                .name(Component.literal("Mouse + Shift Tweaks"))
+                                                                                .description(OptionDescription.of(Component.literal("Enable Shift+Scroll/Drag transfer.")))
+                                                                                .binding(true, config::isMouseTwicks, config::setMouseTwicks)
+                                                                                .controller(TickBoxControllerBuilder::create)
+                                                                                .build())
+                                                                .option(Option.<Boolean>createBuilder()
+                                                                                .name(Component.literal("Continuous Crafting"))
+                                                                                .description(OptionDescription.of(Component.literal("Enable holding click to craft/refill continuously.")))
+                                                                                .binding(true, config::isContinuousCrafting, config::setContinuousCrafting)
+                                                                                .controller(TickBoxControllerBuilder::create)
+                                                                                .build())
                                                                 .build())
 
-                                                .option(Option.<Boolean>createBuilder()
-                                                                .name(Component.literal("Continuous Crafting"))
-                                                                .description(OptionDescription.of(Component.literal(
-                                                                                "Enable holding click to craft/refill continuously.")))
-                                                                .binding(true, config::isContinuousCrafting,
-                                                                                config::setContinuousCrafting)
-                                                                .controller(TickBoxControllerBuilder::create)
+                                                .group(OptionGroup.createBuilder()
+                                                                .name(Component.literal("Tool Swap"))
+                                                                .option(Option.<Boolean>createBuilder()
+                                                                                .name(Component.literal("Enable Tool Swap"))
+                                                                                .description(OptionDescription.of(
+                                                                                                Component.literal("Automatically swaps to the faster tool in your inventory when attacking a block."),
+                                                                                                Component.literal("If Anti-Cheat is active, this cannot be enabled.")))
+                                                                                .available(config.isToolSwapEditable())
+                                                                                .binding(true, config::isToolSwapEnabled, config::setToolSwapEnabled)
+                                                                                .controller(TickBoxControllerBuilder::create)
+                                                                                .build())
+                                                                .option(Option.<Boolean>createBuilder()
+                                                                                .name(Component.literal("Prevent Tool Break"))
+                                                                                .description(OptionDescription.of(Component.literal("Prevents the use of tools with 10 or lower durability, automatically swapping to a better tool or preventing mining.")))
+                                                                                .binding(true, config::isPreventToolBreak, config::setPreventToolBreak)
+                                                                                .controller(TickBoxControllerBuilder::create)
+                                                                                .build())
+                                                                .option(Option.<Boolean>createBuilder()
+                                                                                .name(Component.literal("Allow Unenchanted Break"))
+                                                                                .description(OptionDescription.of(Component.literal("If Tool Break Prevention is on, still allow unenchanted tools to break.")))
+                                                                                .binding(false, config::isAllowUnenchantedToolsToBreak, config::setAllowUnenchantedToolsToBreak)
+                                                                                .controller(TickBoxControllerBuilder::create)
+                                                                                .build())
+                                                                .option(Option.<String>createBuilder()
+                                                                                .name(Component.literal("Tool Preference Keybinding"))
+                                                                                .available(false)
+                                                                                .binding("", () -> is.pig.minecraft.inventory.mvc.controller.InputController.preferenceKey.getTranslatedKeyMessage().getString(), v -> {})
+                                                                                .controller(dev.isxander.yacl3.api.controller.StringControllerBuilder::create)
+                                                                                .build())
                                                                 .build())
 
-                                                .option(Option.<Boolean>createBuilder()
-                                                                .name(Component.literal("Enable Tool Swap"))
-                                                                .description(OptionDescription.of(
-                                                                                Component.literal(
-                                                                                                "Automatically swaps to the faster tool in your inventory when attacking a block."),
-                                                                                Component.literal(
-                                                                                                "If Anti-Cheat is active, this cannot be enabled.")))
-                                                                .available(config.isToolSwapEditable())
-                                                                .binding(true, config::isToolSwapEnabled,
-                                                                                config::setToolSwapEnabled)
-                                                                .controller(TickBoxControllerBuilder::create)
+                                                .group(OptionGroup.createBuilder()
+                                                                .name(Component.literal("Weapon Swap"))
+                                                                .option(Option.<Boolean>createBuilder()
+                                                                                .name(Component.literal("Enable Weapon Swap"))
+                                                                                .description(OptionDescription.of(
+                                                                                                Component.literal("Automatically swaps to the best weapon when attacking an entity."),
+                                                                                                Component.literal("If Anti-Cheat is active, this cannot be enabled.")))
+                                                                                .available(config.isWeaponSwitchEditable())
+                                                                                .binding(true, config::isWeaponSwitchBoolean, config::setWeaponSwitchBoolean)
+                                                                                .controller(TickBoxControllerBuilder::create)
+                                                                                .build())
+                                                                .option(Option.<String>createBuilder()
+                                                                                .name(Component.literal("Weapon Preference Keybinding"))
+                                                                                .available(false)
+                                                                                .binding("", () -> is.pig.minecraft.inventory.mvc.controller.InputController.weaponPreferenceKey.getTranslatedKeyMessage().getString(), v -> {})
+                                                                                .controller(dev.isxander.yacl3.api.controller.StringControllerBuilder::create)
+                                                                                .build())
                                                                 .build())
 
-                                                .option(Option.<Boolean>createBuilder()
-                                                                .name(Component.literal("Enable Weapon Swap"))
-                                                                .description(OptionDescription.of(
-                                                                                Component.literal(
-                                                                                                "Automatically swaps to the best weapon when attacking an entity."),
-                                                                                Component.literal(
-                                                                                                "If Anti-Cheat is active, this cannot be enabled.")))
-                                                                .available(config.isWeaponSwitchEditable())
-                                                                .binding(true, config::isWeaponSwitchBoolean,
-                                                                                config::setWeaponSwitchBoolean)
-                                                                .controller(TickBoxControllerBuilder::create)
-                                                                .build())
 
                                                 .group(OptionGroup.createBuilder()
                                                                 .name(Component.literal("Auto Refill"))
@@ -217,51 +240,37 @@ public class PiggyConfigScreenFactory {
                                                                 .build())
                                                 .build())
 
-                                // TOOL SWAP CATEGORY
+                                // ADVANCED SETTINGS CATEGORY
                                 .category(ConfigCategory.createBuilder()
-                                                .name(Component.literal("Tool Swap"))
-                                                .tooltip(Component.literal("Configure automatic tool swapping."))
-
-                                                .option(Option.<String>createBuilder()
-                                                                .name(Component.literal("Hotbar Swap Slots"))
-                                                                .description(OptionDescription.of(Component.literal(
-                                                                                "Which hotbar slots can be overwritten?")))
-                                                                .binding(formatSlotList(config.getSwapHotbarSlots()),
-                                                                                () -> formatSlotList(config
-                                                                                                .getSwapHotbarSlots()),
-                                                                                (val) -> config.setSwapHotbarSlots(
-                                                                                                parseSlotString(val)))
-                                                                .controller(StringControllerBuilder::create)
+                                                .name(Component.literal("Advanced Settings"))
+                                                .tooltip(Component.literal("Advanced lists and preferences for various features."))
+                                                
+                                                .group(OptionGroup.createBuilder()
+                                                                .name(Component.literal("Advanced Tool Swap"))
+                                                                .option(Option.<String>createBuilder()
+                                                                                .name(Component.literal("Hotbar Swap Slots"))
+                                                                                .description(OptionDescription.of(Component.literal(
+                                                                                                "Which hotbar slots can be overwritten?")))
+                                                                                .binding(formatSlotList(config.getSwapHotbarSlots()),
+                                                                                                () -> formatSlotList(config
+                                                                                                                .getSwapHotbarSlots()),
+                                                                                                (val) -> config.setSwapHotbarSlots(
+                                                                                                                parseSlotString(val)))
+                                                                                .controller(StringControllerBuilder::create)
+                                                                                .build())
+                                                                .option(Option.<PiggyInventoryConfig.OrePreference>createBuilder()
+                                                                                .name(Component.literal("Ore Preference"))
+                                                                                .description(OptionDescription.of(
+                                                                                                Component.literal(
+                                                                                                                "Prioritize Fortune or Silk Touch when both are applicable.")))
+                                                                                .binding(PiggyInventoryConfig.OrePreference.FORTUNE_PREFERRED,
+                                                                                                config::getGuiOrePreference,
+                                                                                                config::setGuiOrePreference)
+                                                                                .available(config.isToolSwapEnabled())
+                                                                                .controller(opt -> EnumControllerBuilder.create(opt)
+                                                                                                .enumClass(PiggyInventoryConfig.OrePreference.class))
+                                                                                .build())
                                                                 .build())
-                                                .option(Option.<PiggyInventoryConfig.OrePreference>createBuilder()
-                                                                .name(Component.literal("Ore Preference"))
-                                                                .description(OptionDescription.of(
-                                                                                Component.literal(
-                                                                                                "Prioritize Fortune or Silk Touch when both are applicable.")))
-                                                                .binding(PiggyInventoryConfig.OrePreference.FORTUNE_PREFERRED,
-                                                                                config::getGuiOrePreference,
-                                                                                config::setGuiOrePreference)
-                                                                .available(config.isToolSwapEnabled())
-                                                                .controller(opt -> EnumControllerBuilder.create(opt)
-                                                                                .enumClass(PiggyInventoryConfig.OrePreference.class))
-                                                                .build())
-                                                .option(Option.<Boolean>createBuilder()
-                                                                .name(Component.literal("Prevent Tool Break"))
-                                                                .description(OptionDescription.of(Component.literal(
-                                                                                "Prevents the use of tools with 10 or lower durability, automatically swapping to a better tool or preventing mining.")))
-                                                                .binding(true, config::isPreventToolBreak,
-                                                                                config::setPreventToolBreak)
-                                                                .controller(TickBoxControllerBuilder::create)
-                                                                .build())
-                                                .option(Option.<Boolean>createBuilder()
-                                                                .name(Component.literal("Allow Unenchanted Break"))
-                                                                .description(OptionDescription.of(Component.literal(
-                                                                                "If Tool Break Prevention is on, still allow unenchanted tools to break.")))
-                                                                .binding(false, config::isAllowUnenchantedToolsToBreak,
-                                                                                config::setAllowUnenchantedToolsToBreak)
-                                                                .controller(TickBoxControllerBuilder::create)
-                                                                .build())
-
                                                 .group(ListOption.<String>createBuilder()
                                                                 .name(Component.literal(
                                                                                 "Silk Touch Blocks"))
@@ -306,34 +315,31 @@ public class PiggyConfigScreenFactory {
                                                                 .controller(StringControllerBuilder::create)
                                                                 .initial("")
                                                                 .build())
-                                                .build())
 
-                                // WEAPON SWITCH CATEGORY
-                                .category(ConfigCategory.createBuilder()
-                                                .name(Component.literal("Weapon Swap"))
-                                                .tooltip(Component.literal("Configure automatic weapon switching."))
-
-                                                .option(Option.<String>createBuilder()
-                                                                .name(Component.literal("Weapon Hotbar Swap Slots"))
-                                                                .description(OptionDescription.of(Component.literal(
-                                                                                "Which hotbar slots can be overwritten by weapons?")))
-                                                                .binding(formatSlotList(
-                                                                                config.getWeaponSwapHotbarSlots()),
-                                                                                () -> formatSlotList(config
-                                                                                                .getWeaponSwapHotbarSlots()),
-                                                                                (val) -> config.setWeaponSwapHotbarSlots(
-                                                                                                parseSlotString(val)))
-                                                                .controller(StringControllerBuilder::create)
-                                                                .build())
-                                                .option(Option.<PiggyInventoryConfig.WeaponPreference>createBuilder()
-                                                                .name(Component.literal("Weapon Preference"))
-                                                                .description(OptionDescription.of(Component.literal(
-                                                                                "Prioritize highest damage or highest attack speed.")))
-                                                                .binding(PiggyInventoryConfig.WeaponPreference.DAMAGE,
-                                                                                config::getGuiWeaponPreference,
-                                                                                config::setGuiWeaponPreference)
-                                                                .controller(opt -> EnumControllerBuilder.create(opt)
-                                                                                .enumClass(PiggyInventoryConfig.WeaponPreference.class))
+                                                .group(OptionGroup.createBuilder()
+                                                                .name(Component.literal("Advanced Weapon Swap"))
+                                                                .option(Option.<String>createBuilder()
+                                                                                .name(Component.literal("Weapon Hotbar Swap Slots"))
+                                                                                .description(OptionDescription.of(Component.literal(
+                                                                                                "Which hotbar slots can be overwritten by weapons?")))
+                                                                                .binding(formatSlotList(
+                                                                                                config.getWeaponSwapHotbarSlots()),
+                                                                                                () -> formatSlotList(config
+                                                                                                                .getWeaponSwapHotbarSlots()),
+                                                                                                (val) -> config.setWeaponSwapHotbarSlots(
+                                                                                                                parseSlotString(val)))
+                                                                                .controller(StringControllerBuilder::create)
+                                                                                .build())
+                                                                .option(Option.<PiggyInventoryConfig.WeaponPreference>createBuilder()
+                                                                                .name(Component.literal("Weapon Preference"))
+                                                                                .description(OptionDescription.of(Component.literal(
+                                                                                                "Prioritize highest damage or highest attack speed.")))
+                                                                                .binding(PiggyInventoryConfig.WeaponPreference.DAMAGE,
+                                                                                                config::getGuiWeaponPreference,
+                                                                                                config::setGuiWeaponPreference)
+                                                                                .controller(opt -> EnumControllerBuilder.create(opt)
+                                                                                                .enumClass(PiggyInventoryConfig.WeaponPreference.class))
+                                                                                .build())
                                                                 .build())
                                                 .group(ListOption.<String>createBuilder()
                                                                 .name(Component.literal(
@@ -368,24 +374,20 @@ public class PiggyConfigScreenFactory {
                                                                 .controller(StringControllerBuilder::create)
                                                                 .initial("")
                                                                 .build())
-                                                .build())
 
-                                // SORTING CATEGORY
-                                .category(ConfigCategory.createBuilder()
-                                                .name(Component.literal("Sorting"))
-                                                .tooltip(Component.literal("Configure how inventory sorting works."))
-
-                                                .option(Option.<PiggyInventoryConfig.SortLayout>createBuilder()
-                                                                .name(Component.literal("Layout Mode"))
-                                                                .description(OptionDescription.of(Component.literal(
-                                                                                "Row: groups items left-to-right, breaking to the next row between groups.\nColumn: groups items top-to-bottom, breaking to the next column between groups.")))
-                                                                .binding(PiggyInventoryConfig.SortLayout.ROW,
-                                                                                config::getSortLayout,
-                                                                                config::setSortLayout)
-                                                                .controller(opt -> EnumControllerBuilder.create(opt)
-                                                                                .enumClass(PiggyInventoryConfig.SortLayout.class))
+                                                .group(OptionGroup.createBuilder()
+                                                                .name(Component.literal("Advanced Sorting"))
+                                                                .option(Option.<PiggyInventoryConfig.SortLayout>createBuilder()
+                                                                                .name(Component.literal("Layout Mode"))
+                                                                                .description(OptionDescription.of(Component.literal(
+                                                                                                "Row: groups items left-to-right, breaking to the next row between groups.\nColumn: groups items top-to-bottom, breaking to the next column between groups.")))
+                                                                                .binding(PiggyInventoryConfig.SortLayout.ROW,
+                                                                                                config::getSortLayout,
+                                                                                                config::setSortLayout)
+                                                                                .controller(opt -> EnumControllerBuilder.create(opt)
+                                                                                                .enumClass(PiggyInventoryConfig.SortLayout.class))
+                                                                                .build())
                                                                 .build())
-
                                                 .group(ListOption.<String>createBuilder()
                                                                 .name(Component.literal("Comparator Order"))
                                                                 .description(OptionDescription.of(Component.literal(
