@@ -49,6 +49,14 @@ public class AutoRefillHandler {
             return; // Wait for the queue to finish refilling
         }
 
+        if (is.pig.minecraft.lib.action.PiggyActionQueue.getInstance().isSuppressAutoRefill() || 
+            is.pig.minecraft.lib.action.deferred.DeferredActionTracker.getInstance().hasPayloads()) {
+            // Acknowledge current hand states silently without refilling so it doesn't instantly refill the moment tracking drops
+            lastMainHandStack = currentMainStack.copy();
+            lastOffHandStack = currentOffStack.copy();
+            return; 
+        }
+
         int cps = is.pig.minecraft.inventory.config.PiggyInventoryConfig.getInstance().getTickDelay();
         long minDelay = cps > 0 ? 1000L / cps : 0;
         long currentTime = System.currentTimeMillis();
