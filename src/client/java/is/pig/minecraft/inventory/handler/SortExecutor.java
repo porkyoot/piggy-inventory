@@ -5,18 +5,16 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.world.inventory.ClickType;
 import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
 
 public class SortExecutor {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger("piggy-inventory-sort");
     private static SortExecutor INSTANCE;
 
     private boolean isExecuting = false;
+    private is.pig.minecraft.lib.util.telemetry.MetaActionSession currentSession;
 
     private List<Slot> targetSlots;
     private List<ItemStack> targetItems;
@@ -43,14 +41,28 @@ public class SortExecutor {
     }
 
     public void startSort(List<Slot> slots, List<ItemStack> target) {
+        if (is.pig.minecraft.lib.util.telemetry.MetaActionSessionManager.getInstance().getCurrentSession().isEmpty()) {
+            this.currentSession = is.pig.minecraft.lib.util.telemetry.MetaActionSessionManager.getInstance().startSession("Sort");
+        } else {
+            this.currentSession = is.pig.minecraft.lib.util.telemetry.MetaActionSessionManager.getInstance().getCurrentSession().get();
+        }
+        
         if (slots.size() != target.size()) {
-            LOGGER.error("SortExecutor invariant failed: Slot count ({}) != Target item count ({})", slots.size(), target.size());
+            String err = String.format("SortExecutor invariant failed: Slot count (%d) != Target item count (%d)", slots.size(), target.size());
+            if (currentSession != null) currentSession.fail(err);
             return;
         }
 
         this.targetSlots = slots;
         this.targetItems = target;
         this.isExecuting = true;
+
+        if (currentSession != null) {
+            currentSession.info("SortExecutor processing " + slots.size() + " slots");
+            currentSession.info("Initial Context: " + is.pig.minecraft.lib.util.telemetry.formatter.PiggyTelemetryFormatter.formatPlayer(Minecraft.getInstance().player));
+            currentSession.info("Player State: " + is.pig.minecraft.lib.util.telemetry.formatter.PiggyTelemetryFormatter.formatFullPlayerInventory(Minecraft.getInstance().player));
+            currentSession.info("Target Layout: " + is.pig.minecraft.lib.util.telemetry.formatter.PiggyTelemetryFormatter.formatItemStacks(target));
+        }
 
         buildQueue();
     }
@@ -60,43 +72,47 @@ public class SortExecutor {
         this.actionQueue.clear();
         
         Minecraft client = Minecraft.getInstance();
-        if (client.player == null) return;
-        
-        if (notifySuccess) {
-            // Validate if sorting actually succeeded
-            if (verifySortState(client)) {
-                // is.pig.minecraft.lib.util.PiggyMessenger.sendSuccess(client.player, "piggy.inventory.sort.success");
-            } else {
-                is.pig.minecraft.lib.util.PiggyMessenger.sendClientErrorWithLog(
-                    client.player, "piggy.inventory.sort.failed", 
-                    new java.io.File(client.gameDirectory, "logs/debug.log").getAbsolutePath());
-            }
+        if (client.player == null) {
+            if (currentSession != null) currentSession.discard();
+            this.currentSession = null;
+            return;
         }
         
+        if (notifySuccess) {
+            if (verifySortState(client, true)) {
+                if (currentSession != null) currentSession.succeed();
+            } else {
+                if (currentSession != null) {
+                    currentSession.fail("Verification mismatch after execution");
+                }
+            }
+        } else if (currentSession != null) {
+            currentSession.discard();
+        }
+        
+        this.currentSession = null;
         is.pig.minecraft.inventory.handler.SortHandler.getInstance().cleanup();
     }
     
     public void abortSort(String reason) {
-        LOGGER.error("Sort aborted -> {}", reason);
-        Minecraft client = Minecraft.getInstance();
-        if (client.player != null) {
-            is.pig.minecraft.lib.util.PiggyMessenger.sendClientErrorWithLog(
-                client.player, "piggy.inventory.sort.interrupted", 
-                new java.io.File(client.gameDirectory, "logs/debug.log").getAbsolutePath(), reason);
+        if (currentSession != null) {
+            currentSession.fail("Sort Aborted: " + reason);
         }
+        
         is.pig.minecraft.lib.action.PiggyActionQueue.getInstance().clear("piggy-inventory-sort");
         stopSort(false);
     }
 
-    private boolean verifySortState(Minecraft client) {
+    private boolean verifySortState(Minecraft client, boolean logErrors) {
         if (client.screen instanceof net.minecraft.client.gui.screens.inventory.AbstractContainerScreen<?> || is.pig.minecraft.inventory.handler.SortHandler.getInstance().getHiddenScreen() != null) {
             boolean success = true;
             for (int i = 0; i < targetSlots.size(); i++) {
                 ItemStack current = targetSlots.get(i).getItem();
                 ItemStack target = targetItems.get(i);
                 if (!isSameAndEqual(current, target)) {
-                    LOGGER.error("Sort Validation Failed at slot {}: expected {} x{}, got {} x{}",
-                            i, target.getItem(), target.getCount(), current.getItem(), current.getCount());
+                    if (currentSession != null && logErrors) {
+                        currentSession.error(is.pig.minecraft.lib.util.telemetry.formatter.PiggyTelemetryFormatter.formatValidationFailure(i, target, current));
+                    }
                     success = false;
                 }
             }
@@ -123,13 +139,7 @@ public class SortExecutor {
             changed = false;
             
             if (safetyGlobal++ > 50000) { // Failsafe augmented for massive custom stacks (64x transfers)
-                LOGGER.error("SortExecutor: Algorithm stuck globally. Sorting aborted.");
-                Minecraft client = Minecraft.getInstance();
-                if (client.player != null) {
-                   is.pig.minecraft.lib.util.PiggyMessenger.sendClientErrorWithLog(
-                       client.player, "piggy.inventory.sort.stuck", 
-                       new java.io.File(client.gameDirectory, "logs/debug.log").getAbsolutePath());
-                }
+                if (currentSession != null) currentSession.fail("Algorithm stuck globally (50k iterations)");
                 actionQueue.clear();
                 return;
             }
@@ -159,11 +169,12 @@ public class SortExecutor {
                             changed = true;
                             
                             final int finalTSlot = tSlot;
-                            is.pig.minecraft.lib.util.telemetry.MetaActionSessionManager.getInstance().getCurrentSession().ifPresent(s -> 
-                                s.logAction("Cursor placement/swap", 
+                            if (currentSession != null) {
+                                currentSession.logAction("Cursor placement/swap", 
                                     is.pig.minecraft.lib.util.telemetry.formatter.PiggyTelemetryFormatter.formatInventoryContext(
                                         cursor.stack, -1, targetSlots.get(finalTSlot).index, ItemStack.EMPTY, targetSlots.get(finalTSlot).getItem()),
-                                    "Slot updated"));
+                                    "Slot updated");
+                            }
                         }
                     }
                     if (changed) continue;
@@ -353,7 +364,7 @@ public class SortExecutor {
                 "piggy-inventory-sort", 
                 "Sort Inventory", 
                 clicks, 
-                () -> this.verifySortState(Minecraft.getInstance())
+                () -> this.verifySortState(Minecraft.getInstance(), false)
         );
         if (cps <= 0) bulkAction.setIgnoreGlobalCps(true);
         
@@ -596,11 +607,12 @@ public class SortExecutor {
         final ItemStack finalCursor = cs.stack.copy();
         final ItemStack finalSlotItem = slot.copy();
         
-        is.pig.minecraft.lib.util.telemetry.MetaActionSessionManager.getInstance().getCurrentSession().ifPresent(s -> 
-            s.logAction("Slot Click", 
+        if (currentSession != null) {
+            currentSession.logAction("Slot Click", 
                 is.pig.minecraft.lib.util.telemetry.formatter.PiggyTelemetryFormatter.formatInventoryContext(
                     finalCursor, -1, targetSlots.get(finalIdx).index, ItemStack.EMPTY, finalSlotItem),
-                "Button: " + finalButton));
+                "Button: " + finalButton);
+        }
 
         actionQueue.add(new Action(targetSlots.get(idx).index, button));
         return true;

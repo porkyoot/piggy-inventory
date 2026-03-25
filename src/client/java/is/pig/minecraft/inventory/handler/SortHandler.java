@@ -92,14 +92,28 @@ public class SortHandler {
 
         if (awaitingContainer && System.currentTimeMillis() - requestTime < 1000) return;
 
+        is.pig.minecraft.lib.util.telemetry.MetaActionSessionManager.getInstance().startSession("Sort");
+        is.pig.minecraft.lib.util.telemetry.MetaActionSessionManager.getInstance().getCurrentSession().ifPresent(s -> {
+            s.info("Remote sort triggered");
+            s.info("Initial Context: " + is.pig.minecraft.lib.util.telemetry.formatter.PiggyTelemetryFormatter.formatPlayer(client.player));
+            s.info("Player State: " + is.pig.minecraft.lib.util.telemetry.formatter.PiggyTelemetryFormatter.formatFullPlayerInventory(client.player));
+        });
+
         awaitingContainer = true;
         requestTime = System.currentTimeMillis();
 
         if (hit.getType() == net.minecraft.world.phys.HitResult.Type.BLOCK) {
+            net.minecraft.world.phys.BlockHitResult bHit = (net.minecraft.world.phys.BlockHitResult) hit;
+            is.pig.minecraft.lib.util.telemetry.MetaActionSessionManager.getInstance().getCurrentSession().ifPresent(s -> 
+                s.info("Targeted Block: " + is.pig.minecraft.lib.util.telemetry.formatter.PiggyTelemetryFormatter.formatBlock(bHit.getBlockPos(), client.level.getBlockState(bHit.getBlockPos()), client.level)));
+            
             client.player.connection.send(new net.minecraft.network.protocol.game.ServerboundUseItemOnPacket(
-                    net.minecraft.world.InteractionHand.MAIN_HAND, (net.minecraft.world.phys.BlockHitResult) hit, 0));
+                    net.minecraft.world.InteractionHand.MAIN_HAND, bHit, 0));
         } else if (hit.getType() == net.minecraft.world.phys.HitResult.Type.ENTITY) {
             net.minecraft.world.phys.EntityHitResult entityHit = (net.minecraft.world.phys.EntityHitResult) hit;
+            is.pig.minecraft.lib.util.telemetry.MetaActionSessionManager.getInstance().getCurrentSession().ifPresent(s -> 
+                s.info("Targeted Entity: " + is.pig.minecraft.lib.util.telemetry.formatter.PiggyTelemetryFormatter.formatEntity(entityHit.getEntity())));
+            
             client.player.connection.send(net.minecraft.network.protocol.game.ServerboundInteractPacket.createInteractionPacket(
                     entityHit.getEntity(),
                     true, // Force sneak to prevent mounting vehicles like boats
@@ -157,9 +171,13 @@ public class SortHandler {
     }
 
     public void handleSort(Minecraft client, Slot hoveredSlot, AbstractContainerScreen<?> screen) {
-        is.pig.minecraft.lib.util.telemetry.MetaActionSessionManager.getInstance().startSession("inventory_sort");
+        if (is.pig.minecraft.lib.util.telemetry.MetaActionSessionManager.getInstance().getCurrentSession().isEmpty()) {
+             is.pig.minecraft.lib.util.telemetry.MetaActionSessionManager.getInstance().startSession("Sort");
+        }
         is.pig.minecraft.lib.util.telemetry.MetaActionSessionManager.getInstance().getCurrentSession().ifPresent(s -> {
-            s.info("Starting inventory sort session");
+             s.info("Local sort triggered");
+             s.info("Initial Context: " + is.pig.minecraft.lib.util.telemetry.formatter.PiggyTelemetryFormatter.formatPlayer(client.player));
+             s.info("Player State: " + is.pig.minecraft.lib.util.telemetry.formatter.PiggyTelemetryFormatter.formatFullPlayerInventory(client.player));
         });
 
         // Determine the target container. Default to player inventory if nothing is hovered.

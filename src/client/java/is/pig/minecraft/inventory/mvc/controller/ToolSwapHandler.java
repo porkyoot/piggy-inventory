@@ -348,7 +348,7 @@ public class ToolSwapHandler {
     private void swapToSlot(Minecraft client, int currentSlot, int bestSlot, List<Integer> allowedSlots) {
         if (bestSlot < 9) {
             is.pig.minecraft.lib.action.PiggyActionQueue.getInstance().enqueue(
-                new is.pig.minecraft.lib.action.inventory.SelectHotbarSlotAction(bestSlot, "piggy-inventory")
+                new is.pig.minecraft.lib.action.inventory.SelectHotbarSlotAction(bestSlot, "piggy-inventory", is.pig.minecraft.lib.action.ActionPriority.NORMAL)
             );
         } else {
             if (allowedSlots == null || allowedSlots.isEmpty()) {
@@ -370,13 +370,14 @@ public class ToolSwapHandler {
                     bestSlot,
                     targetSlot,
                     ClickType.SWAP,
-                    "piggy-inventory"
+                    "piggy-inventory",
+                    is.pig.minecraft.lib.action.ActionPriority.HIGH
                 )
             );
 
             if (client.player.getInventory().selected != targetSlot) {
                 is.pig.minecraft.lib.action.PiggyActionQueue.getInstance().enqueue(
-                    new is.pig.minecraft.lib.action.inventory.SelectHotbarSlotAction(targetSlot, "piggy-inventory")
+                    new is.pig.minecraft.lib.action.inventory.SelectHotbarSlotAction(targetSlot, "piggy-inventory", is.pig.minecraft.lib.action.ActionPriority.HIGH)
                 );
             }
         }

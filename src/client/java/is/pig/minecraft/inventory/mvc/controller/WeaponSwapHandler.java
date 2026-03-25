@@ -74,7 +74,7 @@ public class WeaponSwapHandler {
         if (bestSlot < 9) {
             // Simple hotbar swap
             is.pig.minecraft.lib.action.PiggyActionQueue.getInstance().enqueue(
-                new is.pig.minecraft.lib.action.inventory.SelectHotbarSlotAction(bestSlot, "piggy-inventory")
+                new is.pig.minecraft.lib.action.inventory.SelectHotbarSlotAction(bestSlot, "piggy-inventory", is.pig.minecraft.lib.action.ActionPriority.HIGH)
             );
         } else {
             // Inventory swap logic
@@ -97,13 +97,14 @@ public class WeaponSwapHandler {
                         bestSlot,
                         targetSlot,
                         net.minecraft.world.inventory.ClickType.SWAP,
-                        "piggy-inventory"
+                        "piggy-inventory",
+                        is.pig.minecraft.lib.action.ActionPriority.HIGH
                 )
             );
 
             if (client.player.getInventory().selected != targetSlot) {
                 is.pig.minecraft.lib.action.PiggyActionQueue.getInstance().enqueue(
-                    new is.pig.minecraft.lib.action.inventory.SelectHotbarSlotAction(targetSlot, "piggy-inventory")
+                    new is.pig.minecraft.lib.action.inventory.SelectHotbarSlotAction(targetSlot, "piggy-inventory", is.pig.minecraft.lib.action.ActionPriority.HIGH)
                 );
             }
         }
