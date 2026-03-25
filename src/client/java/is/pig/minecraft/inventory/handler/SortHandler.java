@@ -157,6 +157,10 @@ public class SortHandler {
     }
 
     public void handleSort(Minecraft client, Slot hoveredSlot, AbstractContainerScreen<?> screen) {
+        is.pig.minecraft.lib.util.telemetry.MetaActionSessionManager.getInstance().startSession("inventory_sort");
+        is.pig.minecraft.lib.util.telemetry.MetaActionSessionManager.getInstance().getCurrentSession().ifPresent(s -> {
+            s.info("Starting inventory sort session");
+        });
 
         // Determine the target container. Default to player inventory if nothing is hovered.
         net.minecraft.world.Container targetContainer = client.player.getInventory();
@@ -200,6 +204,11 @@ public class SortHandler {
                 if (slot.y > maxY) maxY = slot.y;
             }
         }
+
+        final List<Slot> finalSlotsToSort = slotsToSort;
+        is.pig.minecraft.lib.util.telemetry.MetaActionSessionManager.getInstance().getCurrentSession().ifPresent(s -> {
+            s.info("Initial state: " + is.pig.minecraft.lib.util.telemetry.formatter.PiggyTelemetryFormatter.formatInventory(finalSlotsToSort));
+        });
 
         boolean isEmpty = true;
         for (ItemStack stack : items) {

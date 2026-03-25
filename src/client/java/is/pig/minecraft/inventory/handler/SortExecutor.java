@@ -157,6 +157,13 @@ public class SortExecutor {
                         if (click(tSlot, 0, current, cursor)) {
                             pickupSlot = tSlot; // Track where we might have swapped from
                             changed = true;
+                            
+                            final int finalTSlot = tSlot;
+                            is.pig.minecraft.lib.util.telemetry.MetaActionSessionManager.getInstance().getCurrentSession().ifPresent(s -> 
+                                s.logAction("Cursor placement/swap", 
+                                    is.pig.minecraft.lib.util.telemetry.formatter.PiggyTelemetryFormatter.formatInventoryContext(
+                                        cursor.stack, -1, targetSlots.get(finalTSlot).index, ItemStack.EMPTY, targetSlots.get(finalTSlot).getItem()),
+                                    "Slot updated"));
                         }
                     }
                     if (changed) continue;
@@ -583,6 +590,17 @@ public class SortExecutor {
                 }
             }
         }
+
+        final int finalIdx = idx;
+        final int finalButton = button;
+        final ItemStack finalCursor = cs.stack.copy();
+        final ItemStack finalSlotItem = slot.copy();
+        
+        is.pig.minecraft.lib.util.telemetry.MetaActionSessionManager.getInstance().getCurrentSession().ifPresent(s -> 
+            s.logAction("Slot Click", 
+                is.pig.minecraft.lib.util.telemetry.formatter.PiggyTelemetryFormatter.formatInventoryContext(
+                    finalCursor, -1, targetSlots.get(finalIdx).index, ItemStack.EMPTY, finalSlotItem),
+                "Button: " + finalButton));
 
         actionQueue.add(new Action(targetSlots.get(idx).index, button));
         return true;
