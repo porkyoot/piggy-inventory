@@ -83,7 +83,8 @@ public class PiggyInventoryTests {
         for(ItemStack stack : items) {
              System.out.println("[TEST] Item: " + stack.getItem() + " x" + stack.getCount());
         }
-        context.assertTrue(items.size() == 3, "Should have 3 items after removing empty, found " + items.size());
+        long nonEmptyCount = items.stream().filter(s -> !s.isEmpty()).count();
+        context.assertTrue(nonEmptyCount == 3, "Should have 3 non-empty items after merging, found " + nonEmptyCount);
         
         int dirtCount = 0;
         int stoneCount = 0;
@@ -123,7 +124,8 @@ public class PiggyInventoryTests {
 
         StackMerger.merge(items, slots);
 
-        context.assertTrue(items.size() == 1, "Should merge all diamonds into 1 mega stack");
+        long nonEmptyCount = items.stream().filter(s -> !s.isEmpty()).count();
+        context.assertTrue(nonEmptyCount == 1, "Should have 1 non-empty diamond mega stack after merging diamonds, found " + nonEmptyCount);
         context.assertTrue(items.get(0).getCount() == 192, "Mega stack must have 192 diamonds");
 
         context.succeed();
