@@ -7,8 +7,15 @@ import net.minecraft.world.item.ItemStack;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * Utility for consolidating item stacks effectively.
+ * Supports "Mega Stacks" (>64 items) by interacting with specialized slot maximum sizes
+ * and provides a click-generation mode for the {@link PiggyActionQueue}.
+ */
 public class StackMerger {
-
+    /**
+     * Represents a simulated inventory interaction.
+     */
     public record Click(int slotIndex, int button, ClickType type) {}
 
     // Overloaded method to maintain backward compatibility for tests and unrefactored code
@@ -20,6 +27,15 @@ public class StackMerger {
         return merge(items, slots, null, generateClicks);
     }
 
+    /**
+     * Consolidates items by merging identical stacks into target slots.
+     * 
+     * @param items Current snapshot of item stacks.
+     * @param slots Available inventory slots.
+     * @param protectedSlots Optional list of slots to avoid modifying.
+     * @param generateClicks If true, returns a list of {@link Click} actions to replicate the merge.
+     * @return A list of simulated clicks required to perform the consolidation.
+     */
     public static List<Click> merge(List<ItemStack> items, List<Slot> slots, List<Boolean> protectedSlots, boolean generateClicks) {
         List<Click> actions = new ArrayList<>();
         
