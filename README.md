@@ -10,7 +10,7 @@ A simple yet powerful mod designed to enhance your inventory management experien
 
 ## Screenshots
 
-*Coming soon*
+*Coming soon (TM)*
 
 ---
 
