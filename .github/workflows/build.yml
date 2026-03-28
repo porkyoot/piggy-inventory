@@ -50,7 +50,7 @@ jobs:
           EOF
 
       - name: Build
-        run: ./gradlew :piggy-inventory:build
+        run: ./gradlew :piggy-inventory:assemble
 
       - name: Capture Build Artifacts
         uses: actions/upload-artifact@v4
