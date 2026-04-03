@@ -223,6 +223,14 @@ public class SortHandler {
             }
         }
 
+        // Include carried item in the sortable set
+        ItemStack carried = client.player.containerMenu.getCarried();
+        if (!carried.isEmpty()) {
+            items.add(carried.copy());
+            // Implicitly, we need a "slot" for this item. 
+            // We use null to represent the virtual cursor slot.
+        }
+
         final List<Slot> finalSlotsToSort = slotsToSort;
         is.pig.minecraft.lib.util.telemetry.MetaActionSessionManager.getInstance().getCurrentSession().ifPresent(s -> {
             s.info("Initial state: " + is.pig.minecraft.lib.util.telemetry.formatter.PiggyTelemetryFormatter.formatInventory(finalSlotsToSort));
@@ -269,6 +277,16 @@ public class SortHandler {
                 ? new is.pig.minecraft.inventory.sorting.layout.ColumnLayout(layoutComparators)
                 : new RowLayout(layoutComparators);
         List<ItemStack> finalPositions = layout.layout(items, slotsToSort);
+
+        // If we have an extra item for the cursor, add it to the final positions
+        if (items.size() > slotsToSort.size()) {
+            finalPositions.add(items.get(items.size() - 1));
+        } else {
+            finalPositions.add(ItemStack.EMPTY);
+        }
+        
+        // Add a null slot to slotsToSort to represent the virtual cursor slot index
+        slotsToSort.add(null);
 
         // Verification: Ensure no items were dropped by layout padding running out of bounds
         List<ItemStack> trackingList = new ArrayList<>(items);

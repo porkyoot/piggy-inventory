@@ -24,6 +24,8 @@ public class SortExecutor implements ActionCallback {
     private final AtomicBoolean isExecuting = new AtomicBoolean(false);
     private final AtomicInteger retryCount = new AtomicInteger(0);
     private final AtomicBoolean isRescuing = new AtomicBoolean(false);
+    private boolean isWaitingForRetry = false;
+    private int retryWaitTicks = 0;
     private int lastStateHash = 0;
 
     private is.pig.minecraft.lib.util.telemetry.MetaActionSession currentSession;
@@ -31,9 +33,6 @@ public class SortExecutor implements ActionCallback {
     private List<Slot> targetSlots;
     private List<ItemStack> targetItems;
     private Slot[] slotsArray;
-    
-    private static final net.minecraft.resources.ResourceLocation SORT_ICON =
-            net.minecraft.resources.ResourceLocation.fromNamespaceAndPath("piggy", "textures/gui/icons/quick_sort.png");
 
     private SortExecutor() {
         ClientTickEvents.END_CLIENT_TICK.register(this::onTick);
@@ -62,7 +61,26 @@ public class SortExecutor implements ActionCallback {
 
         this.targetSlots = slots;
         this.targetItems = target;
+        if (isExecuting.get() && retryCount.get() == 0) return;
         this.isExecuting.set(true);
+
+        // Safety Check: Detect 100% full + overstacked modded inventory (Bug Fix #6)
+        int emptySlots = 0;
+        boolean hasOverstacked = false;
+        for (Slot slot : slots) {
+            if (slot == null) continue; // Virtual cursor slot
+            ItemStack stack = slot.getItem();
+            if (stack.isEmpty()) {
+                emptySlots++;
+            } else if (stack.getCount() > stack.getMaxStackSize()) {
+                hasOverstacked = true;
+            }
+        }
+
+        if (emptySlots == 0 && hasOverstacked) {
+            abortSort("Cannot sort 100% full inventory containing overstacked modded items. Please clear at least one slot.");
+            return;
+        }
 
         if (currentSession != null) {
             currentSession.info("SortExecutor v3.0 starting - Async Architecture Active (Retry #" + retryCount.get() + ")");
@@ -75,45 +93,11 @@ public class SortExecutor implements ActionCallback {
         Minecraft client = Minecraft.getInstance();
         if (client.player == null) return;
 
-        // Verify the current inventory state hasn't devolved into an infinite loop of the same state
-        int currentHash = calculateStateHash();
-        if (retryCount.get() > 0 && currentHash == lastStateHash && !isRescuing.get()) {
-            abortSort("Recovery cycle detected - State hash identity check failed.");
-            return;
-        }
-        this.lastStateHash = currentHash;
-
         int containerId = client.player.containerMenu.containerId;
 
-        // 0. Cursor Rescue (Invariant Guard)
-        if (!client.player.containerMenu.getCarried().isEmpty()) {
-            isRescuing.set(true);
-            int emptySlotId = -1;
-            for (Slot slot : client.player.containerMenu.slots) {
-                if (slot.getItem().isEmpty()) {
-                    emptySlotId = slot.index;
-                    break;
-                }
-            }
-
-            if (emptySlotId != -1) {
-                if (currentSession != null) currentSession.info("Cursor not empty - Parking item before re-scan.");
-                var rescueAction = new is.pig.minecraft.lib.action.inventory.ClickWindowSlotAction(
-                        containerId, emptySlotId, 0, net.minecraft.world.inventory.ClickType.PICKUP, "piggy-inventory-sort")
-                        .withExpectedCursorAfter(ItemStack::isEmpty);
-                
-                rescueAction.setCallback(success -> {
-                    isRescuing.set(false);
-                    if (success) Minecraft.getInstance().execute(this::buildQueueAsync);
-                    else abortSort("Failed to park cursor item during recovery.");
-                });
-                
-                is.pig.minecraft.lib.action.PiggyActionQueue.getInstance().enqueue(rescueAction);
-                return;
-            } else {
-                abortSort("Inventory 100% full (no rescue slots found). Cannot recover cursor.");
-                return;
-            }
+        ItemStack carried = client.player.containerMenu.getCarried();
+        if (currentSession != null && !carried.isEmpty()) {
+            currentSession.info("Initial cursor state: " + is.pig.minecraft.lib.util.telemetry.formatter.PiggyTelemetryFormatter.formatItem(carried));
         }
 
         // 1. Snapshot the live state on the Main Thread
@@ -122,9 +106,14 @@ public class SortExecutor implements ActionCallback {
         java.util.Set<Integer> sortedIndices = new java.util.HashSet<>();
 
         for (int i = 0; i < targetSlots.size(); i++) {
-            slotsArray[i] = targetSlots.get(i);
-            currentSnapshot[i] = slotsArray[i].getItem().copy();
-            sortedIndices.add(slotsArray[i].index);
+            Slot slot = targetSlots.get(i);
+            slotsArray[i] = slot;
+            if (slot != null) {
+                currentSnapshot[i] = slot.getItem().copy();
+                sortedIndices.add(slot.index);
+            } else {
+                currentSnapshot[i] = carried.copy();
+            }
         }
 
         int externalBuffer = is.pig.minecraft.lib.inventory.sort.SortingClickGenerator.NO_SLOT;
@@ -147,9 +136,18 @@ public class SortExecutor implements ActionCallback {
                     new is.pig.minecraft.lib.inventory.sort.SortingClickGenerator(
                             currentSnapshot, desiredStateArray, slotsArray,
                             finalExternalBuffer, containerId, "piggy-inventory-sort",
-                            is.pig.minecraft.lib.action.ActionPriority.NORMAL
+                            is.pig.minecraft.lib.action.ActionPriority.NORMAL, carried
                     );
             return generator.generate();
+        }).exceptionally(ex -> {
+            if (currentSession != null) {
+                currentSession.error("Generator crashed during calculation: " + ex.getMessage());
+                for (StackTraceElement element : ex.getStackTrace()) {
+                    currentSession.error("    at " + element.toString());
+                }
+            }
+            Minecraft.getInstance().execute(() -> abortSort("Generator crashed (Check telemetry dump)"));
+            return java.util.Collections.emptyList();
         }).thenAcceptAsync(clicks -> {
             // 3. Back to Main Thread to enqueue
             if (!isExecuting.get()) return;
@@ -173,16 +171,13 @@ public class SortExecutor implements ActionCallback {
     @Override
     public void onResult(boolean success) {
         if (!success && isExecuting.get()) {
-            if (retryCount.incrementAndGet() > 3) {
-                abortSort("Resilience threshold reached (3 failures). Aborting.");
+            if (retryCount.incrementAndGet() > 5) {
+                abortSort("Resilience threshold reached (5 failures). Aborting.");
             } else {
-                if (currentSession != null) currentSession.warn("Sort action verification failed. Attempting recovery...");
-                
-                // Clear the rest of the current plan to prevent scrambled inventory 
+                if (currentSession != null) currentSession.warn("Sort action execution failed. Retrying...");
                 is.pig.minecraft.lib.action.PiggyActionQueue.getInstance().clear("piggy-inventory-sort");
-                
-                // Wait 1 tick for state to settle, then re-spawn
-                Minecraft.getInstance().execute(this::buildQueueAsync);
+                isWaitingForRetry = true;
+                retryWaitTicks = 10;
             }
         }
     }
@@ -190,7 +185,7 @@ public class SortExecutor implements ActionCallback {
     private int calculateStateHash() {
         int hash = 1;
         for (Slot slot : targetSlots) {
-            ItemStack stack = slot.getItem();
+            ItemStack stack = (slot != null) ? slot.getItem() : Minecraft.getInstance().player.containerMenu.getCarried();
             hash = 31 * hash + net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(stack.getItem()).hashCode();
             hash = 31 * hash + stack.getCount();
         }
@@ -200,6 +195,7 @@ public class SortExecutor implements ActionCallback {
     public void stopSort(boolean notifySuccess) {
         this.isExecuting.set(false);
         this.retryCount.set(0);
+        this.isWaitingForRetry = false; // Ne pas oublier de réinitialiser
         is.pig.minecraft.lib.action.PiggyActionQueue.getInstance().clear("piggy-inventory-sort");
 
         Minecraft client = Minecraft.getInstance();
@@ -234,7 +230,7 @@ public class SortExecutor implements ActionCallback {
                 || SortHandler.getInstance().getHiddenScreen() != null) {
             boolean success = true;
             for (int i = 0; i < targetSlots.size(); i++) {
-                ItemStack current = targetSlots.get(i).getItem();
+                ItemStack current = (targetSlots.get(i) != null) ? targetSlots.get(i).getItem() : client.player.containerMenu.getCarried();
                 ItemStack target = targetItems.get(i);
                 if (!isSameAndEqual(current, target)) {
                     if (currentSession != null && logErrors) {
@@ -259,8 +255,31 @@ public class SortExecutor implements ActionCallback {
         if (!isExecuting.get()) return;
         if (client.player == null) { abortSort("Disconnected"); return; }
 
+        // Si on est en période de récupération (attente des paquets du serveur)
+        if (isWaitingForRetry) {
+            if (retryWaitTicks > 0) {
+                retryWaitTicks--;
+            } else {
+                isWaitingForRetry = false;
+                buildQueueAsync(); // On relance la fin du tri
+            }
+            return;
+        }
+
+        // Si la file d'attente est vide, on vérifie
         if (!is.pig.minecraft.lib.action.PiggyActionQueue.getInstance().hasActions("piggy-inventory-sort")) {
-            stopSort(true);
+            if (verifySortState(client, false)) {
+                stopSort(true); // Succès total !
+            } else {
+                // Le serveur a rejeté des paquets. On lance le Retry.
+                if (retryCount.incrementAndGet() > 5) {
+                    abortSort("Resilience threshold reached (5 validation failures). Aborting.");
+                } else {
+                    if (currentSession != null) currentSession.warn("Server desync detected. Retrying... (" + retryCount.get() + "/5)");
+                    isWaitingForRetry = true;
+                    retryWaitTicks = 1; // On attend 0.5s que le serveur nous corrige
+                }
+            }
         }
     }
 }
