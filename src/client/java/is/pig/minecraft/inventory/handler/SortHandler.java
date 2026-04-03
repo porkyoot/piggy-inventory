@@ -4,6 +4,7 @@ import is.pig.minecraft.inventory.sorting.Comparators;
 import is.pig.minecraft.inventory.sorting.StackMerger;
 import is.pig.minecraft.inventory.sorting.layout.ISortingLayout;
 import is.pig.minecraft.inventory.sorting.layout.RowLayout;
+import is.pig.minecraft.lib.inventory.sort.TargetInventorySnapshot;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.world.inventory.Slot;
@@ -11,6 +12,7 @@ import net.minecraft.world.item.ItemStack;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import net.minecraft.world.level.block.state.BlockState;
 
 public class SortHandler {
@@ -322,8 +324,28 @@ public class SortHandler {
             }
         }
 
-        // 4. Write back to slots using packets/actions via the Executor
-        SortExecutor.getInstance().startSort(slotsToSort, finalPositions);
+        // 4. Generate Snapshot and Delegate to Orchestrator
+        Map<Integer, ItemStack> slotTargets = new java.util.HashMap<>();
+        ItemStack cursorTarget = ItemStack.EMPTY;
+
+        for (int i = 0; i < slotsToSort.size(); i++) {
+            Slot slot = slotsToSort.get(i);
+            ItemStack targetStack = finalPositions.get(i);
+            if (slot != null) {
+                slotTargets.put(slot.index, targetStack);
+            } else {
+                cursorTarget = targetStack;
+            }
+        }
+
+        TargetInventorySnapshot snapshot = new TargetInventorySnapshot(
+                client.player.containerMenu.containerId,
+                slotTargets,
+                cursorTarget,
+                "piggy-inventory-sort"
+        );
+
+        RobustSortOrchestrator.getInstance().startSort(snapshot);
     }
 }
 
