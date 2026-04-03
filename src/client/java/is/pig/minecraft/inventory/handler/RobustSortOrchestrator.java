@@ -1,207 +1,161 @@
 package is.pig.minecraft.inventory.handler;
 
 import is.pig.minecraft.lib.action.ActionPriority;
-import is.pig.minecraft.lib.action.BulkAction;
+import is.pig.minecraft.lib.action.BurstBulkAction;
 import is.pig.minecraft.lib.action.IAction;
 import is.pig.minecraft.lib.action.PiggyActionQueue;
 import is.pig.minecraft.lib.action.inventory.ClickWindowSlotAction;
-import is.pig.minecraft.lib.inventory.sort.BurstController;
 import is.pig.minecraft.lib.inventory.sort.InventoryOptimizer;
 import is.pig.minecraft.lib.inventory.sort.InventorySnapshot;
 import is.pig.minecraft.lib.inventory.sort.Move;
 import is.pig.minecraft.lib.inventory.sort.TargetInventorySnapshot;
 import is.pig.minecraft.lib.util.telemetry.MetaActionSession;
 import is.pig.minecraft.lib.util.telemetry.MetaActionSessionManager;
-import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.minecraft.client.Minecraft;
 import net.minecraft.world.inventory.ClickType;
 import net.minecraft.world.item.ItemStack;
-
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
+import java.util.function.BooleanSupplier;
+import java.util.function.IntSupplier;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 /**
  * Robust, state-machine based sorting orchestrator.
- * Dynamically reconciles client-side state with a target layout.
+ * Uses library-provided BurstBulkAction for congestion-controlled sorting.
  */
 public class RobustSortOrchestrator {
     private static final RobustSortOrchestrator INSTANCE = new RobustSortOrchestrator();
 
     private final InventoryOptimizer optimizer = new InventoryOptimizer();
-    private final BurstController burstController = new BurstController();
-
     private TargetInventorySnapshot targetSnapshot;
-    private MetaActionSession session;
-    private int verificationDelayTicks = 0;
-    private InventorySnapshot predictedSnapshot;
+    private InventorySnapshot lastSnapshot;
 
-    private RobustSortOrchestrator() {
-        ClientTickEvents.END_CLIENT_TICK.register(this::onTick);
-    }
+    private RobustSortOrchestrator() {}
 
     public static RobustSortOrchestrator getInstance() {
         return INSTANCE;
     }
 
-    /**
-     * Starts the sorting process toward the given target snapshot.
-     */
     public void startSort(TargetInventorySnapshot target) {
+        if (target == null) return;
         this.targetSnapshot = target;
-        this.session = MetaActionSessionManager.getInstance().startSession("InventorySort");
-        session.info("Sorting started for container: " + target.containerId());
+        this.lastSnapshot = null;
         
-        executeIteration();
-    }
+        MetaActionSession session = MetaActionSessionManager.getInstance().startSession("InventorySort");
+        session.info("Sorting started for: " + target.containerId());
 
-    private void executeIteration() {
-        Minecraft client = Minecraft.getInstance();
-        if (client.player == null) {
-            abort("Player disconnected");
-            return;
-        }
+        Supplier<List<IAction>> planProvider = () -> {
+            if (targetSnapshot == null) return null;
+            
+            Minecraft client = Minecraft.getInstance();
+            InventorySnapshot current = InventorySnapshot.capture(client);
+            
+            // Safety: ensure we are still in the same container
+            if (current.containerId() != targetSnapshot.containerId()) {
+                return null; // This will trigger completion/failure in BurstBulkAction
+            }
 
-        InventorySnapshot current = InventorySnapshot.capture(client);
-        if (current.containerId() != targetSnapshot.containerId()) {
-            abort("Container ID mismatch! Expected " + targetSnapshot.containerId() + ", got " + current.containerId());
-            return;
-        }
+            // Record the state BEFORE this burst for the verifyCondition to check progress
+            this.lastSnapshot = current;
+            
+            // Re-plan based on current real state
+            InventorySnapshot targetInvSnapshot = toInventorySnapshot(targetSnapshot);
+            List<Move> plan = optimizer.consolidate(current, targetInvSnapshot);
+            if (plan.isEmpty()) {
+                plan = optimizer.planCycles(current, targetInvSnapshot);
+            }
 
-        // Goal Check
-        if (isGoalReached(current)) {
-            session.info("Target layout achieved successfully.");
-            session.succeed();
-            this.targetSnapshot = null;
-            return;
-        }
+            return plan.stream().map(this::mapMoveToAction).collect(Collectors.toList());
+        };
 
-        // Planning
-        List<Move> plan = optimizer.consolidate(current);
-        if (plan.isEmpty()) {
-            plan = optimizer.planCycles(current, toInventorySnapshot(targetSnapshot));
-        }
+        BooleanSupplier verifyCondition = () -> {
+            if (targetSnapshot == null) return true;
+            
+            Minecraft client = Minecraft.getInstance();
+            InventorySnapshot current = InventorySnapshot.capture(client);
+            
+            // 1. Connection/Container Safety
+            if (client.player == null || current.containerId() != targetSnapshot.containerId()) {
+                return false; 
+            }
 
-        if (plan.isEmpty()) {
-            session.error("Plan empty but target not reached. Divergence detected.");
-            session.fail("Unresolvable discrepancy");
-            this.targetSnapshot = null;
-            return;
-        }
+            // 2. Progress Verification
+            // If we have a previous snapshot, ensure the state has actually changed.
+            // If the state is identical to lastSnapshot after a burst, it means the server/mod ignored us.
+            if (lastSnapshot != null && isMatch(current, lastSnapshot)) {
+                return false; // Desync detected: state didn't change!
+            }
+            
+            return true; // We moved something! (or it was correctly applied)
+        };
 
-        // Burst & Prediction
-        List<Move> burst = burstController.getNextBurst(plan);
-        this.predictedSnapshot = current.applyMoves(burst);
-        
-        session.logAction("Sorting Burst", "Size: " + burst.size() + " of Plan: " + plan.size(), "Window: " + burstController.getCurrentWindow());
+        IntSupplier latencySupplier = () -> {
+            Minecraft client = Minecraft.getInstance();
+            if (client.getConnection() != null && client.player != null) {
+                var entry = client.getConnection().getPlayerInfo(client.player.getUUID());
+                return entry != null ? entry.getLatency() : 0;
+            }
+            return 0;
+        };
 
-        // Map to Actions
-        List<IAction> actions = burst.stream()
-                .map(this::mapMoveToAction)
-                .collect(Collectors.toList());
-
-        BulkAction batch = new BulkAction(
+        BurstBulkAction action = new BurstBulkAction(
                 "piggy-inventory",
                 ActionPriority.NORMAL,
-                actions,
-                () -> true, // Individual actions in BulkAction already verify themselves
-                100,
-                "SortBatch",
-                (fullySuccessful, failedActions) -> {
-                    // Start verification delay
-                    this.verificationDelayTicks = 3; 
+                "InventorySort",
+                planProvider,
+                verifyCondition,
+                latencySupplier,
+                20, // timeout ticks per burst
+                (success) -> {
+                    if (success) session.succeed();
+                    else session.fail("Burst action failed or timed out. Possibly stuck/locked slots.");
+                    this.targetSnapshot = null;
+                    this.lastSnapshot = null;
                 }
         );
 
-        PiggyActionQueue.getInstance().enqueue(batch);
-    }
-
-    private void onTick(Minecraft client) {
-        if (verificationDelayTicks > 0) {
-            verificationDelayTicks--;
-            if (verificationDelayTicks == 0) {
-                verifyAndContinue();
-            }
-        }
-    }
-
-    private void verifyAndContinue() {
-        if (targetSnapshot == null) return;
-        
-        Minecraft client = Minecraft.getInstance();
-        InventorySnapshot actual = InventorySnapshot.capture(client);
-
-        if (isMatch(actual, predictedSnapshot)) {
-            session.debug("Burst verified correctly.");
-            burstController.reportSuccess();
-        } else {
-            session.warn("Burst verification FAILED. Predicted state drift.");
-            burstController.reportDesync();
-        }
-
-        // Loop next
-        executeIteration();
+        PiggyActionQueue.getInstance().enqueue(action);
     }
 
     private IAction mapMoveToAction(Move move) {
-        ClickType type = ClickType.PICKUP;
-        int button = (move instanceof Move.LeftClick) ? 0 : 1;
+        if (targetSnapshot == null) return null;
+        
+        int button = switch (move.type()) {
+            case PICKUP_ALL, DEPOSIT_ALL, SWAP -> 0;
+            case PICKUP_HALF, DEPOSIT_ONE -> 1;
+        };
         
         return new ClickWindowSlotAction(
                 targetSnapshot.containerId(),
                 move.slotIndex(),
                 button,
-                type,
+                ClickType.PICKUP,
                 "piggy-inventory",
                 ActionPriority.NORMAL
         );
     }
 
     private InventorySnapshot toInventorySnapshot(TargetInventorySnapshot target) {
+        if (target == null) return null;
         List<InventorySnapshot.SlotState> slots = target.slotTargets().entrySet().stream()
                 .map(e -> new InventorySnapshot.SlotState(e.getKey(), e.getValue()))
                 .collect(Collectors.toList());
         return new InventorySnapshot(target.containerId(), slots, target.cursorTarget());
     }
 
-    private boolean isGoalReached(InventorySnapshot current) {
-        Map<Integer, ItemStack> actual = toMap(current.slots());
-        for (var entry : targetSnapshot.slotTargets().entrySet()) {
-            ItemStack cur = actual.getOrDefault(entry.getKey(), ItemStack.EMPTY);
-            if (!isSame(cur, entry.getValue())) return false;
-        }
-        return isSame(current.cursor(), targetSnapshot.cursorTarget());
-    }
-
     private boolean isMatch(InventorySnapshot a, InventorySnapshot b) {
+        if (a == null || b == null) return false;
+        if (a.containerId() != b.containerId()) return false;
         if (a.slots().size() != b.slots().size()) return false;
-        Map<Integer, ItemStack> mapA = toMap(a.slots());
-        Map<Integer, ItemStack> mapB = toMap(b.slots());
         
-        for (var entry : mapA.entrySet()) {
-            if (!isSame(entry.getValue(), mapB.getOrDefault(entry.getKey(), ItemStack.EMPTY))) return false;
+        for (int i = 0; i < a.slots().size(); i++) {
+            var sA = a.slots().get(i);
+            var sB = b.slots().get(i);
+            if (!ItemStack.isSameItemSameComponents(sA.stack(), sB.stack()) || sA.stack().getCount() != sB.stack().getCount()) {
+                return false;
+            }
         }
-        return isSame(a.cursor(), b.cursor());
-    }
-
-    private boolean isSame(ItemStack a, ItemStack b) {
-        if (a.isEmpty() && b.isEmpty()) return true;
-        if (a.isEmpty() || b.isEmpty()) return false;
-        // Strict MojMap equality for components and count
-        return ItemStack.isSameItemSameComponents(a, b) && a.getCount() == b.getCount();
-    }
-
-    private Map<Integer, ItemStack> toMap(List<InventorySnapshot.SlotState> slots) {
-        Map<Integer, ItemStack> map = new HashMap<>();
-        for (InventorySnapshot.SlotState state : slots) {
-            map.put(state.index(), state.stack());
-        }
-        return map;
-    }
-
-    private void abort(String reason) {
-        if (session != null) session.fail(reason);
-        this.targetSnapshot = null;
+        return ItemStack.isSameItemSameComponents(a.cursor(), b.cursor()) && a.cursor().getCount() == b.cursor().getCount();
     }
 }
