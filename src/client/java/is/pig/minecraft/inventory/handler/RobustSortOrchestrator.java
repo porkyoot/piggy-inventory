@@ -53,7 +53,9 @@ public class RobustSortOrchestrator {
             
             // Safety: ensure we are still in the same container
             if (current.containerId() != targetSnapshot.containerId()) {
-                return null; // This will trigger completion/failure in BurstBulkAction
+                MetaActionSessionManager.getInstance().getSession("InventorySort").ifPresent(active -> 
+                    active.error("Sort Interrupted: Container closed mid-sort. (ID mismatch: " + current.containerId() + " vs " + targetSnapshot.containerId() + ")"));
+                return null; 
             }
 
             // Record the state BEFORE this burst for the verifyCondition to check progress
@@ -84,6 +86,11 @@ public class RobustSortOrchestrator {
             // If we have a previous snapshot, ensure the state has actually changed.
             // If the state is identical to lastSnapshot after a burst, it means the server/mod ignored us.
             if (lastSnapshot != null && isMatch(current, lastSnapshot)) {
+                MetaActionSessionManager.getInstance().getSession("InventorySort").ifPresent(active -> {
+                    active.warn("No progress after burst. Performing detailed audit...");
+                    InventorySnapshot targetInvSnapshot = toInventorySnapshot(targetSnapshot);
+                    logMismatches(active, current, targetInvSnapshot);
+                });
                 return false; // Desync detected: state didn't change!
             }
             
@@ -142,6 +149,24 @@ public class RobustSortOrchestrator {
                 .map(e -> new InventorySnapshot.SlotState(e.getKey(), e.getValue()))
                 .collect(Collectors.toList());
         return new InventorySnapshot(target.containerId(), slots, target.cursorTarget());
+    }
+
+    private void logMismatches(MetaActionSession session, InventorySnapshot current, InventorySnapshot target) {
+        for (int i = 0; i < current.slots().size(); i++) {
+            var sC = current.slots().get(i);
+            var sT = target.slots().get(i);
+            if (!ItemStack.isSameItemSameComponents(sC.stack(), sT.stack()) || sC.stack().getCount() != sT.stack().getCount()) {
+                session.error(String.format("Mismatch in Slot %d: [%s x%d] vs Expected [%s x%d]", 
+                    i, 
+                    sC.stack().getHoverName().getString(), sC.stack().getCount(),
+                    sT.stack().getHoverName().getString(), sT.stack().getCount()));
+            }
+        }
+        if (!ItemStack.isSameItemSameComponents(current.cursor(), target.cursor()) || current.cursor().getCount() != target.cursor().getCount()) {
+            session.error(String.format("Mismatch in Cursor: [%s x%d] vs Expected [%s x%d]", 
+                current.cursor().getHoverName().getString(), current.cursor().getCount(),
+                target.cursor().getHoverName().getString(), target.cursor().getCount()));
+        }
     }
 
     private boolean isMatch(InventorySnapshot a, InventorySnapshot b) {
