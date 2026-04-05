@@ -27,6 +27,9 @@ public class PiggyInventoryClient implements ClientModInitializer {
         public void onInitializeClient() {
                 LOGGER.info("Ehlo from Piggy Inventory!");
 
+                // 0. Initialize Telemetry & History
+                is.pig.minecraft.inventory.telemetry.InventoryHistoryManager.init();
+
                 // Register Sorting Key
                 sortKey = KeyBindingHelper.registerKeyBinding(new KeyMapping(
                                 "Sort Inventory",
@@ -81,6 +84,15 @@ public class PiggyInventoryClient implements ClientModInitializer {
                 ConfigPersistence.load();
                 controller.initialize();
                 is.pig.minecraft.lib.ui.AntiCheatHudOverlay.register();
+
+                // Register structured telemetry translators for inventory actions
+                is.pig.minecraft.lib.util.telemetry.EventTranslatorRegistry.getInstance().register(
+                                is.pig.minecraft.inventory.telemetry.SortingCycleEvent.class,
+                                (event, i18n) -> {
+                                        var e = (is.pig.minecraft.inventory.telemetry.SortingCycleEvent) event;
+                                        return i18n.translate("piggy.inventory.telemetry.sort_cycle",
+                                                        e.containerId(), e.isCycleResolution(), e.moveCount());
+                                });
 
                 // Listener registration moved to PiggyInventoryConfig self-registration.
 

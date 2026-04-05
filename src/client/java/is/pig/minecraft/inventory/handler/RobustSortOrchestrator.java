@@ -64,8 +64,15 @@ public class RobustSortOrchestrator {
             // Re-plan based on current real state
             InventorySnapshot targetInvSnapshot = toInventorySnapshot(targetSnapshot);
             List<Move> plan = optimizer.consolidate(current, targetInvSnapshot);
+            boolean isCycle = false;
             if (plan.isEmpty()) {
                 plan = optimizer.planCycles(current, targetInvSnapshot);
+                isCycle = true;
+            }
+
+            if (!plan.isEmpty()) {
+                is.pig.minecraft.lib.util.telemetry.StructuredEventDispatcher.getInstance().dispatch(
+                        new is.pig.minecraft.inventory.telemetry.SortingCycleEvent(current.containerId(), plan.size(), isCycle));
             }
 
             return plan.stream().map(this::mapMoveToAction).collect(Collectors.toList());
