@@ -226,9 +226,10 @@ public class AutoRefillHandler {
             return false;
 
         // Potions / Honey -> Bottle
-        if ((oldItem instanceof net.minecraft.world.item.PotionItem
-                || oldItem instanceof net.minecraft.world.item.HoneyBottleItem)
-                && newItem == net.minecraft.world.item.Items.GLASS_BOTTLE) {
+        boolean isOldPotionOrHoney = oldItem.getDescriptionId().contains("potion") || oldItem.getDescriptionId().contains("honey_bottle");
+        boolean isNewPotionOrHoney = newItem.getDescriptionId().contains("potion") || newItem.getDescriptionId().contains("honey_bottle");
+        
+        if (isOldPotionOrHoney && newItem == net.minecraft.world.item.Items.GLASS_BOTTLE) {
             return true;
         }
 
@@ -242,21 +243,18 @@ public class AutoRefillHandler {
         }
 
         // Full Bucket -> Empty Bucket
-        if ((oldItem instanceof net.minecraft.world.item.BucketItem
-                || oldItem instanceof net.minecraft.world.item.MilkBucketItem
-                || oldItem instanceof net.minecraft.world.item.SolidBucketItem)
-                && newItem == net.minecraft.world.item.Items.BUCKET) {
-            if (oldItem != net.minecraft.world.item.Items.BUCKET)
-                return true;
+        boolean isOldBucket = oldItem.getDescriptionId().contains("bucket") && !oldItem.getDescriptionId().equals("item.minecraft.bucket");
+        boolean isNewBucket = newItem.getDescriptionId().contains("bucket") && !newItem.getDescriptionId().equals("item.minecraft.bucket");
+        
+        if (isOldBucket && newItem == net.minecraft.world.item.Items.BUCKET) {
+            return true;
         }
 
         // Check 3: Empty Container -> Filled Item (Reverse Refill)
 
         // Bottle -> Potion/Honey/DragonBreath
         if (oldItem == net.minecraft.world.item.Items.GLASS_BOTTLE &&
-                (newItem instanceof net.minecraft.world.item.PotionItem
-                        || newItem instanceof net.minecraft.world.item.HoneyBottleItem
-                        || newItem == net.minecraft.world.item.Items.DRAGON_BREATH)) {
+                (isNewPotionOrHoney || newItem == net.minecraft.world.item.Items.DRAGON_BREATH)) {
             return true;
         }
 
@@ -270,10 +268,7 @@ public class AutoRefillHandler {
         }
 
         // Empty Bucket -> Full Bucket
-        if (oldItem == net.minecraft.world.item.Items.BUCKET &&
-                (newItem instanceof net.minecraft.world.item.BucketItem
-                        || newItem instanceof net.minecraft.world.item.MilkBucketItem
-                        || newItem instanceof net.minecraft.world.item.SolidBucketItem)) {
+        if (oldItem == net.minecraft.world.item.Items.BUCKET && isNewBucket) {
             return true;
         }
 
@@ -281,14 +276,11 @@ public class AutoRefillHandler {
     }
 
     private boolean isHarmful(ItemStack stack) {
-        net.minecraft.world.food.FoodProperties food = stack.get(net.minecraft.core.component.DataComponents.FOOD);
-        if (food != null) {
-            for (net.minecraft.world.food.FoodProperties.PossibleEffect effect : food.effects()) {
-                if (!effect.effect().getEffect().value().isBeneficial()) {
-                    return true;
-                }
-            }
-        }
-        return false;
+        net.minecraft.world.item.Item item = stack.getItem();
+        return item == net.minecraft.world.item.Items.ROTTEN_FLESH ||
+               item == net.minecraft.world.item.Items.SPIDER_EYE ||
+               item == net.minecraft.world.item.Items.POISONOUS_POTATO ||
+               item == net.minecraft.world.item.Items.PUFFERFISH ||
+               item == net.minecraft.world.item.Items.CHICKEN;
     }
 }

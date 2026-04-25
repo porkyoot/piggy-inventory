@@ -60,7 +60,7 @@ public abstract class MixinHandledScreen implements is.pig.minecraft.inventory.d
             context.pose().pushPose();
             context.pose().translate(0, 0, 300);
             RenderSystem.disableDepthTest();
-            context.blit(LOCK_TEXTURE, x, y, 0, 0, 8, 8, 8, 8);
+            is.pig.minecraft.lib.util.CompatibilityHelper.blit(context, LOCK_TEXTURE, x, y, 0f, 0f, 8, 8, 8, 8);
             context.pose().popPose();
             RenderSystem.enableDepthTest();
         }
