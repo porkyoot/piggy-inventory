@@ -31,7 +31,7 @@ public class PiggyInventoryConfig extends is.pig.minecraft.lib.config.PiggyClien
 
     @Override
     public void save() {
-        ConfigPersistence.save();
+        ConfigPersistence.saveConfig();
     }
 
     @Override

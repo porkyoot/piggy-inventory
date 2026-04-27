@@ -46,7 +46,7 @@ public class WeaponPreferenceHandler {
                 KeyBindingHelper.getBoundKeyOf(InputController.weaponPreferenceKey),
                 (newSelection) -> {
                     config.setWeaponPreference(newSelection.getConfigValue());
-                    ConfigPersistence.save();
+                    ConfigPersistence.saveConfig();
                 },
                 () -> {
                     WeaponSwitchMode finalSelection = WeaponSwitchMode.fromConfig(config.getWeaponPreference());

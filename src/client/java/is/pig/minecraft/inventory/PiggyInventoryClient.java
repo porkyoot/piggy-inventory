@@ -81,7 +81,7 @@ public class PiggyInventoryClient implements ClientModInitializer {
                                                         "Instantly transfers matching items to/from containers", true));
                 }
 
-                ConfigPersistence.load();
+                ConfigPersistence.loadConfig();
                 controller.initialize();
                 is.pig.minecraft.lib.ui.AntiCheatHudOverlay.register();
 

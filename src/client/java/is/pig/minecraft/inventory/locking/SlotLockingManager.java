@@ -49,7 +49,7 @@ public class SlotLockingManager {
             locks.add(idx);
         }
 
-        is.pig.minecraft.inventory.config.ConfigPersistence.save();
+        is.pig.minecraft.inventory.config.ConfigPersistence.saveConfig();
     }
 
     private void initDefaultLocks(PiggyInventoryConfig config) {
@@ -64,6 +64,6 @@ public class SlotLockingManager {
         for (int i = 0; i < 9; i++) {
             config.getLockedPlayerSlots().add(i);
         }
-        is.pig.minecraft.inventory.config.ConfigPersistence.save();
+        is.pig.minecraft.inventory.config.ConfigPersistence.saveConfig();
     }
 }

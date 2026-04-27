@@ -421,7 +421,7 @@ public class PiggyConfigScreenFactory {
                                                                 .build())
                                                 .build())
 
-                                .save(ConfigPersistence::save)
+                                .save(ConfigPersistence::saveConfig)
                                 .build()
                                 .generateScreen(parent);
         }

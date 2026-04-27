@@ -43,7 +43,7 @@ public class ToolPreferenceHandler {
             KeyBindingHelper.getBoundKeyOf(InputController.preferenceKey),
             (newSelection) -> {
                 config.setOrePreference(newSelection.getConfigValue());
-                ConfigPersistence.save();
+                ConfigPersistence.saveConfig();
             },
             () -> {
                 ToolPreference finalSelection = ToolPreference.fromConfig(config.getOrePreference());
