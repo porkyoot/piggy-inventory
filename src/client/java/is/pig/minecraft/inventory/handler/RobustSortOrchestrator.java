@@ -86,8 +86,9 @@ public class RobustSortOrchestrator {    private static final RobustSortOrchestr
             }
 
             if (!plan.isEmpty()) {
-                is.pig.minecraft.lib.util.telemetry.StructuredEventDispatcher.getInstance().dispatch(
+                is.pig.minecraft.lib.util.telemetry.PiggyEventDispatcher.getInstance().dispatch(
                         new is.pig.minecraft.inventory.telemetry.SortingCycleEvent(current.containerId(), plan.size(), isCycle));
+
             }
 
             return plan.stream().map(this::mapMoveToAction).collect(Collectors.toList());

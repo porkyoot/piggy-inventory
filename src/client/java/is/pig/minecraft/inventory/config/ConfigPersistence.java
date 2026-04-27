@@ -20,109 +20,42 @@ import java.io.IOException;
  * Follows the Single Responsibility Principle by decoupling persistence from
  * the data model.
  */
-public class ConfigPersistence {
+import is.pig.minecraft.lib.config.PiggyConfigManager;
 
-    private static final Logger LOGGER = LoggerFactory.getLogger("piggy-inventory");
-    private static final File CONFIG_FILE = FabricLoader.getInstance().getConfigDir().resolve("piggy-inventory.json")
-            .toFile();
-    private static final Gson GSON = new GsonBuilder()
-            .setPrettyPrinting()
-            .registerTypeAdapter(Color.class, new ColorTypeAdapter())
-            .registerTypeHierarchyAdapter(java.util.function.BiConsumer.class,
-                    new TypeAdapter<java.util.function.BiConsumer<?, ?>>() {
-                        @Override
-                        public void write(JsonWriter out, java.util.function.BiConsumer<?, ?> value)
-                                throws IOException {
-                            out.beginObject().endObject();
-                        }
+/**
+ * Handles loading and saving of the application configuration.
+ * Extends the universal PiggyConfigManager.
+ */
+public class ConfigPersistence extends PiggyConfigManager<PiggyInventoryConfig> {
 
-                        @Override
-                        public java.util.function.BiConsumer<?, ?> read(JsonReader in) throws IOException {
-                            in.skipValue();
-                            return null;
-                        }
-                    })
-            .setExclusionStrategies(new com.google.gson.ExclusionStrategy() {
-                @Override
-                public boolean shouldSkipField(com.google.gson.FieldAttributes f) {
-                    return f.getName().equals("syncListeners");
-                }
+    private static final ConfigPersistence INSTANCE = new ConfigPersistence();
 
-                @Override
-                public boolean shouldSkipClass(Class<?> clazz) {
-                    return false;
-                }
-            })
-            .create();
+    private ConfigPersistence() {
+        super("piggy-inventory.json", PiggyInventoryConfig.class, "piggy-inventory");
+    }
+
+    @Override
+    protected PiggyInventoryConfig getConfigInstance() {
+        return PiggyInventoryConfig.getInstance();
+    }
+
+    @Override
+    protected void setConfigInstance(PiggyInventoryConfig instance) {
+        PiggyInventoryConfig.setInstance(instance);
+    }
 
     /**
      * Loads the configuration from disk.
-     * Use {@link PiggyInventoryConfig#getInstance()} to access the current config.
      */
     public static void load() {
-        if (CONFIG_FILE.exists()) {
-            try (FileReader reader = new FileReader(CONFIG_FILE)) {
-                PiggyInventoryConfig loaded = GSON.fromJson(reader, PiggyInventoryConfig.class);
-                if (loaded != null) {
-                    PiggyInventoryConfig.setInstance(loaded);
-                    LOGGER.info("Configuration loaded successfully.");
-                }
-            } catch (com.google.gson.JsonSyntaxException | com.google.gson.JsonIOException e) {
-                LOGGER.error("Failed to parse configuration file: {}", CONFIG_FILE.getAbsolutePath(), e);
-                // Throwing a RuntimeException with a clear message to inform the user
-                throw new RuntimeException(
-                        "PiggyInventory Config Error: The configuration file '" + CONFIG_FILE.getName()
-                                + "' is malformed. Please fix the syntax or delete the file to regenerate it. Details: "
-                                + e.getMessage(),
-                        e);
-            } catch (IOException e) {
-                LOGGER.error("Failed to load configuration", e);
-            }
-        } else {
-            save(); // Create default
-        }
+        INSTANCE.load();
     }
 
     /**
      * Saves the current configuration to disk.
      */
     public static void save() {
-        try (FileWriter writer = new FileWriter(CONFIG_FILE)) {
-            GSON.toJson(PiggyInventoryConfig.getInstance(), writer);
-        } catch (IOException e) {
-            LOGGER.error("Failed to save configuration", e);
-        }
-    }
-
-    /**
-     * Custom GSON TypeAdapter for java.awt.Color.
-     */
-    private static class ColorTypeAdapter extends TypeAdapter<Color> {
-        @Override
-        public void write(JsonWriter out, Color value) throws IOException {
-            out.beginObject();
-            out.name("red").value(value.getRed());
-            out.name("green").value(value.getGreen());
-            out.name("blue").value(value.getBlue());
-            out.name("alpha").value(value.getAlpha());
-            out.endObject();
-        }
-
-        @Override
-        public Color read(JsonReader in) throws IOException {
-            in.beginObject();
-            int r = 0, g = 0, b = 0, a = 255;
-            while (in.hasNext()) {
-                switch (in.nextName()) {
-                    case "red" -> r = in.nextInt();
-                    case "green" -> g = in.nextInt();
-                    case "blue" -> b = in.nextInt();
-                    case "alpha" -> a = in.nextInt();
-                    default -> in.skipValue();
-                }
-            }
-            in.endObject();
-            return new Color(r, g, b, a);
-        }
+        INSTANCE.save();
     }
 }
+

@@ -12,7 +12,8 @@ public class InventoryHistoryManager {
         inventoryStore = new JsonHistoryStore("piggy-inventory.json", event -> 
             event instanceof SortingCycleEvent || event.getEventKey().contains("inventory") || event.getEventKey().contains("sort")
         );
-        inventoryStore.register();
+        inventoryStore.register("piggy-inventory");
+
     }
 
     public static JsonHistoryStore getStore() {
