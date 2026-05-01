@@ -1,4 +1,5 @@
 package is.pig.minecraft.inventory.sorting;
+import is.pig.minecraft.api.*;
 
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.world.item.Item;
@@ -12,7 +13,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-import is.pig.minecraft.lib.util.ColorHelper;
+import is.pig.minecraft.api.ColorHelper;
 
 public class Comparators {
 

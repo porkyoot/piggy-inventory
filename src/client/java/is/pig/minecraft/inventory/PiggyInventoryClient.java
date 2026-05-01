@@ -1,117 +1,37 @@
 package is.pig.minecraft.inventory;
 
+import is.pig.minecraft.inventory.config.ConfigPersistence;
+import is.pig.minecraft.inventory.telemetry.InventoryHistoryManager;
+import is.pig.minecraft.inventory.telemetry.SortingCycleEvent;
+import is.pig.minecraft.lib.util.telemetry.EventTranslatorRegistry;
+import net.fabricmc.api.ClientModInitializer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import is.pig.minecraft.inventory.config.ConfigPersistence;
-
-import is.pig.minecraft.inventory.mvc.controller.InputController;
-import net.fabricmc.api.ClientModInitializer;
-import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
-import net.fabricmc.fabric.api.client.keybinding.v1.KeyBindingHelper;
-import net.minecraft.client.KeyMapping;
-import org.lwjgl.glfw.GLFW;
-import com.mojang.blaze3d.platform.InputConstants;
-
 public class PiggyInventoryClient implements ClientModInitializer {
 
-        public static final Logger LOGGER = LoggerFactory.getLogger("piggy-inventory");
-        private final InputController controller = new InputController();
+    public static final Logger LOGGER = LoggerFactory.getLogger("piggy-inventory");
 
-        public static KeyMapping sortKey;
-        public static KeyMapping lockKey;
-        public static KeyMapping lootMatchingKey;
-        public static KeyMapping lootAllKey;
+    @Override
+    public void onInitializeClient() {
+        LOGGER.info("Initializing Piggy Inventory...");
 
-        @Override
-        public void onInitializeClient() {
-                LOGGER.info("Ehlo from Piggy Inventory!");
+        // Initialize Telemetry & History
+        InventoryHistoryManager.init();
 
-                // 0. Initialize Telemetry & History
-                is.pig.minecraft.inventory.telemetry.InventoryHistoryManager.init();
+        // Load Config
+        ConfigPersistence.load();
 
-                // Register Sorting Key
-                sortKey = KeyBindingHelper.registerKeyBinding(new KeyMapping(
-                                "Sort Inventory",
-                                InputConstants.Type.KEYSYM,
-                                GLFW.GLFW_KEY_R,
-                                "Piggy Inventory"));
-
-
-                // Register Lock Key (Default: Alt)
-                lockKey = KeyBindingHelper.registerKeyBinding(new KeyMapping(
-                                "Lock Slot Modifier",
-                                InputConstants.Type.KEYSYM,
-                                GLFW.GLFW_KEY_LEFT_ALT,
-                                "Piggy Inventory"));
-
-                // Register Loot Matching Key (Default: Unbound / Shift)
-                lootMatchingKey = KeyBindingHelper.registerKeyBinding(new KeyMapping(
-                                "Loot Matching Modifier",
-                                InputConstants.Type.KEYSYM,
-                                InputConstants.UNKNOWN.getValue(),
-                                "Piggy Inventory"));
-
-                // Register Loot All Key (Default: Unbound / Control)
-                lootAllKey = KeyBindingHelper.registerKeyBinding(new KeyMapping(
-                                "Loot All Modifier",
-                                InputConstants.Type.KEYSYM,
-                                InputConstants.UNKNOWN.getValue(),
-                                "Piggy Inventory"));
-
-                // existing registrations...
-                if (!is.pig.minecraft.lib.features.CheatFeatureRegistry.hasFeature("tool_swap")) {
-                        is.pig.minecraft.lib.features.CheatFeatureRegistry.register(
-                                        new is.pig.minecraft.lib.features.CheatFeature("tool_swap", "Tool Swap",
-                                                        "Auto-swap tool", true));
-                }
-                if (!is.pig.minecraft.lib.features.CheatFeatureRegistry.hasFeature("weapon_switch")) {
-                        is.pig.minecraft.lib.features.CheatFeatureRegistry.register(
-                                        new is.pig.minecraft.lib.features.CheatFeature("weapon_switch", "Weapon Switch",
-                                                        "Auto-swap weapon", true));
-                }
-                if (!is.pig.minecraft.lib.features.CheatFeatureRegistry.hasFeature("auto_refill")) {
-                        is.pig.minecraft.lib.features.CheatFeatureRegistry.register(
-                                        new is.pig.minecraft.lib.features.CheatFeature("auto_refill", "Auto Refill",
-                                                        "Automatically refills hotbar slots with identical items", true));
-                }
-                if (!is.pig.minecraft.lib.features.CheatFeatureRegistry.hasFeature("quick_loot")) {
-                        is.pig.minecraft.lib.features.CheatFeatureRegistry.register(
-                                        new is.pig.minecraft.lib.features.CheatFeature("quick_loot", "Quick Loot",
-                                                        "Instantly transfers matching items to/from containers", true));
-                }
-
-                ConfigPersistence.load();
-                controller.initialize();
-                is.pig.minecraft.lib.ui.AntiCheatHudOverlay.register();
-
-                // Register structured telemetry translators for inventory actions
-                is.pig.minecraft.lib.util.telemetry.EventTranslatorRegistry.getInstance().register(
-                                is.pig.minecraft.inventory.telemetry.SortingCycleEvent.class,
-                                (event, i18n) -> {
-                                        var e = (is.pig.minecraft.inventory.telemetry.SortingCycleEvent) event;
-                                        return i18n.translate("piggy.inventory.telemetry.sort_cycle",
-                                                        e.containerId(), e.isCycleResolution(), e.moveCount());
-                                });
-
-                // Listener registration moved to PiggyInventoryConfig self-registration.
-
-                // Input Handling (Backup/Global)
-                ClientTickEvents.END_CLIENT_TICK.register(client -> {
-                        if (sortKey.consumeClick()) {
-                                if (client.screen == null) {
-                                        is.pig.minecraft.inventory.handler.SortHandler.getInstance().triggerRemoteSort(client);
-                                } else {
-                                        is.pig.minecraft.inventory.handler.SortHandler.getInstance().handleSort(client, null);
-                                }
-                        }
-                        is.pig.minecraft.inventory.handler.SortHandler.getInstance().onTick(client);
-                        is.pig.minecraft.inventory.handler.AutoRefillHandler.getInstance().onTick(client);
-                        is.pig.minecraft.inventory.handler.CraftingHandler.getInstance().onTick(client);
-                        is.pig.minecraft.inventory.handler.TradeHandler.getInstance().onTick(client);
-                        is.pig.minecraft.inventory.handler.QuickLootHandler.getInstance().onTick(client);
+        // Register telemetry translators
+        EventTranslatorRegistry.getInstance().register(
+                SortingCycleEvent.class,
+                (event, i18n) -> {
+                    var e = (SortingCycleEvent) event;
+                    return i18n.translate("piggy.inventory.telemetry.sort_cycle",
+                            e.containerId(), e.isCycleResolution(), e.moveCount());
                 });
 
-                // No separate HUD overlay registration anymore for QuickLoot since it uses IconQueueOverlay
-        }
+        // The FeatureOrchestrator in piggy-lib will discover InventoryFeatureProvider
+        // and call its init() and onTick() methods.
+    }
 }

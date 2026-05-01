@@ -1,4 +1,5 @@
 package is.pig.minecraft.inventory.handler;
+import is.pig.minecraft.api.*;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.world.entity.player.Player;
@@ -105,7 +106,7 @@ public class TradeHandler {
                         0,
                         net.minecraft.world.inventory.ClickType.QUICK_MOVE,
                         "piggy-inventory-trade",
-                        is.pig.minecraft.lib.action.ActionPriority.NORMAL
+                        is.pig.minecraft.api.ActionPriority.NORMAL
         );
         if (unlimited) slotAction.setIgnoreGlobalCps(true);
         is.pig.minecraft.lib.action.PiggyActionQueue.getInstance().enqueue(slotAction);
@@ -136,7 +137,7 @@ public class TradeHandler {
                                 0,
                                 net.minecraft.world.inventory.ClickType.QUICK_MOVE,
                                 "piggy-inventory-trade",
-                                is.pig.minecraft.lib.action.ActionPriority.NORMAL
+                                is.pig.minecraft.api.ActionPriority.NORMAL
                 );
                 if (unlimited) slotAction.setIgnoreGlobalCps(true);
                 is.pig.minecraft.lib.action.PiggyActionQueue.getInstance().enqueue(slotAction);

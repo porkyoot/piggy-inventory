@@ -1,4 +1,5 @@
 package is.pig.minecraft.inventory.telemetry;
+import is.pig.minecraft.api.*;
 
 import is.pig.minecraft.lib.util.telemetry.JsonHistoryStore;
 

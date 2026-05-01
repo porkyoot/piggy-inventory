@@ -1,9 +1,10 @@
 package is.pig.minecraft.inventory.sorting.layout;
+import is.pig.minecraft.api.*;
 
 import net.minecraft.world.item.ItemStack;
 import java.util.List;
 
-public interface ISortingLayout {
+public interface SortingLayout {
     
     /**
      * Attempts to layout the given sorted items into the provided constraints,

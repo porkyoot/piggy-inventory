@@ -14,24 +14,6 @@
 	"license": "CC0-1.0",
 	"icon": "assets/piggy-inventory/icon.png",
 	"environment": "client",
-	"entrypoints": {
-		"client": [
-			"is.pig.minecraft.inventory.PiggyInventoryClient"
-		],
-		"fabric-datagen": [
-			"is.pig.minecraft.inventory.PiggyInventoryDataGenerator"
-		],
-		"modmenu": [
-			"is.pig.minecraft.inventory.integration.ModMenuIntegration"
-		]
-	},
-	"mixins": [
-		"piggy-inventory.mixins.json",
-		{
-			"config": "piggy-inventory.client.mixins.json",
-			"environment": "client"
-		}
-	],
 	"depends": {
 		"fabricloader": ">=0.18.1",
 		"minecraft": ">=1.21.1 <1.21.4",

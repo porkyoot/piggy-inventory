@@ -1,11 +1,12 @@
 package is.pig.minecraft.inventory.sorting.layout;
+import is.pig.minecraft.api.*;
 
 import net.minecraft.world.item.ItemStack;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 
-public abstract class AbstractDepthLayout implements ISortingLayout {
+public abstract class AbstractDepthLayout implements SortingLayout {
 
     // The dynamic list of comparators defined by the user/config
     protected final List<Comparator<ItemStack>> comparators;

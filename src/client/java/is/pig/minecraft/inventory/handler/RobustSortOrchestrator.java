@@ -1,21 +1,25 @@
 package is.pig.minecraft.inventory.handler;
 
-import is.pig.minecraft.lib.action.ActionPriority;
+import is.pig.minecraft.api.Action;
+import is.pig.minecraft.api.ActionPriority;
+import is.pig.minecraft.api.registry.PiggyServiceRegistry;
+import is.pig.minecraft.api.spi.InputAdapter;
+import is.pig.minecraft.api.spi.InventoryInteractionAdapter;
+import is.pig.minecraft.api.spi.ItemDataAdapter;
+import is.pig.minecraft.api.spi.ScreenAdapter;
+import is.pig.minecraft.inventory.sorting.InventoryOptimizer;
+import is.pig.minecraft.inventory.sorting.InventorySnapshot;
+import is.pig.minecraft.inventory.sorting.Move;
+import is.pig.minecraft.inventory.sorting.TargetInventorySnapshot;
+import is.pig.minecraft.inventory.util.InventorySnapshotter;
 import is.pig.minecraft.lib.action.BurstBulkAction;
-import is.pig.minecraft.lib.action.IAction;
 import is.pig.minecraft.lib.action.PiggyActionQueue;
 import is.pig.minecraft.lib.action.inventory.ClickWindowSlotAction;
-import is.pig.minecraft.lib.inventory.sort.InventoryOptimizer;
-import is.pig.minecraft.lib.inventory.sort.InventorySnapshot;
-import is.pig.minecraft.lib.inventory.sort.Move;
-import is.pig.minecraft.lib.inventory.sort.TargetInventorySnapshot;
 import is.pig.minecraft.lib.util.telemetry.MetaActionSession;
 import is.pig.minecraft.lib.util.telemetry.MetaActionSessionManager;
-import net.minecraft.client.Minecraft;
-import net.minecraft.world.inventory.ClickType;
-import net.minecraft.world.item.ItemStack;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
 import java.util.List;
 import java.util.function.BooleanSupplier;
 import java.util.function.IntSupplier;
@@ -26,7 +30,9 @@ import java.util.stream.Collectors;
  * Robust, state-machine based sorting orchestrator.
  * Uses library-provided BurstBulkAction for congestion-controlled sorting.
  */
-public class RobustSortOrchestrator {    private static final RobustSortOrchestrator INSTANCE = new RobustSortOrchestrator();
+public class RobustSortOrchestrator {
+    private static final RobustSortOrchestrator INSTANCE = new RobustSortOrchestrator();
+    private static final Logger LOGGER = LoggerFactory.getLogger(RobustSortOrchestrator.class);
 
     private final InventoryOptimizer optimizer = new InventoryOptimizer();
     private TargetInventorySnapshot targetSnapshot;
@@ -44,45 +50,28 @@ public class RobustSortOrchestrator {    private static final RobustSortOrchestr
         this.lastSnapshot = null;
         
         MetaActionSession session = MetaActionSessionManager.getInstance().startSession("InventorySort");
-        session.info("Sorting started for: " + target.containerId());
+        session.info("Sorting started for container: " + target.containerId());
 
-        for (var entry : targetSnapshot.slotTargets().entrySet()) {
-        }
-        if (targetSnapshot.cursorTarget() != null && !targetSnapshot.cursorTarget().isEmpty()) {
-        }
-
-        Supplier<List<IAction>> planProvider = () -> {
+        Supplier<List<Action>> planProvider = () -> {
             if (targetSnapshot == null) return null;
             
-            Minecraft client = Minecraft.getInstance();
-            InventorySnapshot current = InventorySnapshot.capture(client);
+            Object client = PiggyServiceRegistry.getWorldStateAdapter().getClient();
+            InventorySnapshot current = InventorySnapshotter.capture(client);
             
-            // Safety: ensure we are still in the same container
             if (current.containerId() != targetSnapshot.containerId()) {
                 MetaActionSessionManager.getInstance().getSession("InventorySort").ifPresent(active -> 
-                    active.error("Sort Interrupted: Container closed mid-sort. (ID mismatch: " + current.containerId() + " vs " + targetSnapshot.containerId() + ")"));
+                    active.error("Sort Interrupted: Container closed mid-sort."));
                 return null; 
             }
 
-            for (var slot : current.slots()) {
-            }
-            if (current.cursor() != null && !current.cursor().isEmpty()) {
-            }
-
-            // Record the state BEFORE this burst for the verifyCondition to check progress
             this.lastSnapshot = current;
             
-            // Re-plan based on current real state
             InventorySnapshot targetInvSnapshot = toInventorySnapshot(targetSnapshot);
             List<Move> plan = optimizer.consolidate(current, targetInvSnapshot);
             boolean isCycle = false;
             if (plan.isEmpty()) {
                 plan = optimizer.planCycles(current, targetInvSnapshot);
                 isCycle = true;
-            }
-
-            for (int i = 0; i < plan.size(); i++) {
-                var m = plan.get(i);
             }
 
             if (!plan.isEmpty()) {
@@ -96,45 +85,27 @@ public class RobustSortOrchestrator {    private static final RobustSortOrchestr
         BooleanSupplier verifyCondition = () -> {
             if (targetSnapshot == null) return true;
             
-            Minecraft client = Minecraft.getInstance();
-            InventorySnapshot current = InventorySnapshot.capture(client);
+            Object client = PiggyServiceRegistry.getWorldStateAdapter().getClient();
+            InventorySnapshot current = InventorySnapshotter.capture(client);
             
-            // 1. Connection/Container Safety
-            if (client.player == null || current.containerId() != targetSnapshot.containerId()) {
+            if (current.containerId() != targetSnapshot.containerId()) {
                 return false; 
             }
 
-
-            // 2. Progress Verification
-            // If we have a previous snapshot, ensure the state has actually changed.
-            // If the state is identical to lastSnapshot after a burst, it means the server/mod ignored us.
             if (lastSnapshot != null) {
-                boolean match = isMatch(current, lastSnapshot);
-                if (match) {
-                    for (var slot : current.slots()) {
-                    }
-                    if (current.cursor() != null && !current.cursor().isEmpty()) {
-                    }
-                    
+                if (isMatch(current, lastSnapshot)) {
                     MetaActionSessionManager.getInstance().getSession("InventorySort").ifPresent(active -> {
                         active.warn("No progress after burst. Performing detailed audit...");
                         logMismatches(active, current, targetSnapshot);
                     });
-                    return false; // Desync detected: state didn't change!
+                    return false;
                 }
             }
             
-            return true; // We moved something! (or it was correctly applied)
+            return true;
         };
 
-        IntSupplier latencySupplier = () -> {
-            Minecraft client = Minecraft.getInstance();
-            if (client.getConnection() != null && client.player != null) {
-                var entry = client.getConnection().getPlayerInfo(client.player.getUUID());
-                return entry != null ? entry.getLatency() : 0;
-            }
-            return 0;
-        };
+        IntSupplier latencySupplier = () -> PiggyServiceRegistry.getWorldStateAdapter().getPing();
 
         BurstBulkAction action = new BurstBulkAction(
                 "piggy-inventory",
@@ -143,10 +114,10 @@ public class RobustSortOrchestrator {    private static final RobustSortOrchestr
                 planProvider,
                 verifyCondition,
                 latencySupplier,
-                20, // timeout ticks per burst
+                20,
                 (success) -> {
                     if (success) session.succeed();
-                    else session.fail("Burst action failed or timed out. Possibly stuck/locked slots.");
+                    else session.fail("Burst action failed or timed out.");
                     this.targetSnapshot = null;
                     this.lastSnapshot = null;
                 }
@@ -155,7 +126,7 @@ public class RobustSortOrchestrator {    private static final RobustSortOrchestr
         PiggyActionQueue.getInstance().enqueue(action);
     }
 
-    private IAction mapMoveToAction(Move move) {
+    private Action mapMoveToAction(Move move) {
         if (targetSnapshot == null) return null;
         
         int button = switch (move.type()) {
@@ -163,11 +134,16 @@ public class RobustSortOrchestrator {    private static final RobustSortOrchestr
             case PICKUP_HALF, DEPOSIT_ONE -> 1;
         };
         
+        // Note: Using ClickWindowSlotAction which will be refactored to be agnostic soon.
+        // For now, we use "PICKUP" click type as string-like if we can, 
+        // but ClickWindowSlotAction currently uses net.minecraft.world.inventory.ClickType.
+        // I will fix ClickWindowSlotAction first or use a factory.
+        
         return new ClickWindowSlotAction(
                 targetSnapshot.containerId(),
                 move.slotIndex(),
                 button,
-                ClickType.PICKUP,
+                "PICKUP",
                 "piggy-inventory",
                 ActionPriority.NORMAL
         );
@@ -182,22 +158,18 @@ public class RobustSortOrchestrator {    private static final RobustSortOrchestr
     }
 
     private void logMismatches(MetaActionSession session, InventorySnapshot current, TargetInventorySnapshot target) {
+        ItemDataAdapter adapter = PiggyServiceRegistry.getItemDataAdapter();
         for (var sC : current.slots()) {
             int idx = sC.index();
             if (!target.slotTargets().containsKey(idx)) continue;
-            var expectedStack = target.slotTargets().get(idx);
-            if (!ItemStack.isSameItemSameComponents(sC.stack(), expectedStack) || sC.stack().getCount() != expectedStack.getCount()) {
-                session.error(String.format("Mismatch in Slot %d: [%s x%d] vs Expected [%s x%d]", 
-                    idx, 
-                    sC.stack().getHoverName().getString(), sC.stack().getCount(),
-                    expectedStack.getHoverName().getString(), expectedStack.getCount()));
+            Object expectedStack = target.slotTargets().get(idx);
+            if (!adapter.areItemsEqual(sC.stack(), expectedStack) || adapter.getCount(sC.stack()) != adapter.getCount(expectedStack)) {
+                session.error(String.format("Mismatch in Slot %d", idx));
             }
         }
-        ItemStack expectedCursor = target.cursorTarget() == null ? ItemStack.EMPTY : target.cursorTarget();
-        if (!ItemStack.isSameItemSameComponents(current.cursor(), expectedCursor) || current.cursor().getCount() != expectedCursor.getCount()) {
-            session.error(String.format("Mismatch in Cursor: [%s x%d] vs Expected [%s x%d]", 
-                current.cursor().getHoverName().getString(), current.cursor().getCount(),
-                expectedCursor.getHoverName().getString(), expectedCursor.getCount()));
+        Object expectedCursor = target.cursorTarget();
+        if (!adapter.areItemsEqual(current.cursor(), expectedCursor) || adapter.getCount(current.cursor()) != adapter.getCount(expectedCursor)) {
+            session.error("Mismatch in Cursor");
         }
     }
 
@@ -206,13 +178,14 @@ public class RobustSortOrchestrator {    private static final RobustSortOrchestr
         if (a.containerId() != b.containerId()) return false;
         if (a.slots().size() != b.slots().size()) return false;
         
+        ItemDataAdapter adapter = PiggyServiceRegistry.getItemDataAdapter();
         for (int i = 0; i < a.slots().size(); i++) {
             var sA = a.slots().get(i);
             var sB = b.slots().get(i);
-            if (!ItemStack.isSameItemSameComponents(sA.stack(), sB.stack()) || sA.stack().getCount() != sB.stack().getCount()) {
+            if (!adapter.areItemsEqual(sA.stack(), sB.stack()) || adapter.getCount(sA.stack()) != adapter.getCount(sB.stack())) {
                 return false;
             }
         }
-        return ItemStack.isSameItemSameComponents(a.cursor(), b.cursor()) && a.cursor().getCount() == b.cursor().getCount();
+        return adapter.areItemsEqual(a.cursor(), b.cursor()) && adapter.getCount(a.cursor()) == adapter.getCount(b.cursor());
     }
 }

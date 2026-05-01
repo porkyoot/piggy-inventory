@@ -1,7 +1,7 @@
 package is.pig.minecraft.inventory.refill;
 
-import net.minecraft.world.item.*;
-import net.minecraft.core.component.DataComponents;
+import is.pig.minecraft.api.registry.PiggyServiceRegistry;
+import is.pig.minecraft.api.spi.ItemDataAdapter;
 
 public enum RefillCategory {
     TOOL,
@@ -10,81 +10,47 @@ public enum RefillCategory {
     BLOCK,
     OTHER;
 
-    public static RefillCategory fromStack(ItemStack stack) {
-        if (stack.isEmpty())
-            return OTHER;
-        Item item = stack.getItem();
+    public static RefillCategory fromStack(Object stack) {
+        ItemDataAdapter adapter = PiggyServiceRegistry.getItemDataAdapter();
+        if (adapter.getCount(stack) == 0) return OTHER;
 
-        // Check Food
-        if (stack.get(DataComponents.FOOD) != null) {
-            return FOOD;
-        }
-
-        // Check Weapons
-        if (item instanceof SwordItem || item instanceof TridentItem || item instanceof BowItem
-                || item instanceof CrossbowItem) {
-            return WEAPON;
-        }
-
-        // Check Tools
-        if (item instanceof DiggerItem || item instanceof ShearsItem || item instanceof FlintAndSteelItem
-                || item instanceof FishingRodItem) {
-            return TOOL;
-        }
-
-        // Check Blocks
-        if (item instanceof BlockItem) {
-            return BLOCK;
-        }
-
-        return OTHER;
+        String cat = adapter.getItemCategory(stack);
+        return switch (cat) {
+            case "tool" -> TOOL;
+            case "weapon" -> WEAPON;
+            case "food" -> FOOD;
+            case "block" -> BLOCK;
+            default -> OTHER;
+        };
     }
 
-    public boolean matches(ItemStack original, ItemStack candidate) {
-        if (original.isEmpty() || candidate.isEmpty())
-            return false;
+    public boolean matches(Object original, Object candidate) {
+        ItemDataAdapter adapter = PiggyServiceRegistry.getItemDataAdapter();
+        if (adapter.getCount(original) == 0 || adapter.getCount(candidate) == 0) return false;
 
-        // Exact match is always valid (and preferred, but this method just checks
-        // compatibility)
-        if (ItemStack.isSameItemSameComponents(original, candidate)) {
-            return true;
-        }
+        if (adapter.areItemsEqual(original, candidate)) return true;
 
         RefillCategory catA = fromStack(original);
         RefillCategory catB = fromStack(candidate);
 
-        if (catA != catB || catA == OTHER) {
-            return false;
-        }
+        if (catA != catB || catA == OTHER) return false;
 
-        // Specific category logic
         switch (catA) {
             case FOOD:
-                // Any food matches any food? Maybe too broad, but fulfills "Food" category
-                // request
                 return true;
             case WEAPON:
-                // Sword matches Sword
-                return (original.getItem() instanceof SwordItem && candidate.getItem() instanceof SwordItem) ||
-                        (original.getItem() instanceof BowItem && candidate.getItem() instanceof BowItem) ||
-                        (original.getItem() instanceof CrossbowItem && candidate.getItem() instanceof CrossbowItem);
+                // Lenient check based on ID keywords or more adapter helpers
+                String idA = adapter.getItemId(original);
+                String idB = adapter.getItemId(candidate);
+                return (idA.contains("sword") && idB.contains("sword")) ||
+                       (idA.contains("bow") && idB.contains("bow"));
             case TOOL:
-                // Pickaxe matches Pickaxe, etc.
-                if (original.getItem() instanceof DiggerItem && candidate.getItem() instanceof DiggerItem) {
-                    // Check if they are the same tool type via class hierarchy
-                    return original.getItem().getClass().isAssignableFrom(candidate.getItem().getClass()) ||
-                            candidate.getItem().getClass().isAssignableFrom(original.getItem().getClass());
-                }
-                return false; // Strict for other tools
-            case BLOCK:
-                // Blocks should ideally be exact matches.
-                // Replacing 'Oak Plank' with 'Cobblestone' automatically while building is
-                // probably annoying.
-                // Resetting to strict for blocks unless user asked otherwise.
-                // Re-reading request: "Refill stacks when empty... with matching ones...
-                // extends with categories for weapons, tools and food"
-                // Implies Blocks -> Strict Match, Others -> Category Match.
-                return false;
+                String toolA = adapter.getItemId(original);
+                String toolB = adapter.getItemId(candidate);
+                return (toolA.contains("pickaxe") && toolB.contains("pickaxe")) ||
+                       (toolA.contains("axe") && toolB.contains("axe")) ||
+                       (toolA.contains("shovel") && toolB.contains("shovel")) ||
+                       (toolA.contains("hoe") && toolB.contains("hoe"));
             default:
                 return false;
         }

@@ -1,4 +1,5 @@
 package is.pig.minecraft.inventory.config;
+import is.pig.minecraft.api.*;
 
 import java.util.HashMap;
 import java.util.Map;

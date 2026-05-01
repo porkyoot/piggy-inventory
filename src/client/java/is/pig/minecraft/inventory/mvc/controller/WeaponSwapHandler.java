@@ -1,4 +1,5 @@
 package is.pig.minecraft.inventory.mvc.controller;
+import is.pig.minecraft.api.*;
 
 import is.pig.minecraft.inventory.config.PiggyInventoryConfig;
 import net.minecraft.client.Minecraft;
@@ -27,8 +28,8 @@ public class WeaponSwapHandler {
         int bestSlot = currentSlot;
         double bestScore = getWeaponScore(client, currentStack, target, config);
         
-        is.pig.minecraft.lib.inventory.search.ItemCondition condition = stack -> !stack.isEmpty();
-        java.util.List<Integer> allSlots = is.pig.minecraft.lib.inventory.search.InventorySearcher.findAllSlots(client.player.getInventory(), condition);
+        is.pig.minecraft.inventory.util.ItemCondition condition = stack -> !((net.minecraft.world.item.ItemStack)stack).isEmpty();
+        java.util.List<Integer> allSlots = is.pig.minecraft.inventory.util.InventorySearcher.findAllSlots(client.player.getInventory(), condition);
         for (int i : allSlots) {
             if (i >= 36 || i == currentSlot) continue;
             ItemStack stack = client.player.getInventory().getItem(i);
@@ -74,7 +75,7 @@ public class WeaponSwapHandler {
         if (bestSlot < 9) {
             // Simple hotbar swap
             is.pig.minecraft.lib.action.PiggyActionQueue.getInstance().enqueue(
-                new is.pig.minecraft.lib.action.inventory.SelectHotbarSlotAction(bestSlot, "piggy-inventory", is.pig.minecraft.lib.action.ActionPriority.HIGH)
+                new is.pig.minecraft.lib.action.inventory.SelectHotbarSlotAction(bestSlot, "piggy-inventory", is.pig.minecraft.api.ActionPriority.HIGH)
             );
         } else {
             // Inventory swap logic
@@ -98,13 +99,13 @@ public class WeaponSwapHandler {
                         targetSlot,
                         net.minecraft.world.inventory.ClickType.SWAP,
                         "piggy-inventory",
-                        is.pig.minecraft.lib.action.ActionPriority.HIGH
+                        is.pig.minecraft.api.ActionPriority.HIGH
                 )
             );
 
             if (client.player.getInventory().selected != targetSlot) {
                 is.pig.minecraft.lib.action.PiggyActionQueue.getInstance().enqueue(
-                    new is.pig.minecraft.lib.action.inventory.SelectHotbarSlotAction(targetSlot, "piggy-inventory", is.pig.minecraft.lib.action.ActionPriority.HIGH)
+                    new is.pig.minecraft.lib.action.inventory.SelectHotbarSlotAction(targetSlot, "piggy-inventory", is.pig.minecraft.api.ActionPriority.HIGH)
                 );
             }
         }

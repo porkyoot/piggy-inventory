@@ -1,4 +1,5 @@
 package is.pig.minecraft.inventory.config;
+import is.pig.minecraft.api.*;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;

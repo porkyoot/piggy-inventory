@@ -1,10 +1,11 @@
 package is.pig.minecraft.inventory.handler;
+import is.pig.minecraft.api.*;
 
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.minecraft.client.Minecraft;
 import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
-import is.pig.minecraft.lib.action.ActionCallback;
+import is.pig.minecraft.api.ActionCallback;
 
 import java.util.List;
 
@@ -33,7 +34,7 @@ public class SortExecutor implements ActionCallback {
     }
 
     /**
-     * @deprecated Migrated to {@link RobustSortOrchestrator#startSort(is.pig.minecraft.lib.inventory.sort.TargetInventorySnapshot)}
+     * @deprecated Migrated to {@link RobustSortOrchestrator#startSort(is.pig.minecraft.inventory.sorting.TargetInventorySnapshot)}
      */
     @Deprecated
     public void startSort(List<Slot> slots, List<ItemStack> target) {

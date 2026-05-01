@@ -1,4 +1,5 @@
 package is.pig.minecraft.inventory.mvc.controller;
+import is.pig.minecraft.api.*;
 
 import is.pig.minecraft.inventory.config.ConfigPersistence;
 import is.pig.minecraft.inventory.config.PiggyInventoryConfig;

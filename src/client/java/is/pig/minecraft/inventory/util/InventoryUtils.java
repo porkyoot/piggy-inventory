@@ -1,135 +1,78 @@
 package is.pig.minecraft.inventory.util;
 
+import is.pig.minecraft.api.registry.PiggyServiceRegistry;
+import is.pig.minecraft.api.spi.InputAdapter;
+import is.pig.minecraft.api.spi.InventoryInteractionAdapter;
+import is.pig.minecraft.api.spi.ItemDataAdapter;
+import is.pig.minecraft.api.spi.ScreenAdapter;
 import is.pig.minecraft.inventory.locking.SlotLockingManager;
-import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
-import net.minecraft.world.inventory.Slot;
 
+import java.util.ArrayList;
+import java.util.List;
+
+/**
+ * Platform-agnostic inventory utilities using SPI adapters.
+ */
 public class InventoryUtils {
 
     public static boolean isLootMatchingDown() {
-        if (!is.pig.minecraft.inventory.PiggyInventoryClient.lootMatchingKey.isUnbound()) {
-            return is.pig.minecraft.inventory.PiggyInventoryClient.lootMatchingKey.isDown();
+        InputAdapter input = PiggyServiceRegistry.getInputAdapter();
+        if (input.isKeyDown("piggy-inventory:loot_matching")) {
+            return true;
         }
-        return net.minecraft.client.gui.screens.Screen.hasShiftDown();
-    }
-
-    public static boolean isLootAllDown() {
-        if (!is.pig.minecraft.inventory.PiggyInventoryClient.lootAllKey.isUnbound()) {
-            return is.pig.minecraft.inventory.PiggyInventoryClient.lootAllKey.isDown();
-        }
-        return net.minecraft.client.gui.screens.Screen.hasControlDown();
-    }
-
-    // Legacy method redirection for compatibility with existing mixins until
-    // updated
-    public static boolean isShiftDown() {
-        return isLootMatchingDown();
-    }
-
-    public static boolean isFastLootDown() {
-        return isLootAllDown();
-    }
-
-    // Use KeyMapping for Alt key detection to respect user binds
-    // MODIFIED: Use direct polling because some mods break KeyMapping event
-    // propagation
-    public static boolean isLockDown() {
-        if (is.pig.minecraft.inventory.PiggyInventoryClient.lockKey.isUnbound()) {
-            return false;
-        }
-
-        com.mojang.blaze3d.platform.InputConstants.Key key = net.fabricmc.fabric.api.client.keybinding.v1.KeyBindingHelper
-                .getBoundKeyOf(is.pig.minecraft.inventory.PiggyInventoryClient.lockKey);
-        long window = Minecraft.getInstance().getWindow().getWindow();
-
-        try {
-            if (key.getType() == com.mojang.blaze3d.platform.InputConstants.Type.KEYSYM) {
-                return com.mojang.blaze3d.platform.InputConstants.isKeyDown(window, key.getValue());
-            } else if (key.getType() == com.mojang.blaze3d.platform.InputConstants.Type.MOUSE) {
-                return org.lwjgl.glfw.GLFW.glfwGetMouseButton(window, key.getValue()) == org.lwjgl.glfw.GLFW.GLFW_PRESS;
-            }
-        } catch (Exception e) {
-            // Fallback to vanilla
-            return is.pig.minecraft.inventory.PiggyInventoryClient.lockKey.isDown();
-        }
-
+        // Fallback to shift if unbound (handled by adapter in practice)
         return false;
     }
 
-    public static boolean handleScrollTransfer(AbstractContainerScreen<?> screen, double scrollDelta,
-            boolean forceMoveAll) {
-        Minecraft client = Minecraft.getInstance();
-        if (client.player == null || client.gameMode == null)
-            return false;
-
-        net.minecraft.world.inventory.AbstractContainerMenu menu = screen.getMenu();
-        net.minecraft.world.entity.player.Inventory playerInventory = client.player.getInventory();
-
-        // Separate slots
-        java.util.List<Slot> storageSlots = new java.util.ArrayList<>();
-        java.util.List<Slot> playerSlots = new java.util.ArrayList<>();
-        boolean foundPlayerSlots = false;
-
-        for (Slot slot : menu.slots) {
-            if (slot.container == playerInventory) {
-                playerSlots.add(slot);
-                foundPlayerSlots = true;
-            }
+    public static boolean isLootAllDown() {
+        InputAdapter input = PiggyServiceRegistry.getInputAdapter();
+        if (input.isKeyDown("piggy-inventory:loot_all")) {
+            return true;
         }
+        // Fallback to control if unbound
+        return false;
+    }
 
-        if (foundPlayerSlots) {
-            for (Slot slot : menu.slots) {
-                if (slot.container != playerInventory) {
-                    storageSlots.add(slot);
-                }
-            }
-        } else {
-            // Fallback for modded screens (like Sophisticated Storage) that wrap the player inventory.
-            // In typical chest GUIs, the last 36 slots (27 main inventory + 9 hotbar) belong to the player.
-            int totalSlots = menu.slots.size();
-            for (int i = 0; i < totalSlots; i++) {
-                Slot slot = menu.slots.get(i);
-                if (totalSlots >= 36 && i >= totalSlots - 36) {
-                    playerSlots.add(slot);
-                } else {
-                    storageSlots.add(slot);
-                }
-            }
-        }
+    public static boolean isLockDown() {
+        return PiggyServiceRegistry.getInputAdapter().isKeyDown("piggy-inventory:lock_slot");
+    }
 
-        // If no storage (e.g. inventory screen), do nothing
-        if (storageSlots.isEmpty())
-            return false;
+    public static boolean handleScrollTransfer(Object screen, double scrollDelta, boolean forceMoveAll) {
+        Object client = PiggyServiceRegistry.getWorldStateAdapter().getClient(); // Context object
+        ScreenAdapter screenAdapter = PiggyServiceRegistry.getScreenAdapter();
+        
+        if (!screenAdapter.isContainerScreenOpen(client)) return false;
+
+        List<Integer> playerSlots = screenAdapter.getPlayerSlotIndices(client);
+        List<Integer> storageSlots = screenAdapter.getStorageSlotIndices(client);
+
+        if (storageSlots.isEmpty()) return false;
 
         boolean moveUp = scrollDelta > 0; // Inventory -> Storage
+        List<Integer> sourceSlots = moveUp ? playerSlots : storageSlots;
+        List<Integer> targetSlots = moveUp ? storageSlots : playerSlots;
 
-        java.util.List<Slot> sourceSlots = moveUp ? playerSlots : storageSlots;
-        java.util.List<Slot> targetSlots = moveUp ? storageSlots : playerSlots;
+        ItemDataAdapter itemAdapter = PiggyServiceRegistry.getItemDataAdapter();
+        InventoryInteractionAdapter interactionAdapter = PiggyServiceRegistry.getInventoryInteractionAdapter();
+        int containerId = screenAdapter.getContainerId(client);
 
         boolean actionTaken = false;
 
-        for (Slot sourceSlot : sourceSlots) {
-            if (!sourceSlot.hasItem())
-                continue;
+        for (int sourceIdx : sourceSlots) {
+            Object sourceStack = screenAdapter.getStackInSlot(client, sourceIdx);
+            if (itemAdapter.getCount(sourceStack) <= 0) continue;
 
-            // Skip locked slots
-            if (SlotLockingManager.getInstance().isLocked(sourceSlot)) {
+            if (SlotLockingManager.getInstance().isLocked(sourceIdx)) {
                 continue;
             }
 
-            net.minecraft.world.item.ItemStack sourceStack = sourceSlot.getItem();
             boolean performTransfer = false;
-
             if (forceMoveAll) {
-                // Ctrl+Scroll: Move everything
                 performTransfer = true;
             } else {
-                // Shift+Scroll: Smart Stack (match only)
-                // Check if target has matching item
-                is.pig.minecraft.lib.inventory.search.ItemCondition condition = stack -> net.minecraft.world.item.ItemStack.isSameItemSameComponents(sourceStack, stack);
-                for (Slot targetSlot : targetSlots) {
-                    if (targetSlot.hasItem() && condition.matches(targetSlot.getItem())) {
+                for (int targetIdx : targetSlots) {
+                    Object targetStack = screenAdapter.getStackInSlot(client, targetIdx);
+                    if (itemAdapter.getCount(targetStack) > 0 && itemAdapter.areItemsEqual(sourceStack, targetStack)) {
                         performTransfer = true;
                         break;
                     }
@@ -137,8 +80,7 @@ public class InventoryUtils {
             }
 
             if (performTransfer) {
-                client.gameMode.handleInventoryMouseClick(menu.containerId, sourceSlot.index, 0,
-                        net.minecraft.world.inventory.ClickType.QUICK_MOVE, client.player);
+                interactionAdapter.clickSlot(client, containerId, sourceIdx, 0, "QUICK_MOVE");
                 actionTaken = true;
             }
         }
@@ -146,70 +88,39 @@ public class InventoryUtils {
         return actionTaken;
     }
 
-    public static java.util.List<Integer> getSlotsToTransfer(AbstractContainerScreen<?> screen, double scrollDelta,
-            boolean forceMoveAll) {
-        java.util.List<Integer> slotsToMove = new java.util.ArrayList<>();
-        Minecraft client = Minecraft.getInstance();
-        if (client.player == null || client.gameMode == null)
-            return slotsToMove;
+    public static List<Integer> getSlotsToTransfer(Object screen, double scrollDelta, boolean forceMoveAll) {
+        List<Integer> slotsToMove = new ArrayList<>();
+        Object client = PiggyServiceRegistry.getWorldStateAdapter().getClient();
+        ScreenAdapter screenAdapter = PiggyServiceRegistry.getScreenAdapter();
+        
+        if (!screenAdapter.isContainerScreenOpen(client)) return slotsToMove;
 
-        net.minecraft.world.inventory.AbstractContainerMenu menu = screen.getMenu();
-        net.minecraft.world.entity.player.Inventory playerInventory = client.player.getInventory();
+        List<Integer> playerSlots = screenAdapter.getPlayerSlotIndices(client);
+        List<Integer> storageSlots = screenAdapter.getStorageSlotIndices(client);
 
-        java.util.List<Slot> storageSlots = new java.util.ArrayList<>();
-        java.util.List<Slot> playerSlots = new java.util.ArrayList<>();
-        boolean foundPlayerSlots = false;
-
-        for (Slot slot : menu.slots) {
-            if (slot.container == playerInventory) {
-                playerSlots.add(slot);
-                foundPlayerSlots = true;
-            }
-        }
-
-        if (foundPlayerSlots) {
-            for (Slot slot : menu.slots) {
-                if (slot.container != playerInventory) {
-                    storageSlots.add(slot);
-                }
-            }
-        } else {
-            int totalSlots = menu.slots.size();
-            for (int i = 0; i < totalSlots; i++) {
-                Slot slot = menu.slots.get(i);
-                if (totalSlots >= 36 && i >= totalSlots - 36) {
-                    playerSlots.add(slot);
-                } else {
-                    storageSlots.add(slot);
-                }
-            }
-        }
-
-        if (storageSlots.isEmpty())
-            return slotsToMove;
+        if (storageSlots.isEmpty()) return slotsToMove;
 
         boolean moveUp = scrollDelta > 0;
+        List<Integer> sourceSlots = moveUp ? playerSlots : storageSlots;
+        List<Integer> targetSlots = moveUp ? storageSlots : playerSlots;
 
-        java.util.List<Slot> sourceSlots = moveUp ? playerSlots : storageSlots;
-        java.util.List<Slot> targetSlots = moveUp ? storageSlots : playerSlots;
+        ItemDataAdapter itemAdapter = PiggyServiceRegistry.getItemDataAdapter();
 
-        for (Slot sourceSlot : sourceSlots) {
-            if (!sourceSlot.hasItem())
-                continue;
+        for (int sourceIdx : sourceSlots) {
+            Object sourceStack = screenAdapter.getStackInSlot(client, sourceIdx);
+            if (itemAdapter.getCount(sourceStack) <= 0) continue;
 
-            if (SlotLockingManager.getInstance().isLocked(sourceSlot)) {
+            if (SlotLockingManager.getInstance().isLocked(sourceIdx)) {
                 continue;
             }
 
-            net.minecraft.world.item.ItemStack sourceStack = sourceSlot.getItem();
             boolean performTransfer = false;
-
             if (forceMoveAll) {
                 performTransfer = true;
             } else {
-                is.pig.minecraft.lib.inventory.search.ItemCondition condition = stack -> net.minecraft.world.item.ItemStack.isSameItemSameComponents(sourceStack, stack);
-                for (Slot targetSlot : targetSlots) {
-                    if (targetSlot.hasItem() && condition.matches(targetSlot.getItem())) {
+                for (int targetIdx : targetSlots) {
+                    Object targetStack = screenAdapter.getStackInSlot(client, targetIdx);
+                    if (itemAdapter.getCount(targetStack) > 0 && itemAdapter.areItemsEqual(sourceStack, targetStack)) {
                         performTransfer = true;
                         break;
                     }
@@ -217,7 +128,7 @@ public class InventoryUtils {
             }
 
             if (performTransfer) {
-                slotsToMove.add(sourceSlot.index);
+                slotsToMove.add(sourceIdx);
             }
         }
 

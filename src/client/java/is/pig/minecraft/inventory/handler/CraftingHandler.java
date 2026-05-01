@@ -1,4 +1,5 @@
 package is.pig.minecraft.inventory.handler;
+import is.pig.minecraft.api.*;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.world.entity.player.Player;

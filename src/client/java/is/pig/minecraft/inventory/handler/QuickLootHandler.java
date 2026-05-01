@@ -1,4 +1,5 @@
 package is.pig.minecraft.inventory.handler;
+import is.pig.minecraft.api.*;
 
 import is.pig.minecraft.inventory.config.PiggyInventoryConfig;
 import net.minecraft.client.Minecraft;
@@ -251,7 +252,7 @@ public class QuickLootHandler {
                             (AbstractContainerScreen<?>) hiddenScreen, delta, lastTransferWasAll);
                     
                     int cps = PiggyInventoryConfig.getInstance().getTickDelay();
-                    java.util.List<is.pig.minecraft.lib.action.IAction> clicks = new java.util.ArrayList<>();
+                    java.util.List<is.pig.minecraft.api.Action> clicks = new java.util.ArrayList<>();
                     
                     for (int slotIndex : slots) {
                         var slotAction = new is.pig.minecraft.lib.action.inventory.ClickWindowSlotAction(
@@ -260,7 +261,7 @@ public class QuickLootHandler {
                                 0, // button
                                 net.minecraft.world.inventory.ClickType.QUICK_MOVE,
                                 "piggy-inventory-quickloot",
-                                is.pig.minecraft.lib.action.ActionPriority.NORMAL
+                                is.pig.minecraft.api.ActionPriority.NORMAL
                         );
                         if (cps <= 0) slotAction.setIgnoreGlobalCps(true);
                         clicks.add(slotAction);

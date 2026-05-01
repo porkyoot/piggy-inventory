@@ -1,4 +1,5 @@
 package is.pig.minecraft.inventory.test;
+import is.pig.minecraft.api.*;
 
 import net.fabricmc.fabric.api.gametest.v1.FabricGameTest;
 import net.minecraft.gametest.framework.GameTest;

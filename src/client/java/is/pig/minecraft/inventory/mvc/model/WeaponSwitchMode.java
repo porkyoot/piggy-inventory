@@ -1,4 +1,5 @@
 package is.pig.minecraft.inventory.mvc.model;
+import is.pig.minecraft.api.*;
 
 import is.pig.minecraft.inventory.config.PiggyInventoryConfig;
 import is.pig.minecraft.lib.ui.RadialMenuItem;

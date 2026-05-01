@@ -1,5 +1,7 @@
 package is.pig.minecraft.inventory.locking;
 
+import is.pig.minecraft.api.registry.PiggyServiceRegistry;
+import is.pig.minecraft.api.spi.ScreenAdapter;
 import is.pig.minecraft.inventory.config.PiggyInventoryConfig;
 
 import java.util.Set;
@@ -11,37 +13,35 @@ public class SlotLockingManager {
 
     private static final SlotLockingManager INSTANCE = new SlotLockingManager();
 
-    // private final Map<String, Set<Integer>> lockedSlots = new HashMap<>(); //
-    // Moved to Config
-
     public static SlotLockingManager getInstance() {
         return INSTANCE;
     }
 
-    public boolean isLocked(net.minecraft.world.inventory.Slot slot) {
-        PiggyInventoryConfig config = (PiggyInventoryConfig) PiggyInventoryConfig.getInstance();
-
-        // Ensure we only lock player inventory slots
-        if (slot.container != net.minecraft.client.Minecraft.getInstance().player.getInventory()) {
+    public boolean isLocked(Object slot) {
+        ScreenAdapter adapter = PiggyServiceRegistry.getScreenAdapter();
+        if (!adapter.isPlayerInventorySlot(slot)) {
             return false;
         }
+
+        PiggyInventoryConfig config = (PiggyInventoryConfig) PiggyInventoryConfig.getInstance();
 
         // Init defaults if empty (First Run)
         if (config.getLockedPlayerSlots().isEmpty()) {
             initDefaultLocks(config);
         }
 
-        return config.getLockedPlayerSlots().contains(slot.getContainerSlot());
+        return config.getLockedPlayerSlots().contains(adapter.getSlotIndex(slot));
     }
 
-    public void toggleLock(net.minecraft.world.inventory.Slot slot) {
-        if (slot.container != net.minecraft.client.Minecraft.getInstance().player.getInventory()) {
+    public void toggleLock(Object slot) {
+        ScreenAdapter adapter = PiggyServiceRegistry.getScreenAdapter();
+        if (!adapter.isPlayerInventorySlot(slot)) {
             return;
         }
 
         PiggyInventoryConfig config = (PiggyInventoryConfig) PiggyInventoryConfig.getInstance();
         Set<Integer> locks = config.getLockedPlayerSlots();
-        int idx = slot.getContainerSlot();
+        int idx = adapter.getSlotIndex(slot);
 
         if (locks.contains(idx)) {
             locks.remove(idx);
